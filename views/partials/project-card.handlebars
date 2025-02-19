@@ -1,0 +1,63 @@
+<div class="card project-card">
+    <div id="carousel-{{id}}" class="carousel slide" data-bs-ride="carousel">
+        <!-- Carousel Indicators -->
+        <div class="carousel-indicators">
+            {{#each posterUrls}}
+                <button type="button" 
+                    data-bs-target="#carousel-{{../id}}" 
+                    data-bs-slide-to="{{@index}}" 
+                    class="{{#if @first}}active{{/if}}"
+                    {{#if @first}}aria-current="true"{{/if}}
+                    aria-label="Slide {{@index}}">
+                </button>
+            {{/each}}
+        </div>
+
+        <!-- Carousel Items -->
+        <div class="carousel-inner">
+            {{#each posterUrls}}
+                <div class="carousel-item {{#if @first}}active{{/if}}">
+                    <img src="{{url}}" class="d-block w-100 carousel-image" alt="{{title}}">
+                </div>
+            {{/each}}
+        </div>
+
+        <!-- Carousel Controls -->
+        <button class="carousel-control-prev" type="button" data-bs-target="#carousel-{{id}}" data-bs-slide="prev">
+            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Previous</span>
+        </button>
+        <button class="carousel-control-next" type="button" data-bs-target="#carousel-{{id}}" data-bs-slide="next">
+            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Next</span>
+        </button>
+    </div>
+    <div class="card-body">
+        <h3 class="display-3 card-title">{{title}} - {{titleHebrew}}</h3>
+        <p class="card-text">{{description}}</p>
+        <div class="row">
+            <div class="col-md-6">
+                <!-- Project Details -->
+                <div class="project-details">
+                    <p>Director: {{director}}</p>
+                    <p>Production: {{productionCompany}}</p>
+                    <p>Broadcaster: {{broadcaster}}</p>
+                </div>
+            </div>
+            <div class="col-md-6">
+                {{#if prizes.castingDirector}}
+                    <h5 class="display-5">Awards</h5>
+                    <ul>
+                        {{#each prizes.castingDirector}}
+                            <li>{{this}}</li>
+                        {{/each}}
+                    </ul>
+                {{/if}}
+            </div>
+        </div>
+        <div class="mt-3">
+            <a href="{{imdbUrl}}" class="btn btn-custom">IMDB</a>
+            <a href="{{trailerUrl}}" class="btn btn-custom">Trailer</a>
+        </div>
+    </div>
+</div>

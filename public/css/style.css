@@ -1,0 +1,94 @@
+/* Colors */
+:root {
+    --primary-red: #FF0000;
+    --dark-red: #BC2525;
+    --dark-blue: #0C005A;
+    --light-gray: #EAEAEA;
+    --grayish: #EEEEEE;
+}
+
+/* Headlines */
+.display-1, .display-2, .display-3, .display-4, .display-5, .display-6 {
+    color: var(--primary-red);
+}
+
+/* Paragraph text */
+p {
+    color: var(--primary-red);
+}
+
+/* Accordion styling */
+.accordion-button {
+    background-color: var(--light-gray) !important;
+    color: var(--primary-red) !important;
+    /* Combined focus styles */
+    box-shadow: none !important;
+    border-color: transparent !important;
+    outline: none;
+}
+
+.accordion-button:not(.collapsed) {
+    background-color: var(--grayish) !important;
+    color: var(--primary-red) !important;
+    &::after {
+        border-color: transparent;
+    }
+}
+
+.accordion-body {
+    background-color: var(--light-gray);
+    color: var(--light-gray);
+}
+
+/* Project card */
+.project-card {
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    background-color: var(--light-gray);
+}
+
+.carousel-image {
+    height: 400px;
+    object-fit: cover;
+}
+
+.card-title {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.project-details {
+    margin: 1rem 0;
+}
+
+.card-body {
+    background-color: var(--light-gray);
+    color: var(--light-gray);
+}
+
+/* Buttons */
+.btn-custom {
+    background-color: var(--grayish);
+    color: var(--primary-red);
+    border: 1px solid var(--primary-red);
+    
+}
+
+.btn-custom:hover {
+    /*background-color: var(--primary-red); */
+    color: var(--primary-red);
+}
+
+/* Carousel controls */
+.carousel-control-prev-icon,
+.carousel-control-next-icon {
+    background-color: transparent;
+   /* filter: invert(13%) sepia(94%) saturate(6000%) hue-rotate(0deg) brightness(97%) contrast(117%); */
+    width: 40px;
+    height: 40px;
+}
+
+.carousel-control-prev,
+.carousel-control-next {
+    background: none !important;
+}

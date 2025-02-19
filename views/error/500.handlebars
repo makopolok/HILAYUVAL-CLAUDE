@@ -1,0 +1,13 @@
+<div class="container text-center mt-5">
+    <div class="alert alert-danger">
+        <h1 class="display-4">500</h1>
+        <h2>Internal Server Error</h2>
+        <p class="lead">Something went wrong on our end. Please try again later.</p>
+        {{#if error}}
+            <div class="error-details mt-3">
+                <p>{{error.message}}</p>
+            </div>
+        {{/if}}
+        <a href="/" class="btn btn-primary mt-3">Return to Homepage</a>
+    </div>
+</div>

@@ -1,0 +1,19 @@
+<div class="container mt-5">
+    <h1 class="display-3 text-left mb-4 ps-3">{{title}}</h1>
+    <div class="accordion" id="projectsAccordion">
+        {{#each projects}}
+            <div class="accordion-item">
+                <h2 class="display-2 accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{id}}">
+                        {{title}} ({{year}}) - {{titleHebrew}}
+                    </button>
+                </h2>
+                <div id="collapse-{{id}}" class="accordion-collapse collapse" data-bs-parent="#projectsAccordion">
+                    <div class="accordion-body">
+                        {{> project-card}}
+                    </div>
+                </div>
+            </div>
+        {{/each}}
+    </div>
+</div>
