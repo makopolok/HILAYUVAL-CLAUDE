@@ -1,0 +1,157 @@
+{
+          "projects": [
+                    {
+                              "id": "dismissed-2024",
+                              "title": "Dismissed",
+                              "titleHebrew": "המפקדת",
+                              "year": 2024,
+                              "rating": 8.0,
+                              "type": "TV Series",
+                              "episodes": 30,
+                              "posterUrls": [
+                                        {
+                                                  "url": "/images/dismissed_season1.jpeg",
+                                                  "title": "Dismissed Season 1"
+                                        },
+                                        {
+                                                  "url": "/images/dismissed_season2.jpeg",
+                                                  "title": "המפקדת עונה שניה"
+                                        },
+                                        {
+                                                  "url": "/images/dismissed_season3.webp",
+                                                  "title": "Season 3 Poster"
+                                        }
+                              ],
+                              "description": "",
+                              "cast": ["Habub", "Aaron"],
+                              "yearSpan": "2021-2024",
+                              "role": "Casting Director",
+                              "director": "Atara Frish",
+                              "productionCompany": "Black Sheep Film Productions",
+                              "broadcaster": "KAN: Israeli Public Broadcasting",
+                              "seasons": 3,
+                              "prizes": {
+                                        "actors": ["Best Actor Award"],
+                                        "castingDirector": [
+                                                  "Best Casting Director Award"
+                                        ]
+                              },
+                              "imdbUrl": "https://imdb.com/title/tt1234567",
+                              "trailerUrl": "https://youtube.com/..."
+                    },
+                    {
+                              "id": "night-therapy-2024",
+                              "title": "Night Therapy",
+                              "titleHebrew": "טיפול לילה",
+                              "year": 2024,
+                              "rating": 8.3,
+                              "type": "TV Series",
+                              "episodes": 7,
+                              "role": "Casting Director",
+                              "posterUrls": [
+                                        {
+                                                  "url": "/images/night_therapy_01.jpeg",
+                                                  "title": "Night Therapy Season 1"
+                                        },
+                                        {
+                                                  "url": "/images/night_therapy_02.jpeg",
+                                                  "title": "Behind the Scenes"
+                                        },
+                                        {
+                                                  "url": "/images/night_therapy_03.webp",
+                                                  "title": "Season 3 Premiere"
+                                        }
+                              ]
+                    },
+                    {
+                              "id": "manayek-2024",
+                              "title": "Manayek",
+                              "titleHebrew": "מנאייק",
+                              "year": 2024,
+                              "rating": 8.0,
+                              "type": "TV Series",
+                              "episodes": 30,
+                              "role": "Casting Director",
+                              "posterUrls": [
+                                        "/images/dismissed_cast_01.jpeg",
+                                        "/images/dismissed_cast_02.jpeg",
+                                        "/images/dismissed_cast_03.jpeg"
+                              ],
+                              "description": "",
+                              "cast": [],
+                              "yearSpan": "2024",
+                              "director": "Emily Davis",
+                              "productionCompany": "JKL Productions",
+                              "broadcaster": "OPQ Network",
+                              "seasons": 2,
+                              "prizes": {
+                                        "actors": ["Best Actress Award"],
+                                        "castingDirector": [
+                                                  "Excellence in Casting Award"
+                                        ]
+                              },
+                              "imdbUrl": "https://imdb.com/title/tt4567890",
+                              "trailerUrl": "https://youtube.com/..."
+                    },
+                    {
+                              "id": "8200-2024",
+                              "title": "8200",
+                              "titleHebrew": "8200",
+                              "year": 2024,
+                              "rating": 8.0,
+                              "type": "TV Series",
+                              "episodes": 8,
+                              "role": "Casting Director",
+                              "posterUrls": [
+                                        "/images/dismissed_cast_01.jpeg",
+                                        "/images/dismissed_cast_02.jpeg",
+                                        "/images/dismissed_cast_03.jpeg"
+                              ],
+                              "description": "",
+                              "cast": [],
+                              "yearSpan": "2024",
+                              "director": "Michael Johnson",
+                              "productionCompany": "GHI Productions",
+                              "broadcaster": "RST Network",
+                              "seasons": 1,
+                              "prizes": {
+                                        "actors": ["Best Ensemble Cast Award"],
+                                        "castingDirector": [
+                                                  "Best Casting in a Drama Series"
+                                        ]
+                              },
+                              "imdbUrl": "https://imdb.com/title/tt3456789",
+                              "trailerUrl": "https://youtube.com/..."
+                    },
+                    {
+                              "id": "manayek-2024",
+                              "title": "Manayek",
+                              "titleHebrew": "מנאייק",
+                              "year": 2024,
+                              "rating": 8.0,
+                              "type": "TV Series",
+                              "episodes": 30,
+                              "role": "Casting Director",
+                              "posterUrls": [
+                                        "/images/dismissed_cast_01.jpeg",
+                                        "/images/dismissed_cast_02.jpeg",
+                                        "/images/dismissed_cast_03.jpeg"
+                              ],
+                              "description": "",
+                              "cast": [],
+                              "yearSpan": "2024",
+                              "director": "Emily Davis",
+                              "productionCompany": "JKL Productions",
+                              "broadcaster": "OPQ Network",
+                              "seasons": 2,
+                              "prizes": {
+                                        "actors": ["Best Actress Award"],
+                                        "castingDirector": [
+                                                  "Excellence in Casting Award"
+                                        ]
+                              },
+                              "imdbUrl": "https://imdb.com/title/tt4567890",
+                              "trailerUrl": "https://youtube.com/..."
+                    }
+          ]
+}

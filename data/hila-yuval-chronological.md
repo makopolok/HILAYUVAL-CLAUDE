@@ -1,0 +1,84 @@
+# Hila Yuval Filmography
+
+## Career Highlights
+- Total Credits: 82 projects (77 as Casting Director, 5 in Casting Department)
+- Awards: 5 wins & 2 nominations
+
+## Chronological Credits
+
+- Night Therapy (2024) - 7 episodes
+- 8200 (2024) - 8 episodes
+- Manayek (2020-2024) - 30 episodes
+- Metukim (2024) - 7 episodes
+- Dismissed (2021-2024) - 30 episodes
+- Red Skies (2023) - 8 episodes
+- Six zeros (2023) - 8 episodes
+- Alef (2023) - 6 episodes
+- June Zero (2022) - Film
+- Chanshi (2022) - 2 episodes
+- Broken Ties (2022) - 7 episodes
+- Malkot (2018-2022) - 11 episodes
+- Kfulim (2015-2022) - 16 episodes
+- Sad City Girls (2021) - 2 episodes
+- Me'ila (2021) - 7 episodes
+- Michael (2018-2021) - 10 episodes
+- Shtisel (2013-2021) - 33 episodes
+- Valley of Tears (2020) - 8 episodes
+- The Big Special Thing (2020) - 8 episodes
+- The Attaché (2019-2020) - 10 episodes
+- Happy Times (2019) - Film
+- The Red Sea Diving Resort (2019) - Film
+- Our Boys (2019) - 10 episodes
+- The Spy (2019) - 1 episode
+- Flawless (2018) - Film
+- Beirut (2018) - Film
+- The Conductor (2018) - 10 episodes
+- Autonomies (2018) - 6 episodes
+- Commandments (2017-2018) - 8 episodes
+- Driver (2017) - Film
+- Norman (2016) - Film
+- Plan B (2015) - 2 episodes
+- Imported (2015) - 8 episodes
+- Fauda (2015) - 12 episodes
+- Dig (2015) - 2 episodes
+- A Tale of Love and Darkness (2015) - Film
+- The Gordin Cell (2012-2015) - 22 episodes
+- Hill Start (2014) - Film
+- Temporarily Dead (2014) - 1 episode
+- A Place in Heaven (2013) - Film
+- Euphoria (2012-2013) - 10 episodes
+- Out in the Dark (2012) - Film
+- Footnote (2011) - Film
+- Ha-Chaim Ze Lo Ha-Kol (2001-2011)
+- Je T'aime, I Love You Terminal (2010) - Film
+- Dusk (2010) - Film
+- In the Prime of Her Life (2010)
+- Prisoners of War (2009-2012) - 24 episodes
+- Lebanon (2009) - Film
+- Gerushim Niflaim (2009) - 4 episodes
+- Srugim (2008-2012)
+- Eli & Ben (2008) - Film
+- It All Begins at Sea (2008) - Film
+- Lost Islands (2008) - Film
+- Restless (2008) - Film
+- Deus (2008)
+- Lost and Found (2007-2008) - 3 episodes
+- Ulai Hapa'am (2007-2008) - 74 episodes
+- When Will We Kiss (2007-2008)
+- The Little Traitor (2007) - Film
+- Beaufort (2007) - Film
+- Yeladot Ra'ot (2006)
+- Lemarit Ain (2006) - Film
+- Live and Become (2005) - Film
+- Rosh Gadol (2004-2007) - 3 episodes
+- Delusions (2004) - Film
+- The Last Scene (2004) - Film
+- Colombian Love (2004) - Film
+- Summer Story (2004) - Film
+- Meorav Yerushalmi (2004) - 1 episode
+- Hallelujah (2003)
+- Nina's Tragedies (2003) - Film
+- BeKetzev HaKetzev (2002)
+- Shaul (2002)
+- The Azzany's (1999)
+- Hafuch (1996-1999)
