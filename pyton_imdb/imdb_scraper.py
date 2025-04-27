@@ -62,10 +62,7 @@ def scrape_imdb_details(title, url, session):
         "title": title,
         "titleHebrew": "",  # Not available on IMDb, would need another source
         "year": year,
-        "rating": extract_type(soup),        cd E:\PROG\hilayuval-claude
-        git add pyton_imdb/imdb_scraper.py
-        git commit -m "Backup original IMDb scraper before enhancements"
-        git push origin main
+        "rating": extract_type(soup),       
         "type": extract_type(soup),
         "episodes": extract_episodes(soup),
         "posterUrls": extract_poster_urls(soup),
