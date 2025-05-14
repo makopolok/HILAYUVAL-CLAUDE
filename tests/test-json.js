@@ -3,7 +3,7 @@ const path = require('path');
 
 try {
     // Move up one directory level from tests to root
-    const jsonPath = path.join(__dirname, '..', 'data', 'portfolio.json');
+    const jsonPath = path.join(__dirname, '..', 'data', 'portfolio_new.json');
     console.log('Reading from:', jsonPath);
 
     // Check if file exists

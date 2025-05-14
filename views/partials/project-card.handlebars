@@ -32,32 +32,36 @@
             <span class="visually-hidden">Next</span>
         </button>
     </div>
-    <div class="card-body">
-        <h3 class="display-3 card-title">{{title}} - {{titleHebrew}}</h3>
-        <p class="card-text">{{description}}</p>
+    <div class="card-body"> {{!-- Added card-body to wrap content --}}
         <div class="row">
             <div class="col-md-6">
                 <!-- Project Details -->
                 <div class="project-details">
-                    <p>Director: {{director}}</p>
-                    <p>Production: {{productionCompany}}</p>
-                    <p>Broadcaster: {{broadcaster}}</p>
+                
+                           
+                  {{{renderProjectDetail "Director" director}}}
+                    {{{renderProjectDetail "Creators" creators}}}
+                       {{{renderProjectDetail "Writers" writers}}}
+                    {{{renderProjectDetail "Actors" actors}}}
+                    {{{renderProjectDetail "Production" production_company}}}
+                    {{{renderProjectDetail "Broadcaster" broadcaster}}}
+                     {{{renderProjectDetail "Storyline" storyline}}}
                 </div>
             </div>
             <div class="col-md-6">
-                {{#if prizes.castingDirector}}
+                {{#if prizes.length}} {{! Check if the prizes array exists and is not empty }}
                     <h5 class="display-5">Awards</h5>
                     <ul>
-                        {{#each prizes.castingDirector}}
-                            <li>{{this}}</li>
+                        {{#each prizes}} {{! Iterate over the prizes array }}
+                            <li>{{this}}</li> {{! Display each prize }}
                         {{/each}}
                     </ul>
                 {{/if}}
             </div>
         </div>
         <div class="mt-3">
-            <a href="{{imdbUrl}}" class="btn btn-custom">IMDB</a>
+            <a href="{{imdb_url}}" class="btn btn-custom">IMDB</a>
             <a href="{{trailerUrl}}" class="btn btn-custom">Trailer</a>
         </div>
-    </div>
+    </div> {{!-- This now correctly closes card-body --}}
 </div>

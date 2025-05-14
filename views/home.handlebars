@@ -1,15 +1,42 @@
 <div class="container mt-5">
+    <!-- Main heading for the page, likely displaying a general title for the portfolio -->
     <h1 class="display-3 text-left mb-4 ps-3">{{title}}</h1>
+
+    <!-- Bootstrap Accordion container: This will hold all the project items. -->
+    <!-- The id "projectsAccordion" is used by data-bs-parent in child elements to ensure only one accordion item is open at a time. -->
     <div class="accordion" id="projectsAccordion">
+        {{! Loop through each project object passed to this template }}
         {{#each projects}}
+            <!-- Individual accordion item for each project -->
             <div class="accordion-item">
-                <h2 class="display-2 accordion-header">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{id}}">
-                        {{title}} ({{year}}) - {{titleHebrew}}
+                {{! Accordion header: Contains the button to toggle the collapse state }}
+                <!-- Unique ID for the header, using the loop's index for uniqueness -->
+                <h2 class="display-2 accordion-header" id="heading-{{@index}}">
+                    {{! Accordion button: Toggles the visibility of the project details }}
+                    <!--
+                        data-bs-toggle="collapse": Standard Bootstrap attribute to enable collapse behavior.
+                        data-bs-target="#collapse-{{@index}}": Points to the ID of the collapsible content div. Uses loop index for uniqueness.
+                        aria-expanded="false": Indicates the accordion item is initially collapsed.
+                        aria-controls="collapse-{{@index}}": Links this button to the collapsible content for accessibility. Uses loop index.
+                        class="accordion-button collapsed": Standard Bootstrap classes for styling and indicating the collapsed state.
+                    -->
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{@index}}" aria-expanded="false" aria-controls="collapse-{{@index}}">
+                        {{! Display project title, year, and Hebrew title in the button }}
+                        {{title}} ({{year}}) - {{hebrew_title}}
                     </button>
                 </h2>
-                <div id="collapse-{{id}}" class="accordion-collapse collapse" data-bs-parent="#projectsAccordion">
+                {{! Collapsible content area for the project details }}
+                <!--
+                    id="collapse-{{@index}}": Unique ID for this collapsible area, targeted by the button. Uses loop index.
+                    class="accordion-collapse collapse": Standard Bootstrap classes for the collapsible behavior and initial hidden state.
+                    aria-labelledby="heading-{{@index}}": Links this content to its controlling button's header for accessibility. Uses loop index.
+                    data-bs-parent="#projectsAccordion": Ensures that when this item is opened, other items in the "projectsAccordion" group are closed.
+                -->
+                <div id="collapse-{{@index}}" class="accordion-collapse collapse" aria-labelledby="heading-{{@index}}" data-bs-parent="#projectsAccordion">
+                    <!-- Accordion body: Contains the actual project details -->
                     <div class="accordion-body">
+                        {{! Render the project-card partial here, passing the current project's context }}
+                        {{! This partial will display the detailed information for the project. }}
                         {{> project-card}}
                     </div>
                 </div>

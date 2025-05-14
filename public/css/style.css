@@ -38,13 +38,15 @@ p {
 .accordion-body {
     background-color: var(--light-gray);
     color: var(--light-gray);
+    padding-bottom: 6rem; 
 }
 
 /* Project card */
 .project-card {
-    margin-bottom: 2rem;
+    margin-bottom: 0rem;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     background-color: var(--light-gray);
+    padding-bottom: 0rem; /* Added bottom padding */
 }
 
 .carousel-image {

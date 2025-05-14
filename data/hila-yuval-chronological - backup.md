@@ -1,0 +1,83 @@
+# Hila Yuval Filmography
+
+## Career Highlights
+- Total Credits: 82 projects (77 as Casting Director, 5 in Casting Department)
+- Awards: 5 wins & 2 nominations
+
+## Chronological Credits
+
+- Night Therapy (2024) - 7 episodes - https://www.imdb.com/title/tt28231892/
+- 8200 (2024) - 8 episodes - https://www.imdb.com/title/tt23059694/
+- Manayek (2020-2024) - 30 episodes - https://www.imdb.com/title/tt12819234/
+- Metukim (2024) - 7 episodes - https://www.imdb.com/title/tt31308890/
+- Dismissed (2021-2024) - 30 episodes - https://www.imdb.com/title/tt14426644/
+- Red Skies (2023) - 8 episodes - https://www.imdb.com/title/tt23136682/
+- Six zeros (2023) - 8 episodes - https://www.imdb.com/title/tt28079116/
+- Alef (2023) - 6 episodes - https://www.imdb.com/title/tt27869794/
+- June Zero (2022) - Film - https://www.imdb.com/title/tt18834372/
+- Chanshi (2022) - 2 episodes - https://www.imdb.com/title/tt15495784/
+- Broken Ties (2022) - 7 episodes - https://www.imdb.com/title/tt18245948/
+- Malkot (2018-2022) - 11 episodes - https://www.imdb.com/title/tt9182572/
+- Kfulim (2015-2022) - 16 episodes - https://www.imdb.com/title/tt3602528/
+- Sad City Girls (2021) - 2 episodes - https://www.imdb.com/title/tt15869988/
+- Me'ila (2021) - 7 episodes - https://www.imdb.com/title/tt15144408/
+- Michael (2018-2021) - 10 episodes - https://www.imdb.com/title/tt10433430/
+- Shtisel (2013-2021) - 33 episodes - https://www.imdb.com/title/tt3069894/
+- Valley of Tears (2020) - 8 episodes - https://www.imdb.com/title/tt8190688/
+- The Big Special Thing (2020) - 8 episodes - https://www.imdb.com/title/tt11967090/
+- The Attaché (2019-2020) - 10 episodes - https://www.imdb.com/title/tt11694076/
+- Happy Times (2019) - Film - https://www.imdb.com/title/tt8563656/
+- The Red Sea Diving Resort (2019) - Film - https://www.imdb.com/title/tt4995776/
+- Our Boys (2019) - 10 episodes - https://www.imdb.com/title/tt10517426/
+- The Spy (2019) - 6 episodes - https://www.imdb.com/title/tt5952634/
+- Flawless (2018) - Film - https://www.imdb.com/title/tt8653840/
+- Beirut (2018) - Film - https://www.imdb.com/title/tt4669264/
+- The Conductor (2018) - 10 episodes - https://www.imdb.com/title/tt9207222/
+- Autonomies (2018) - 6 episodes - https://www.imdb.com/title/tt8365214/
+- Commandments (2017-2018) - 8 episodes - https://www.imdb.com/title/tt7620360/
+- Driver (2017) - Film - https://www.imdb.com/title/tt6213004/
+- Norman (2016) - Film - https://www.imdb.com/title/tt4191702/
+- Plan B (2015) - 10 episodes - https://www.imdb.com/title/tt4892646/
+- Imported (2015) - 8 episodes - https://www.imdb.com/title/tt4711894/
+- Dig (2015) - 10 episodes - https://www.imdb.com/title/tt3597606/
+- A Tale of Love and Darkness (2015) - Film - https://www.imdb.com/title/tt1135989/
+- The Gordin Cell (2012-2015) - 22 episodes - https://www.imdb.com/title/tt2860176/
+- Hill Start (2014) - Film - https://www.imdb.com/title/tt3919692/
+- Temporarily Dead (2014) - 77 episode - https://www.imdb.com/title/tt3830828/
+- A Place in Heaven (2013) - Film - https://www.imdb.com/title/tt2960994/
+- Euphoria (2012-2013) - 10 episodes - https://www.imdb.com/title/tt2896496/
+- Out in the Dark (2012) - Film - https://www.imdb.com/title/tt2318625/
+- Footnote (2011) - Film - https://www.imdb.com/title/tt1445520/
+- Ha-Chaim Ze Lo Ha-Kol (2001-2011) - https://www.imdb.com/title/tt0306294/
+- Je T'aime, I Love You Terminal (2010) - Film - https://www.imdb.com/title/tt1844692/
+- Dusk (2010) - Film - https://www.imdb.com/title/tt1467378/
+- In the Prime of Her Life (2010) - https://www.imdb.com/title/tt2200985/
+- Prisoners of War (2009-2012) - 24 episodes - https://www.imdb.com/title/tt1676462/
+- Lebanon (2009) - Film - https://www.imdb.com/title/tt1483831/
+- Gerushim Niflaim (2009) - 16 episodes - https://www.imdb.com/title/tt1498976/
+- Srugim (2008-2012) - 45 episodes - https://www.imdb.com/title/tt1266462/
+- Eli & Ben (2008) - Film - https://www.imdb.com/title/tt1320376/
+- It All Begins at Sea (2008) - Film - https://www.imdb.com/title/tt1284990/
+- Lost Islands (2008) - Film - https://www.imdb.com/title/tt1210351/
+- Restless (2008) - Film - https://www.imdb.com/title/tt1075644/
+- Deus (2008) - https://www.imdb.com/title/tt1397645/
+- Lost and Found (2007-2008) - 8 episodes - https://www.imdb.com/title/tt7083308/
+- Ulai Hapa'am (2007-2008) - 74 episodes - https://www.imdb.com/title/tt1409483/
+- When Will We Kiss (2007-2008) - https://www.imdb.com/title/tt0925510/
+- The Little Traitor (2007) - Film - https://www.imdb.com/title/tt0818170/
+- Beaufort (2007) - Film - https://www.imdb.com/title/tt0758732/
+- Yeladot Ra'ot (2006) - Film - https://www.imdb.com/title/tt0490764/
+- Lemarit Ain (2006) - Film - https://www.imdb.com/title/tt0759604/
+- Live and Become (2005) - Film - https://www.imdb.com/title/tt0388505/
+- Rosh Gadol (2004-2007) - 30 episodes - https://www.imdb.com/title/tt0498751/
+- Delusions (2004) - Film - https://www.imdb.com/title/tt0461929/
+- The Last Scene (2004) - Film - https://www.imdb.com/title/tt0452859/
+- Colombian Love (2004) - Film - https://www.imdb.com/title/tt0358925/
+- Summer Story (2004) - Film - https://www.imdb.com/title/tt0420229/
+- Meorav Yerushalmi (2004) - 8 episode - https://www.imdb.com/title/tt0380126/
+- Hallelujah (2003) - https://www.imdb.com/title/tt1142564/
+- Nina's Tragedies (2003) - Film - https://www.imdb.com/title/tt0376007/
+- BeKetzev HaKetzev (2002) - https://www.imdb.com/title/tt0312094/
+- Shaul (2002) - https://www.imdb.com/title/tt0313127/
+- The Azzany's (1999) - https://www.imdb.com/title/tt0259149/
+- Hafuch (1996-1999) - https://www.imdb.com/title/tt0166915/

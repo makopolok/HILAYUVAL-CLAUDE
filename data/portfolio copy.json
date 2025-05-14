@@ -23,7 +23,11 @@
                                         }
                               ],
                               "description": "",
-                              "cast": ["Habub", "Aaron"],
+                              "cast": [
+                                        "Alona Sa'ar",
+                                        "Noam Lugasy",
+                                        "Maya Landsman"
+                              ],
                               "yearSpan": "2021-2024",
                               "role": "Casting Director",
                               "director": "Atara Frish",
@@ -36,7 +40,7 @@
                                                   "Best Casting Director Award"
                                         ]
                               },
-                              "imdbUrl": "https://imdb.com/title/tt1234567",
+                              "imdbUrl": "https://www.imdb.com/title/tt14426644/",
                               "trailerUrl": "https://youtube.com/..."
                     },
                     {
@@ -59,9 +63,20 @@
                                         },
                                         {
                                                   "url": "/images/night_therapy_03.webp",
-                                                  "title": "Season 3 Premiere"
+                                                  "title": "Premiere Poster"
                                         }
-                              ]
+                              ],
+                              "imdbUrl": "https://www.imdb.com/title/tt28231892/",
+                              "cast": [
+                                        "Yousef Sweid",
+                                        "Shira Haas",
+                                        "Dana Ivgy"
+                              ],
+                              "yearSpan": "2024",
+                              "director": "Gabriel Bibliowicz",
+                              "productionCompany": "yes Studios",
+                              "broadcaster": "Yes TV (Israel)",
+                              "seasons": 1
                     },
                     {
                               "id": "manayek-2024",
@@ -73,24 +88,37 @@
                               "episodes": 30,
                               "role": "Casting Director",
                               "posterUrls": [
-                                        "/images/dismissed_cast_01.jpeg",
-                                        "/images/dismissed_cast_02.jpeg",
-                                        "/images/dismissed_cast_03.jpeg"
+                                        {
+                                                  "url": "/images/manayek_01.jpeg",
+                                                  "title": "Manayek Season 1"
+                                        },
+                                        {
+                                                  "url": "/images/manayek_02.jpeg",
+                                                  "title": "Manayek Season 2"
+                                        },
+                                        {
+                                                  "url": "/images/manayek_03.jpeg",
+                                                  "title": "Manayek Season 3"
+                                        }
                               ],
                               "description": "",
-                              "cast": [],
-                              "yearSpan": "2024",
-                              "director": "Emily Davis",
-                              "productionCompany": "JKL Productions",
-                              "broadcaster": "OPQ Network",
-                              "seasons": 2,
+                              "cast": [
+                                        "Shalom Assayag",
+                                        "Amos Tamam",
+                                        "Liraz Chamami"
+                              ],
+                              "yearSpan": "2020-2024",
+                              "director": "Alon Zingman",
+                              "productionCompany": "Yoav Gross Productions",
+                              "broadcaster": "KAN: Israeli Public Broadcasting",
+                              "seasons": 3,
                               "prizes": {
                                         "actors": ["Best Actress Award"],
                                         "castingDirector": [
                                                   "Excellence in Casting Award"
                                         ]
                               },
-                              "imdbUrl": "https://imdb.com/title/tt4567890",
+                              "imdbUrl": "https://www.imdb.com/title/tt12819234/",
                               "trailerUrl": "https://youtube.com/..."
                     },
                     {
@@ -103,16 +131,29 @@
                               "episodes": 8,
                               "role": "Casting Director",
                               "posterUrls": [
-                                        "/images/dismissed_cast_01.jpeg",
-                                        "/images/dismissed_cast_02.jpeg",
-                                        "/images/dismissed_cast_03.jpeg"
+                                        {
+                                                  "url": "/images/8200_01.jpeg",
+                                                  "title": "8200 Main Poster"
+                                        },
+                                        {
+                                                  "url": "/images/8200_02.jpeg",
+                                                  "title": "Cast Photo"
+                                        },
+                                        {
+                                                  "url": "/images/8200_03.jpeg",
+                                                  "title": "Production Still"
+                                        }
                               ],
                               "description": "",
-                              "cast": [],
+                              "cast": [
+                                        "Lucy Ayoub",
+                                        "Yaakov Zada Daniel",
+                                        "Shani Cohen"
+                              ],
                               "yearSpan": "2024",
-                              "director": "Michael Johnson",
-                              "productionCompany": "GHI Productions",
-                              "broadcaster": "RST Network",
+                              "director": "Dan Sachar",
+                              "productionCompany": "Gum Films",
+                              "broadcaster": "KAN: Israeli Public Broadcasting",
                               "seasons": 1,
                               "prizes": {
                                         "actors": ["Best Ensemble Cast Award"],
@@ -120,37 +161,7 @@
                                                   "Best Casting in a Drama Series"
                                         ]
                               },
-                              "imdbUrl": "https://imdb.com/title/tt3456789",
-                              "trailerUrl": "https://youtube.com/..."
-                    },
-                    {
-                              "id": "manayek-2024",
-                              "title": "Manayek",
-                              "titleHebrew": "מנאייק",
-                              "year": 2024,
-                              "rating": 8.0,
-                              "type": "TV Series",
-                              "episodes": 30,
-                              "role": "Casting Director",
-                              "posterUrls": [
-                                        "/images/dismissed_cast_01.jpeg",
-                                        "/images/dismissed_cast_02.jpeg",
-                                        "/images/dismissed_cast_03.jpeg"
-                              ],
-                              "description": "",
-                              "cast": [],
-                              "yearSpan": "2024",
-                              "director": "Emily Davis",
-                              "productionCompany": "JKL Productions",
-                              "broadcaster": "OPQ Network",
-                              "seasons": 2,
-                              "prizes": {
-                                        "actors": ["Best Actress Award"],
-                                        "castingDirector": [
-                                                  "Excellence in Casting Award"
-                                        ]
-                              },
-                              "imdbUrl": "https://imdb.com/title/tt4567890",
+                              "imdbUrl": "https://www.imdb.com/title/tt23059694/",
                               "trailerUrl": "https://youtube.com/..."
                     }
           ]

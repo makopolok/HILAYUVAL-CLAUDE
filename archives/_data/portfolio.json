@@ -1,0 +1,131 @@
+[
+          {
+                    "title": "Michael",
+                    "hebrew_title": "מיכאל",
+                    "year": "2018–2021",
+                    "episodes": 10,
+                    "director": "Yona Rozenkier",
+                    "creators": ["Yona Rozenkier", "Shlomo Mashiach"],
+                    "production_company": "Koda Communications",
+                    "imdb_url": "https://www.imdb.com/title/tt10433430/"
+          },
+          {
+                    "title": "Shtisel",
+                    "hebrew_title": "שטיסל",
+                    "year": "2013–2021",
+                    "episodes": 33,
+                    "director": "Alon Zigman",
+                    "creators": ["Yehonatan Indursky", "Ori Elon"],
+                    "production_company": "Dori Media Paran",
+                    "imdb_url": "https://www.imdb.com/title/tt3069894/"
+          },
+          {
+                    "title": "Valley of Tears",
+                    "hebrew_title": "שעת נעילה",
+                    "year": 2020,
+                    "episodes": 8,
+                    "director": "Yaron Zilberman",
+                    "creators": ["Ron Leshem", "Amit Cohen", "Daniel Amsel"],
+                    "production_company": "Endemol Israel",
+                    "imdb_url": "https://www.imdb.com/title/tt8190688/"
+          },
+          {
+                    "title": "The Big Special Thing",
+                    "hebrew_title": "הדבר הגדול הבא",
+                    "year": 2020,
+                    "episodes": 8,
+                    "director": "Ofer Shechter",
+                    "creators": ["Ofer Shechter", "Aviram Buhnik"],
+                    "production_company": "HOT",
+                    "imdb_url": "https://www.imdb.com/title/tt11967090/"
+          },
+          {
+                    "title": "The Attaché",
+                    "hebrew_title": "הנספח",
+                    "year": "2019–2020",
+                    "episodes": 10,
+                    "director": "Asi Cohen",
+                    "creators": ["Asi Cohen", "Alon Gur"],
+                    "production_company": "Yoav Gross Productions",
+                    "imdb_url": "https://www.imdb.com/title/tt11694076/"
+          },
+          {
+                    "title": "Happy Times",
+                    "hebrew_title": "זמנים שמחים",
+                    "year": 2019,
+                    "episodes": null,
+                    "director": "Michael Mayer",
+                    "creators": ["Michael Mayer", "Roni Sina"],
+                    "production_company": "M Square Films",
+                    "imdb_url": "https://www.imdb.com/title/tt8563656/"
+          },
+          {
+                    "title": "The Red Sea Diving Resort",
+                    "hebrew_title": "מבצע חוף אדום",
+                    "year": 2019,
+                    "episodes": null,
+                    "director": "Gideon Raff",
+                    "creators": ["Gideon Raff"],
+                    "production_company": "Bron Studios",
+                    "imdb_url": "https://www.imdb.com/title/tt4995776/"
+          },
+          {
+                    "title": "Our Boys",
+                    "hebrew_title": "נערים",
+                    "year": 2019,
+                    "episodes": 10,
+                    "directors": [
+                              "Hagai Levi",
+                              "Joseph Cedar",
+                              "Dani Rosenberg"
+                    ],
+                    "creators": [
+                              "Hagai Levi",
+                              "Joseph Cedar",
+                              "Tawfik Abu-Wael"
+                    ],
+                    "production_company": "Keshet Studios, HBO",
+                    "imdb_url": "https://www.imdb.com/title/tt10517426/"
+          },
+          {
+                    "title": "The Spy",
+                    "hebrew_title": "המרגל",
+                    "year": 2019,
+                    "episodes": 6,
+                    "director": "Gideon Raff",
+                    "creators": ["Gideon Raff"],
+                    "production_company": "Netflix, Legende Films",
+                    "imdb_url": "https://www.imdb.com/title/tt5952634/"
+          },
+          {
+                    "title": "Flawless",
+                    "hebrew_title": "הנשף",
+                    "year": 2018,
+                    "episodes": null,
+                    "director": "Talya Lavie",
+                    "creators": ["Talya Lavie", "Halil Nehama"],
+                    "production_company": "Tender Productions",
+                    "imdb_url": "https://www.imdb.com/title/tt8653840/"
+          },
+          {
+                    "title": "Beirut",
+                    "hebrew_title": "ביירות",
+                    "year": 2018,
+                    "episodes": null,
+                    "director": "Brad Anderson",
+                    "creators": ["Tony Gilroy"],
+                    "production_company": "Bleecker Street",
+                    "imdb_url": "https://www.imdb.com/title/tt4669264/",
+                    "note": "This is an American film, not Israeli."
+          },
+          {
+                    "title": "The Conductor",
+                    "hebrew_title": "המנצח",
+                    "year": 2018,
+                    "episodes": 10,
+                    "director": "Dror Sabo",
+                    "creators": ["Dror Sabo", "Dror Nobelman"],
+                    "production_company": "Dori Media Paran",
+                    "imdb_url": "https://www.imdb.com/title/tt9207222/"
+          }
+]

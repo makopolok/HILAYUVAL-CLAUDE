@@ -1,289 +1,290 @@
 {
     "projects": [
-      {
-        "id": "dismissed-2024",
-        "title": "Dismissed",
-        "titleHebrew": "המפקדת",
-        "year": 2024,
-        "rating": 8.0,
-        "type": "TV Series",
-        "episodes": 30,
-        "posterUrls": [
-          {
-            "url": "/images/dismissed_season1.jpeg",
-            "title": "Dismissed Season 1"
-          },
-          {
-            "url": "/images/dismissed_season2.jpeg",
-            "title": "המפקדת עונה שניה"
-          },
-          {
-            "url": "/images/dismissed_season3.webp",
-            "title": "Season 3 Poster"
-          }
-        ],
-        "description": "",
-        "cast": ["Habub", "Aaron"],
-        "yearSpan": "2021-2024",
-        "role": "Casting Director",
-        "director": "Atara Frish",
-        "productionCompany": "Black Sheep Film Productions",
-        "broadcaster": "KAN: Israeli Public Broadcasting",
-        "seasons": 3,
-        "prizes": {
-          "actors": ["Best Actor Award"],
-          "castingDirector": [
-            "Best Casting Director Award"
-          ]
-        },
-        "imdbUrl": "https://imdb.com/title/tt1234567",
-        "trailerUrl": "https://youtube.com/..."
-      },
-      {
-        "id": "night-therapy-2024",
-        "title": "Night Therapy",
-        "titleHebrew": "טיפול לילה",
-        "year": 2024,
-        "rating": 8.3,
-        "type": "TV Series",
-        "episodes": 7,
-        "role": "Casting Director",
-        "posterUrls": [
-          {
-            "url": "/images/night_therapy_01.jpeg",
-            "title": "Night Therapy Season 1"
-          },
-          {
-            "url": "/images/night_therapy_02.jpeg",
-            "title": "Behind the Scenes"
-          },
-          {
-            "url": "/images/night_therapy_03.webp",
-            "title": "Season 3 Premiere"
-          }
-        ]
-      },
-      {
-        "id": "manayek-2024",
-        "title": "Manayek",
-        "titleHebrew": "מנאייק",
-        "year": 2024,
-        "rating": 8.0,
-        "type": "TV Series",
-        "episodes": 30,
-        "role": "Casting Director",
-        "posterUrls": [
-          "/images/dismissed_cast_01.jpeg",
-          "/images/dismissed_cast_02.jpeg",
-          "/images/dismissed_cast_03.jpeg"
-        ],
-        "description": "",
-        "cast": [],
-        "yearSpan": "2024",
-        "director": "Emily Davis",
-        "productionCompany": "JKL Productions",
-        "broadcaster": "OPQ Network",
-        "seasons": 2,
-        "prizes": {
-          "actors": ["Best Actress Award"],
-          "castingDirector": [
-            "Excellence in Casting Award"
-          ]
-        },
-        "imdbUrl": "https://imdb.com/title/tt4567890",
-        "trailerUrl": "https://youtube.com/..."
-      },
-      {
-        "id": "8200-2024",
-        "title": "8200",
-        "titleHebrew": "8200",
-        "year": 2024,
-        "rating": 8.0,
-        "type": "TV Series",
-        "episodes": 8,
-        "role": "Casting Director",
-        "posterUrls": [
-          "/images/dismissed_cast_01.jpeg",
-          "/images/dismissed_cast_02.jpeg",
-          "/images/dismissed_cast_03.jpeg"
-        ],
-        "description": "",
-        "cast": [],
-        "yearSpan": "2024",
-        "director": "Michael Johnson",
-        "productionCompany": "GHI Productions",
-        "broadcaster": "RST Network",
-        "seasons": 1,
-        "prizes": {
-          "actors": ["Best Ensemble Cast Award"],
-          "castingDirector": [
-            "Best Casting in a Drama Series"
-          ]
-        },
-        "imdbUrl": "https://imdb.com/title/tt3456789",
-        "trailerUrl": "https://youtube.com/..."
-      },
-      {
-        "id": "the-spy-2019",
-        "title": "The Spy",
-        "titleHebrew": "המרגל",
-        "year": 2019,
-        "rating": 7.9,
-        "type": "TV Mini Series",
-        "episodes": 6,
-        "role": "Casting Director",
-        "posterUrls": [
-          "/images/the_spy_01.jpeg",
-          "/images/the_spy_02.jpeg"
-        ],
-        "description": "A mini-series based on the life of Israeli spy Eli Cohen.",
-        "cast": ["Sacha Baron Cohen", "Noah Emmerich"],
-        "yearSpan": "2019",
-        "director": "Gideon Raff",
-        "productionCompany": "Netflix",
-        "broadcaster": "Netflix",
-        "seasons": 1,
-        "prizes": {
-          "actors": [],
-          "castingDirector": []
-        },
-        "imdbUrl": "https://imdb.com/title/tt7472896",
-        "trailerUrl": "https://youtube.com/..."
-      },
-      {
-        "id": "false-flag-2015",
-        "title": "False Flag",
-        "titleHebrew": "כפולים",
-        "year": 2015,
-        "rating": 7.6,
-        "type": "TV Series",
-        "episodes": 22,
-        "role": "Casting Director",
-        "posterUrls": [
-          "/images/false_flag_01.jpeg",
-          "/images/false_flag_02.jpeg"
-        ],
-        "description": "A thriller series about a group of Israelis accused of a high-profile kidnapping.",
-        "cast": ["Ishai Golan", "Maya Dagan"],
-        "yearSpan": "2015-2020",
-        "director": "Oded Ruskin",
-        "productionCompany": "Keshet Broadcasting",
-        "broadcaster": "Keshet 12",
-        "seasons": 2,
-        "prizes": {
-          "actors": [],
-          "castingDirector": []
-        },
-        "imdbUrl": "https://imdb.com/title/tt4938096",
-        "trailerUrl": "https://youtube.com/..."
-      },
-      {
-        "id": "hostages-2013",
-        "title": "Hostages",
-        "titleHebrew": "בני ערובה",
-        "year": 2013,
-        "rating": 7.4,
-        "type": "TV Series",
-        "episodes": 10,
-        "role": "Casting Director",
-        "posterUrls": [
-          "/images/hostages_01.jpeg",
-          "/images/hostages_02.jpeg"
-        ],
-        "description": "A drama series about a surgeon whose family is taken hostage.",
-        "cast": ["Ayelet Zurer", "Tzahi Grad"],
-        "yearSpan": "2013-2014",
-        "director": "Omri Givon",
-        "productionCompany": "Keshet Broadcasting",
-        "broadcaster": "Keshet 12",
-        "seasons": 2,
-        "prizes": {
-          "actors": [],
-          "castingDirector": []
-        },
-        "imdbUrl": "https://imdb.com/title/tt3114178",
-        "trailerUrl": "https://youtube.com/..."
-      },
-      {
-        "id": "prisoners-of-war-2010",
-        "title": "Prisoners of War",
-        "titleHebrew": "חטופים",
-        "year": 2010,
-        "rating": 8.3,
-        "type": "TV Series",
-        "episodes": 24,
-        "role": "Casting Director",
-        "posterUrls": [
-          "/images/pow_01.jpeg",
-          "/images/pow_02.jpeg"
-        ],
-        "description": "A drama series about Israeli soldiers returning home after being held captive for 17 years.",
-        "cast": ["Yoram Toledano", "Ishai Golan"],
-        "yearSpan": "2010-2012",
-        "director": "Gideon Raff",
-        "productionCompany": "Keshet Broadcasting",
-        "broadcaster": "Keshet 12",
-        "seasons": 2,
-        "prizes": {
-          "actors": [],
-          "castingDirector": []
-        },
-        "imdbUrl": "https://imdb.com/title/tt1714203",
-        "trailerUrl": "https://youtube.com/..."
-      },
-      {
-        "id": "be-tipul-2005",
-        "title": "BeTipul",
-        "titleHebrew": "בטיפול",
-        "year": 2005,
-        "rating": 8.5,
-        "type": "TV Series",
-        "episodes": 106,
-        "role": "Casting Director",
-        "posterUrls": [
-          "/images/betipul_01.jpeg",
-          "/images/betipul_02.jpeg"
-        ],
-        "description": "A psychological drama series about a therapist and his patients.",
-        "cast": ["Assi Dayan", "Gila Almagor"],
-        "yearSpan": "2005-2008",
-        "director": "Hagai Levi",
-        "productionCompany": "Keshet Broadcasting",
-        "broadcaster": "Keshet 12",
-        "seasons": 4,
-        "prizes": {
-          "actors": [],
-          "castingDirector": []
-        },
-        "imdbUrl": "https://imdb.com/title/tt0460649",
-        "trailerUrl": "https://youtube.com/..."
-      },
-      {
-        "id": "ha-pijamot-1996",
-        "title": "Ha-Pijamot",
-        "titleHebrew": "הפיג'מות",
-        "year": 1996,
-        "rating": 8.1,
-        "type": "TV Series",
-        "episodes": 120,
-        "role": "Casting Director",
-        "posterUrls": [
-          "/images/hapijamot_01.jpeg",
-          "/images/hapijamot_02.jpeg"
-        ],
-        "description": "A popular Israeli comedy series about a group of friends.",
-        "cast": ["Shlomo Bar-Aba", "Dov Navon"],
-        "yearSpan": "1996-2001",
-        "director": "Tzahi Grad",
-        "productionCompany": "Keshet Broadcasting",
-        "broadcaster": "Keshet 12",
-        "seasons": 5,
-        "prizes": {
-          "actors": [],
-          "castingDirector": []
-        },
-        "imdbUrl": "https://imdb.com/title/tt0115200",
-        "trailerUrl": "https://youtube.com/..."
-      }
+              {
+                        "id": "dismissed-2024",
+                        "title": "Dismissed",
+                        "titleHebrew": "המפקדת",
+                        "year": 2024,
+                        "rating": 8.0,
+                        "type": "TV Series",
+                        "episodes": 30,
+                        "posterUrls": [
+                                  {
+                                            "url": "/images/dismissed_season1.jpeg",
+                                            "title": "Dismissed Season 1"
+                                  },
+                                  {
+                                            "url": "/images/dismissed_season2.jpeg",
+                                            "title": "המפקדת עונה שניה"
+                                  },
+                                  {
+                                            "url": "/images/dismissed_season3.webp",
+                                            "title": "Season 3 Poster"
+                                  }
+                        ],
+                        "description": "",
+                        "cast": ["Habub", "Aaron"],
+                        "yearSpan": "2021-2024",
+                        "role": "Casting Director",
+                        "director": "Atara Frish",
+                        "productionCompany": "Black Sheep Film Productions",
+                        "broadcaster": "KAN: Israeli Public Broadcasting",
+                        "seasons": 3,
+                        "prizes": {
+                                  "actors": ["Best Actor Award"],
+                                  "castingDirector": [
+                                            "Best Casting Director Award"
+                                  ]
+                        },
+                        "imdbUrl": "https://www.imdb.com/title/tt14426644/",
+                        "trailerUrl": "https://youtube.com/..."
+              },
+              {
+                        "id": "night-therapy-2024",
+                        "title": "Night Therapy",
+                        "titleHebrew": "טיפול לילה",
+                        "year": 2024,
+                        "rating": 8.3,
+                        "type": "TV Series",
+                        "episodes": 7,
+                        "role": "Casting Director",
+                        "posterUrls": [
+                                  {
+                                            "url": "/images/night_therapy_01.jpeg",
+                                            "title": "Night Therapy Season 1"
+                                  },
+                                  {
+                                            "url": "/images/night_therapy_02.jpeg",
+                                            "title": "Behind the Scenes"
+                                  },
+                                  {
+                                            "url": "/images/night_therapy_03.webp",
+                                            "title": "Season 3 Premiere"
+                                  }
+                        ],
+                        "imdbUrl": "https://www.imdb.com/title/tt28231892/"
+              },
+              {
+                        "id": "manayek-2024",
+                        "title": "Manayek",
+                        "titleHebrew": "מנאייק",
+                        "year": 2024,
+                        "rating": 8.0,
+                        "type": "TV Series",
+                        "episodes": 30,
+                        "role": "Casting Director",
+                        "posterUrls": [
+                                  "/images/dismissed_cast_01.jpeg",
+                                  "/images/dismissed_cast_02.jpeg",
+                                  "/images/dismissed_cast_03.jpeg"
+                        ],
+                        "description": "",
+                        "cast": [],
+                        "yearSpan": "2024",
+                        "director": "Emily Davis",
+                        "productionCompany": "JKL Productions",
+                        "broadcaster": "OPQ Network",
+                        "seasons": 2,
+                        "prizes": {
+                                  "actors": ["Best Actress Award"],
+                                  "castingDirector": [
+                                            "Excellence in Casting Award"
+                                  ]
+                        },
+                        "imdbUrl": "https://www.imdb.com/title/tt12819234/",
+                        "trailerUrl": "https://youtube.com/..."
+              },
+              {
+                        "id": "8200-2024",
+                        "title": "8200",
+                        "titleHebrew": "8200",
+                        "year": 2024,
+                        "rating": 8.0,
+                        "type": "TV Series",
+                        "episodes": 8,
+                        "role": "Casting Director",
+                        "posterUrls": [
+                                  "/images/dismissed_cast_01.jpeg",
+                                  "/images/dismissed_cast_02.jpeg",
+                                  "/images/dismissed_cast_03.jpeg"
+                        ],
+                        "description": "",
+                        "cast": [],
+                        "yearSpan": "2024",
+                        "director": "Michael Johnson",
+                        "productionCompany": "GHI Productions",
+                        "broadcaster": "RST Network",
+                        "seasons": 1,
+                        "prizes": {
+                                  "actors": ["Best Ensemble Cast Award"],
+                                  "castingDirector": [
+                                            "Best Casting in a Drama Series"
+                                  ]
+                        },
+                        "imdbUrl": "https://www.imdb.com/title/tt23059694/",
+                        "trailerUrl": "https://youtube.com/..."
+              },
+              {
+                        "id": "the-spy-2019",
+                        "title": "The Spy",
+                        "titleHebrew": "המרגל",
+                        "year": 2019,
+                        "rating": 7.9,
+                        "type": "TV Mini Series",
+                        "episodes": 6,
+                        "role": "Casting Director",
+                        "posterUrls": [
+                                  "/images/the_spy_01.jpeg",
+                                  "/images/the_spy_02.jpeg"
+                        ],
+                        "description": "A mini-series based on the life of Israeli spy Eli Cohen.",
+                        "cast": ["Sacha Baron Cohen", "Noah Emmerich"],
+                        "yearSpan": "2019",
+                        "director": "Gideon Raff",
+                        "productionCompany": "Netflix",
+                        "broadcaster": "Netflix",
+                        "seasons": 1,
+                        "prizes": {
+                                  "actors": [],
+                                  "castingDirector": []
+                        },
+                        "imdbUrl": "https://www.imdb.com/title/tt5952634/",
+                        "trailerUrl": "https://youtube.com/..."
+              },
+              {
+                        "id": "false-flag-2015",
+                        "title": "False Flag",
+                        "titleHebrew": "כפולים",
+                        "year": 2015,
+                        "rating": 7.6,
+                        "type": "TV Series",
+                        "episodes": 22,
+                        "role": "Casting Director",
+                        "posterUrls": [
+                                  "/images/false_flag_01.jpeg",
+                                  "/images/false_flag_02.jpeg"
+                        ],
+                        "description": "A thriller series about a group of Israelis accused of a high-profile kidnapping.",
+                        "cast": ["Ishai Golan", "Maya Dagan"],
+                        "yearSpan": "2015-2020",
+                        "director": "Oded Ruskin",
+                        "productionCompany": "Keshet Broadcasting",
+                        "broadcaster": "Keshet 12",
+                        "seasons": 2,
+                        "prizes": {
+                                  "actors": [],
+                                  "castingDirector": []
+                        },
+                        "imdbUrl": "https://www.imdb.com/title/tt3602528/",
+                        "trailerUrl": "https://youtube.com/..."
+              },
+              {
+                        "id": "hostages-2013",
+                        "title": "Hostages",
+                        "titleHebrew": "בני ערובה",
+                        "year": 2013,
+                        "rating": 7.4,
+                        "type": "TV Series",
+                        "episodes": 10,
+                        "role": "Casting Director",
+                        "posterUrls": [
+                                  "/images/hostages_01.jpeg",
+                                  "/images/hostages_02.jpeg"
+                        ],
+                        "description": "A drama series about a surgeon whose family is taken hostage.",
+                        "cast": ["Ayelet Zurer", "Tzahi Grad"],
+                        "yearSpan": "2013-2014",
+                        "director": "Omri Givon",
+                        "productionCompany": "Keshet Broadcasting",
+                        "broadcaster": "Keshet 12",
+                        "seasons": 2,
+                        "prizes": {
+                                  "actors": [],
+                                  "castingDirector": []
+                        },
+                        "imdbUrl": "https://www.imdb.com/title/tt3114178/",
+                        "trailerUrl": "https://youtube.com/..."
+              },
+              {
+                        "id": "prisoners-of-war-2010",
+                        "title": "Prisoners of War",
+                        "titleHebrew": "חטופים",
+                        "year": 2010,
+                        "rating": 8.3,
+                        "type": "TV Series",
+                        "episodes": 24,
+                        "role": "Casting Director",
+                        "posterUrls": [
+                                  "/images/pow_01.jpeg",
+                                  "/images/pow_02.jpeg"
+                        ],
+                        "description": "A drama series about Israeli soldiers returning home after being held captive for 17 years.",
+                        "cast": ["Yoram Toledano", "Ishai Golan"],
+                        "yearSpan": "2010-2012",
+                        "director": "Gideon Raff",
+                        "productionCompany": "Keshet Broadcasting",
+                        "broadcaster": "Keshet 12",
+                        "seasons": 2,
+                        "prizes": {
+                                  "actors": [],
+                                  "castingDirector": []
+                        },
+                        "imdbUrl": "https://www.imdb.com/title/tt1676462/",
+                        "trailerUrl": "https://youtube.com/..."
+              },
+              {
+                        "id": "be-tipul-2005",
+                        "title": "BeTipul",
+                        "titleHebrew": "בטיפול",
+                        "year": 2005,
+                        "rating": 8.5,
+                        "type": "TV Series",
+                        "episodes": 106,
+                        "role": "Casting Director",
+                        "posterUrls": [
+                                  "/images/betipul_01.jpeg",
+                                  "/images/betipul_02.jpeg"
+                        ],
+                        "description": "A psychological drama series about a therapist and his patients.",
+                        "cast": ["Assi Dayan", "Gila Almagor"],
+                        "yearSpan": "2005-2008",
+                        "director": "Hagai Levi",
+                        "productionCompany": "Keshet Broadcasting",
+                        "broadcaster": "Keshet 12",
+                        "seasons": 4,
+                        "prizes": {
+                                  "actors": [],
+                                  "castingDirector": []
+                        },
+                        "imdbUrl": "https://www.imdb.com/title/tt0460649/",
+                        "trailerUrl": "https://youtube.com/..."
+              },
+              {
+                        "id": "ha-pijamot-1996",
+                        "title": "Ha-Pijamot",
+                        "titleHebrew": "הפיג'מות",
+                        "year": 1996,
+                        "rating": 8.1,
+                        "type": "TV Series",
+                        "episodes": 120,
+                        "role": "Casting Director",
+                        "posterUrls": [
+                                  "/images/hapijamot_01.jpeg",
+                                  "/images/hapijamot_02.jpeg"
+                        ],
+                        "description": "A popular Israeli comedy series about a group of friends.",
+                        "cast": ["Shlomo Bar-Aba", "Dov Navon"],
+                        "yearSpan": "1996-2001",
+                        "director": "Tzahi Grad",
+                        "productionCompany": "Keshet Broadcasting",
+                        "broadcaster": "Keshet 12",
+                        "seasons": 5,
+                        "prizes": {
+                                  "actors": [],
+                                  "castingDirector": []
+                        },
+                        "imdbUrl": "https://www.imdb.com/title/tt0166915/",
+                        "trailerUrl": "https://youtube.com/..."
+              }
     ]
   }
