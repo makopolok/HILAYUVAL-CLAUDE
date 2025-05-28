@@ -1,0 +1,88 @@
+.accordion-header-image {
+    width: 50px; /* Adjust as needed */
+    height: 50px; /* Adjust as needed */
+    object-fit: cover;
+    border-radius: 4px; /* Optional: for rounded corners */
+    margin-right: 10px; /* Added margin for spacing */
+}
+
+.accordion-header-image-top {
+    width: 100%; /* Make image take full width of its container (the button) */
+    height: 200px; /* Adjust as needed, or use padding-top trick for aspect ratio */
+    object-fit: cover;
+    object-position: center 30%; /* Adjust vertical position - try values like 25%, 40%, etc. */
+    display: block; /* Remove extra space below image */
+    /* margin-bottom: 10px; */ /* Removed: Text will float over */
+}
+
+.custom-accordion-button {
+    display: flex;
+    flex-direction: column; /* Stack image and text vertically (image is normal flow, text overlay) */
+    align-items: stretch; /* Make children take full width */
+    padding: 0; /* Remove default button padding if image is edge-to-edge */
+    position: relative; /* For positioning the custom icon AND the text line */
+    overflow: hidden; /* Optional: if rounded corners on button should clip image */
+}
+
+.custom-accordion-button.collapsed .accordion-header-image-top {
+    /* Styles for when the accordion is collapsed, if needed */
+    /* e.g., you might want to hide it or make it smaller */
+}
+
+.custom-accordion-button:not(.collapsed) .accordion-header-image-top {
+    /* Styles for when the accordion is expanded, if needed */
+}
+
+.accordion-header-text-line {
+    /* position: absolute; */ /* Remove absolute positioning by default */
+    /* bottom: 0; */
+    /* left: 0; */
+    /* right: 0; */
+    display: flex;
+    justify-content: space-between; /* Puts title on left, icon on right */
+    align-items: center;
+    /* background-color: rgba(200, 0, 0, 0.8); */ /* Remove background by default */
+    /* color: white; */ /* Remove color by default */
+    padding: 0.75rem 1.25rem; /* Default padding, similar to Bootstrap */
+    width: 100%; /* Ensure it takes full width */
+    /* z-index: 10; */
+    box-sizing: border-box; /* Include padding in the width/height */
+}
+
+.accordion-header-text-line.overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: rgba(200, 0, 0, 0.8); /* Red background with some transparency */
+    color: white; /* Text color for contrast */
+    padding: 0.5rem 1.25rem; /* Adjust padding as needed for overlay */
+    z-index: 10; /* Ensure it's above the image */
+}
+
+.accordion-header-title-text {
+    flex-grow: 1;
+    /* color: white; */ /* Will be inherited from .overlay or default color */
+}
+
+.accordion-custom-icon::after {
+    content: '+'; /* Default icon for collapsed state */
+    font-size: 1.5rem;
+    font-weight: bold;
+    transition: transform 0.2s ease-in-out;
+    /* color: white; */ /* Will be inherited from .overlay or default color */
+}
+
+.accordion-header-text-line.overlay .accordion-custom-icon::after {
+    color: white; /* Ensure icon is visible on red background when overlaying */
+}
+
+.custom-accordion-button:not(.collapsed) .accordion-custom-icon::after {
+    content: '−'; /* Icon for expanded state (minus sign) */
+    transform: rotate(180deg); /* Optional: if you want to animate the plus to a minus */
+}
+
+/* Hide default Bootstrap accordion icon */
+.custom-accordion-button::after {
+    display: none !important;
+}

@@ -1,709 +1,925 @@
 [
-    {
-      "title": "Night Therapy",
-      "hebrew_title": "טיפול לילי",
-      "year": 2024,
-      "episodes": 7,
-      "director": "Gavriel Bibliowicz",
-      "production_company": "Dafna Danenberg, Aviram Avraham, Benny Menache",
-      "actors": ["Yousef Sweid", "Shira Haas", "Yaakov Zada-Daniel"],
-      "imdb_url": "https://www.imdb.com/title/tt28231892/",
-      "storyline": "A drama series about a psychologist who runs a night therapy clinic, dealing with patients' secrets and his own personal struggles."
-    },
-    {
-      "title": "8200",
-      "hebrew_title": "רוח צפונית",
-      "year": 2024,
-      "episodes": 8,
-      "director": "Assaf Bernstein",
-      "production_company": "Not specified",
-      "actors": ["Lucy Ayoub", "Michael Aloni", "Elisha Banai", "Yaniv Biton"],
-      "imdb_url": "https://www.imdb.com/title/tt23059694/",
-      "storyline": "A suspenseful drama following young recruits in Israel's elite intelligence unit 8200 as they navigate the pressures of national security and personal relationships."
-    },
-    {
-      "title": "Manayek",
-      "hebrew_title": "מנאייכ",
-      "year": "2020–2024",
-      "episodes": 30,
-      "director": "Alon Zingman",
-      "production_company": "Not specified",
-      "actors": ["Shalom Assayag", "Amos Tamam", "Liraz Chamami", "Doron Ben-David"],
-      "imdb_url": "https://www.imdb.com/title/tt12819234/",
-      "storyline": "A veteran police officer investigates corruption within the Israeli police force, uncovering a web of betrayal and moral dilemmas."
-    },
-    {
-      "title": "Metukim",
-      "hebrew_title": "מתוקים",
-      "year": 2024,
-      "episodes": 7,
-      "director": "Yaron Arazi",
-      "production_company": "Not specified",
-      "actors": ["Bar Brimer", "Nevo Katan", "Neta Carmeli", "Assi Azar", "Rotem Sela"],
-      "imdb_url": "https://www.imdb.com/title/tt31308890/",
-      "storyline": "A comedy-drama about a group of friends who open a bakery together, facing challenges in business and their personal lives."
-    },
-    {
-      "title": "Dismissed",
-      "hebrew_title": "המפקדת",
-      "year": "2021–2024",
-      "episodes": 30,
-      "director": "Atara Frish",
-      "production_company": "Not specified",
-      "actors": ["Alona Sa'ar", "Noam Lugasy", "Maya Dagan", "Maya Landsman"],
-      "imdb_url": "https://www.imdb.com/title/tt14426644/",
-      "storyline": "A comedic drama about a young female commander in the Israeli army, balancing her duties, soldiers, and personal growth."
-    },
-    {
-      "title": "Red Skies",
-      "hebrew_title": "שמיים אדומים",
-      "year": 2023,
-      "episodes": 8,
-      "director": "Alon Zingman",
-      "production_company": "Not specified",
-      "actors": ["Amir Khoury", "Maor Schwietzer", "Lihi Kornowski", "Yaakov Zada-Daniel"],
-      "imdb_url": "https://www.imdb.com/title/tt23136682/",
-      "storyline": "Set during the Second Intifada, two childhood friends—one Israeli, one Palestinian—find themselves on opposite sides of the conflict, testing their loyalty and humanity."
-    },
-    {
-      "title": "Six Zeros",
-      "hebrew_title": "שש אפסים",
-      "year": 2023,
-      "episodes": 8,
-      "director": "Nir Bergman",
-      "production_company": "Not specified",
-      "actors": ["Shlomo Bar-Aba", "Liora Rivlin", "Ofer Hayoun", "Roni Daloomi", "Rotem Keinan", "Elisha Banai", "Shani Klein"],
-      "imdb_url": "https://www.imdb.com/title/tt28079116/",
-      "storyline": "A drama series about a group of people whose lives are changed after winning the lottery, exploring the impact of sudden wealth on their relationships and values."
-    },
-    {
-      "title": "Alef",
-      "hebrew_title": "אלף",
-      "year": 2023,
-      "episodes": 6,
-      "director": "Moish Goldberg",
-      "production_company": "Not specified",
-      "actors": ["Nelly Mira-Rubin", "Avraham Shalom Levi", "Yaakov Zada-Daniel", "Dana Meinrath"],
-      "imdb_url": "https://www.imdb.com/title/tt27869794/",
-      "storyline": "Inspired by real events, Unsilenced is a 6 episodes story of a newly elected President with rumors of sexual assault and rape of a staffer named Oshrat swirling around him. His top adviser Avinoam realizes that if news of this leaks out, the scandal could destroy the President's career and his own. Yet more women are stepping forward to corroborate Oshrat's account. Will this lead to the conviction of the man seated in the highest office in the land?"
-    },
-    {
-      "title": "June Zero",
-      "hebrew_title": "יוני אפס",
-      "year": 2022,
-      "episodes": "Feature Film",
-      "director": "Jake Paltrow",
-      "production_company": "Not specified",
-      "actors": ["Tzahi Grad", "Joy Rieger", "Noam Ovadia"],
-      "imdb_url": "https://www.imdb.com/title/tt18834372/",
-      "storyline": "Set in 1962 Israel, the film follows three characters whose lives intersect around the trial and execution of Adolf Eichmann, exploring the impact of history and justice."
-    },
-    {
-      "title": "Chanshi",
-      "hebrew_title": "חאנשי",
-      "year": 2022,
-      "episodes": 10,
-      "director": "Aaron Geva, Mickey Triest",
-      "production_company": "Not specified",
-      "actors": ["Aleeza Chanowitz", "Marnina Schon", "Danielle Jadelyn", "Henry Winkler"],
-      "imdb_url": "https://www.imdb.com/title/tt15495784/",
-      "storyline": "A comedic drama about a young American woman who moves to Israel in search of adventure and self-discovery, challenging cultural norms and her own expectations."
-    },
-    {
-      "title": "Broken Ties",
-      "hebrew_title": "קשרים שבורים",
-      "year": 2022,
-      "episodes": 7,
-      "director": "Dalit Kahan, Ilan Abudi",
-      "production_company": "Not specified",
-      "actors": ["Yiftach Klein", "Alon Hamawi", "Lee Biran", "Naomi Levov"],
-      "imdb_url": "https://www.imdb.com/title/tt18245948/",
-      "storyline": "A homeless pregnant woman is recruited against her will by a police inspector to serve as an undercover agent in an international criminal investigation focused on the kidnapping and trafficking of newborn babies."
-    },
-    {
-      "title": "Malkot",
-      "hebrew_title": "מלכות",
-      "year": "2018–2022",
-      "episodes": 11,
-      "director": "Amir Mann, Itay Morag",
-      "production_company": "Not specified",
-      "actors": ["Roi Miller", "Adiv Sfadi", "Benjamin Schwabe", "Orly Silbersatz", "Michael Aloni"],
-      "imdb_url": "https://www.imdb.com/title/tt9182572/",
-      "storyline": "Queens tells the story of women survivors of a crime family's multiple murder. They struggle to reclaim their lives and status, fighting against other mafia families bent on destroying them."
-    },
-    {
-      "title": "Kfulim",
-      "hebrew_title": "כפולים",
-      "year": "2015–2022",
-      "episodes": 16,
-      "director": "Oded Ruskin, Oded Raz",
-      "production_company": "Not specified",
-      "actors": ["Miki Leon", "Angel Bonanni", "Moris Cohen", "Ishai Golan", "Magi Azarzar", "Ania Bukstein"],
-      "imdb_url": "https://www.imdb.com/title/tt3602528/",
-      "storyline": "Five ordinary people wake up one morning to discover that they are implicated in a ruthless kidnapping operation following the disappearance of the Iranian Defence Minister while on a secret visit to Israel."
-    },
-    {
-      "title": "Sad City Girls",
-      "hebrew_title": "בנות העיר העצובות",
-      "year": 2021,
-      "episodes": 2,
-      "director": "Talya Lavie",
-      "production_company": "Not specified",
-      "actors": ["Niv Sultan", "Menashe Noy", "Sara von Schwarze", "Tali Sharon"],
-      "imdb_url": "https://www.imdb.com/title/tt15869988/",
-      "storyline": "When you're in your early twenties, your best friend is like a song you can't stop listening to on a loop, until you never want to hear it again. Sad City Girls is a dramedy about that kind of friendship."
-    },
-    {
-      "title": "Me'ila",
-      "hebrew_title": "מעילה",
-      "year": 2021,
-      "episodes": 7,
-      "director": "Yotam Guendelman",
-      "production_company": "Not specified",
-      "actors": ["Dover Koshashvili", "Or Ben-Melech", "Shalom Assayag", "Shani Klein", "Yaakov Zada-Daniel"],
-      "imdb_url": "https://www.imdb.com/title/tt15144408/",
-      "storyline": "The story of Eti Alon, an employee in the 'Bank LeMischar', who embezzled a quarter of a billion shekels from the customers' money and gave it to her gambling addict brother Ofer."
-    },
-    {
-      "title": "Michael",
-      "hebrew_title": "מייקל",
-      "year": "2018–2021",
-      "episodes": 10,
-      "director": "Yona Rozenkier",
-      "production_company": "Koda Communications",
-      "creators": ["Yona Rozenkier", "Shlomo Mashiach"],
-      "actors": ["Avi Dangur", "Meital Raz", "Nadav Hollander", "Natalia Poast", "Hila Goldenberg"],
-      "imdb_url": "https://www.imdb.com/title/tt10433430/",
-      "storyline": "An Israeli dark comedy about a dysfunctional family, based on the cult fringe show 'Michael'."
-    },
-    {
-      "title": "Shtisel",
-      "hebrew_title": "שטיסל",
-      "year": "2013–2021",
-      "episodes": 33,
-      "director": "Alon Zigman",
-      "production_company": "Dori Media Paran",
-      "creators": ["Yehonatan Indursky", "Ori Elon"],
-      "actors": ["Michael Aloni", "Neta Riskin", "Sasson Gabai"],
-      "imdb_url": "https://www.imdb.com/title/tt3069894/",
-      "storyline": "The story of a Haredi family in Jerusalem. Shulem Schtisel the father of a large family is dealing with his younger son who he wants to see married soon. His daughter, Giti is dealing in secret with marital problems while his other son Zvi Arie tries to patch everything up."
-    },
-    {
-      "title": "Valley of Tears",
-      "hebrew_title": "שעת נעילה",
-      "year": 2020,
-      "episodes": 8,
-      "director": "Yaron Zilberman",
-      "production_company": "Endemol Israel",
-      "creators": ["Ron Leshem", "Amit Cohen", "Daniel Amsel"],
-      "actors": ["Aviv Alush", "Lee Biran", "Shahar Taboch"],
-      "imdb_url": "https://www.imdb.com/title/tt8190688/",
-      "storyline": "On October 6th, 1973, the Middle East was shaken by the biggest war it had ever seen. Valley of Tears follows the personal stories of soldiers and civilians during the Yom Kippur War, a conflict that forever changed the region."
-    },
-    {
-      "title": "The Big Special Thing",
-      "hebrew_title": "הדבר הגדול המיוחד",
-      "year": 2020,
-      "episodes": 8,
-"director": "Shmuel Haimovich",
-"production_company": "Kan",
-      "writers": ["Shmuel Haimovich", "Jonathan Aroch"],
-      "actors": ["Einat Weitzman", "Orna Pitussi", "Talia Shemer", "Gur Bentwich"],
-      "imdb_url": "https://www.imdb.com/title/tt11967090/",
-      "storyline": "Not specified"
-    },
-    {
-      "title": "The Attaché",
-      "hebrew_title": "הקונסול",
-      "year": "2019–2020",
-      "episodes": 10,
-      "director": "Asi Cohen",
-      "production_company": "Yoav Gross Productions",
-      "creators": ["Asi Cohen", "Alon Gur"],
-      "actors": ["Eli Ben-David", "Héloïse Godet", "Ilay Lax", "Florence Bloch", "Ohad Knoller"],
-      "imdb_url": "https://www.imdb.com/title/tt11694076/",
-      "storyline": "An Israeli couple moves to Paris for the wife's new job at the Israeli embassy, but their marriage is tested as they struggle to adjust to a new life in the aftermath of terrorist attacks."
-    },
-    {
-      "title": "Happy Times",
-      "hebrew_title": "זמנים טובים",
-      "year": 2019,
-      "episodes": null,
-      "director": "Michael Mayer",
-      "production_company": "M Square Films",
-      "creators": ["Michael Mayer", "Roni Sina"],
-      "actors": [],
-      "imdb_url": "https://www.imdb.com/title/tt8563656/",
-      "storyline": "A seemingly friendly dinner party erupts into a night of violence and terror at a lush Hollywood estate."
-    },
-    {
-      "title": "The Red Sea Diving Resort",
-      "hebrew_title": "מרכז החופשה בצפון",
-      "year": 2019,
-      "episodes": null,
-      "director": "Gideon Raff",
-      "production_company": "Bron Studios",
-      "creators": ["Gideon Raff"],
-      "actors": ["Chris Evans", "Haley Bennett", "Ben Kingsley"],
-      "imdb_url": "https://www.imdb.com/title/tt4995776/",
-      "storyline": "Inspired by true events, this film tells the story of international agents who use a deserted holiday resort as a front to smuggle thousands of Ethiopian Jewish refugees to Israel in the early 1980s."
-    },
-    {
-      "title": "Our Boys",
-      "hebrew_title": "הבנים שלנו",
-      "year": 2019,
-      "episodes": 10,
-      "directors": ["Hagai Levi", "Joseph Cedar", "Dani Rosenberg"],
-      "production_company": "Keshet Studios, HBO",
-      "creators": ["Hagai Levi", "Joseph Cedar", "Tawfik Abu-Wael"],
-      "actors": ["Adam Gabay", "Tom Mercier", "Shlomi Bertonov"],
-      "imdb_url": "https://www.imdb.com/title/tt10517426/",
-      "storyline": "Based on the true events which led to the outbreak of war in Gaza 2014."
-    },
-    {
-      "title": "The Spy",
-      "hebrew_title": "הרגל",
-      "year": 2019,
-      "episodes": 1,
-      "director": "Gideon Raff",
-      "production_company": "Netflix, Legende Films",
-      "creators": ["Gideon Raff"],
-      "actors": ["Sacha Baron Cohen", "Noah Emmerich", "Hadar Ratzon Rotem"],
-      "imdb_url": "https://www.imdb.com/title/tt5952634/",
-      "storyline": "Based on the true story of Eli Cohen, an Israeli clerk-turned-secret agent who infiltrated the Syrian government in the 1960s and became one of the most legendary spies in history."
-    },
-    {
-      "title": "Flawless",
-      "hebrew_title": "ללא רבב",
-      "year": 2018,
-      "episodes": null,
-      "director": "Talya Lavie",
-      "production_company": "Tender Productions",
-      "creators": ["Talya Lavie", "Halil Nehama"],
-      "actors": ["Stav Strashko", "Noam Lugassy", "Yael Youssef"],
-      "imdb_url": "https://www.imdb.com/title/tt8653840/",
-      "storyline": "Three teenagers from Jerusalem sell their kidneys to pay for cosmetic surgery and prom dresses. As a secret uncovers they realize nothing is as it seems."
-    },
-    {
-      "title": "Beirut",
-      "hebrew_title": "ביירות",
-      "year": 2018,
-      "episodes": null,
-      "director": "Brad Anderson",
-      "production_company": "Bleecker Street",
-      "creators": ["Tony Gilroy"],
-      "note": "This is an American film, not Israeli.",
-      "actors": ["Jon Hamm", "Rosamund Pike", "Dean Norris"],
-      "imdb_url": "https://www.imdb.com/title/tt4669264/",
-      "storyline": "Caught in the crossfires of civil war, CIA operatives must send a former U.S. diplomat to negotiate for the life of a friend he left behind."
-    },
-    {
-      "title": "The Conductor",
-      "hebrew_title": "המנצח",
-      "year": 2018,
-      "episodes": 10,
-      "director": "Dror Sabo",
-      "production_company": "Dori Media Paran",
-      "creators": ["Dror Sabo", "Dror Nobelman"],
-      "actors": [],
-      "imdb_url": "https://www.imdb.com/title/tt9207222/",
-      "storyline": "No one knows why Noah, a famous pianist, leaves Chicago just before a concert."
-    },
-    {
-      "title": "Autonomies",
-      "hebrew_title": "אוטונומיות",
-      "year": 2018,
-      "episodes": 6,
-      "director": "Yehonatan Indursky",
-      "production_company": "Not specified",
-      "actors": ["Daniella Kertesz", "Shuli Rand", "Nir Di-Nur", "Tali Sharon", "Dan Kastoriano"],
-      "imdb_url": "https://www.imdb.com/title/tt8365214/",
-      "storyline": "A dystopian drama set in an alternate Israel, split into secular and ultra-Orthodox states, exploring issues of identity, religion, politics, and personal freedom."
-    },
-    {
-      "title": "Commandments",
-      "hebrew_title": "מצוות",
-      "year": "2017–2018",
-      "episodes": 8,
-      "director": "Alon Zingman",
-      "production_company": "Not specified",
-      "actors": ["Roy Nik", "Dolev Mesika", "Adi Alon", "Ofri Biterman", "Ori Atia"],
-      "imdb_url": "https://www.imdb.com/title/tt7620360/",
-      "storyline": "Kipat Barzel (Iron Yarmulke), about three ultra-Orthodox young men who have chosen to serve in the IDF - despite the communal taboos associated with it."
-    },
-    {
-      "title": "Driver",
-      "hebrew_title": "נהג",
-      "year": 2017,
-      "episodes": null,
-      "director": "Yehonatan Indursky",
-      "production_company": "Not specified",
-      "actors": ["Moshe Folkenflick", "Manuel Elkaslassy", "Rivka Michaeli", "Dov Navon", "Alexander Peleg"],
-      "imdb_url": "https://www.imdb.com/title/tt6213004/",
-      "storyline": "A 'Driver' in the ultra-Orthodox community takes his daughter on his nightly journey, exposing her to the more questionable members of this pious society in the dark alleys of Bnei Brak."
-    },
-    {
-      "title": "Norman",
-      "hebrew_title": "נורמן",
-      "year": 2016,
-      "episodes": null,
-      "director": "Joseph Cedar",
-      "production_company": "Oscar Isaac, David Litvak",
-      "actors": ["Lior Ashkenazi","Richard Gere", "Charlotte Gainsbourg", "Steve Buscemi"],
-      "imdb_url": "https://www.imdb.com/title/tt4191702/",
-      "storyline": "Norman Oppenheimer is a small-time operator who befriends a young politician at a low point in his life. When the politician becomes an influential world leader, Norman's life dramatically changes for better and worse."
-    },
-    {
-      "title": "Plan B",
-      "hebrew_title": "החדש של עומרי גורדון'",
-      "year": 2015,
-      "episodes": 2,
-      "director": "Ido Rosenblum",
-      "production_company": "Not specified",
-      "actors": [
-        "Ido Rosenblum", "Romi Aboulafia", "Udi Kagan", "Neta Riskin", "Yuval Mendelson"],
-      "imdb_url": "https://www.imdb.com/title/tt4892646/"
-    },
-    {
-      "title": "Imported",
-      "hebrew_title": "שחקן זר",
-      "year": 2015,
-      "episodes": 8,
-      "director": "Daniel Syrkin",
-      "production_company": "Not specified",
-      "actors": [],
-      "imdb_url": "https://www.imdb.com/title/tt4711894/"
-    },
-    {
-      "title": "Fauda",
-      "hebrew_title": "פאודה",
-      "year": 2015,
-      "episodes": 12,
-      "director": "Avi Issacharoff, Lior Raz",
-      "production_company": "Avi Issacharoff, Lior Raz",
-      "actors": ["Lior Raz", "Yaakov Zada-Daniel", "Rona-Lee Shimon", "Shadi Mar'i","Laëtitia Eïdo"],
-      "imdb_url": "https://www.imdb.com/title/tt4565380/",
-      "storyline": "'Fauda' (Arabic for 'Chaos') depicts the two-sided story of the Israeli-Palestinian conflict. Doron, a commander of undercover Israeli unit, the Israeli Special Forces, operating inside Palestinian territories, and his team, are hunting down Hamas terrorist Abu-Ahmed. On the other side of the fence, the life of Abu-Ahmed and his family, who has thus far murdered 143 Israelis, will never accept the State of Israel, and will continue Jihad for as long as it takes."
-    },
-    {
-      "title": "Dig",
-      "hebrew_title": "Not specified",
-      "year": 2015,
-      "episodes": 2,
-      "director": "Tim Kring, Gideon Raff",
-      "production_company": "Tim Kring, Gideon Raff",
-      "actors": ["Jason Isaacs", "Alison Sudol", "David Costabile"],
-      "imdb_url": "https://www.imdb.com/title/tt3597606/"
-    },
-    {
-      "title": "A Tale of Love and Darkness",
-      "hebrew_title": "סיפור על אהבה וחושך",
-      "year": 2015,
-      "episodes": null,
-      "director": "Natalie Portman",
-      "production_company": "Natalie Portman, Ram Bergman",
-      "actors": ["Natalie Portman", "Amir Tessler", "Shira Haas"],
-      "imdb_url": "https://www.imdb.com/title/tt1135989/"
-    },
-    {
-      "title": "The Gordin Cell",
-      "hebrew_title": "תא גורדין",
-      "year": "2012–2015",
-      "episodes": 22,
-      "director": "Daniel Syrkin",
-      "production_company": "Tedy Productions",
-      "actors": ["Ran Danker", "Moni Moshonov", "Mark Ivanir", "Helena Yaralova", "Aviv Alush", "Anastasia Fein", "Neta Riskin", "Nati Ganot", "Svetlana Norbayeva", "Slava Bibergal", "Anton Ostrovsky", "Samuel Calderon", "Valeria Polyakova", "Alex Shtendler", "Natasha Manor", "Dana Meinrath", "Igal Naor", "Ishai Golan", "Hadar Ratzon Rotem"],
-      "imdb_url": "https://www.imdb.com/title/tt2860176/"
-    },
-    {
-      "title": "Hill Start",
-      "hebrew_title": "זינוק בעליה",
-      "year": "2014",
-      "episodes": null,
-      "director": "Oren Shalom",
-      "production_company": "Not specified",
-      "actors": ["Shlomo Bar-Aba", "Mili Avital", "Itay Tiran", "Rotem Zissman-Cohen"],
-      "imdb_url": "https://www.imdb.com/title/tt3919692/",
-      "storyline": "A comedy about a family dealing with the aftermath of a car accident that leaves the mother in a coma, forcing them to confront their relationships and personal issues."
-    },
-    {
-      "title": "Temporarily Dead",
-      "hebrew_title": "מתים לרגע",
-      "year": 2014,
-      "episodes": 77,
-      "director": "Renny Saar",
-      "production_company": "Not specified",
-      "actors": ["Ofer Shechter", "Avigail Harari", "Agam Rudberg"],
-      "imdb_url": "https://www.imdb.com/title/tt3830828/",
-      "storyline": "A group of medical students discovers a way to temporarily bring themselves back from the dead, leading to unforeseen consequences and moral dilemmas."
-    }
-    ,
-    {
-      "title": "A Place in Heaven",
-      "hebrew_title": "מקום בגן עדן",
-      "year": 2013,
-      "episodes": null,
-      "director": "Joseph Cedar",
-      "production_company": "David Mandil, Michael Sharfman",
-      "actors": ["Lior Ashkenazi", "Alon Aboutboul", "Yuval Scharf"],
-      "imdb_url": "https://www.imdb.com/title/tt2960994/",
-      "storyline": "A young officer makes a deal with a dying cook during Israel's War of Independence, trading his place in heaven for a meal. Years later, his son embarks on a journey to understand his father's life and choices."
-    },
-    {
-      "title": "Euphoria",
-      "hebrew_title": "אופוריה",
-      "year": "2012–2013",
-      "episodes": 10,
-      "director": "Ron Ninio",
-      "production_company": "Not specified",
-      "actors": ["Roni Dalumi", "Maor Schwitzer", "Gefen Barkai", "Lihi Kornowski"],
-      "storyline": "Euphoria follows a group of Israeli teenagers as they navigate the complexities of love, friendship, and identity while dealing with the challenges of adolescence in a world filled with drugs, violence, and social pressures.",
-      "imdb_url": "https://www.imdb.com/title/tt2896496/",
-      "prizes": "Not specified"
-    
-    }
-   ,
-    {
-      "title": "Lost Islands",
-      "hebrew_title": "האיים האבודים",
-      "year": 2008,
-      "episodes": null,
-      "director": "Reshef Levi",
-      "production_company": "Not specified",
-      "actors": [],
-      "imdb_url": "https://www.imdb.com/title/tt1210351/",
-      "storyline": "Two brothers compete for the love of the same woman in 1980s Israel, leading to family tensions and personal sacrifices."
-    },
-    {
-      "title": "Restless",
-      "hebrew_title": "חסר מנוח",
-      "year": 2008,
-      "episodes": null,
-      "director": "Avi Nesher",
-      "production_company": "Not specified",
-      "actors": [],
-      "imdb_url": "https://www.imdb.com/title/tt1075644/",
-      "storyline": "A young man returns to Israel to reconnect with his estranged father and discovers a hidden family history."
-    },
-    {
-      "title": "Deus",
-      "hebrew_title": "דיאוס",
-      "year": 2008,
-      "episodes": null,
-      "director": "Not specified",
-      "production_company": "Not specified",
-      "actors": [],
-      "imdb_url": "https://www.imdb.com/title/tt1397645/",
-      "storyline": "A group of teenagers discovers a mysterious artificial intelligence that begins to influence their lives in unexpected ways."
-    },
-    {
-      "title": "Lost and Found",
-      "hebrew_title": "אבודים ונמצאים",
-      "year": "2007–2008",
-      "episodes": 3,
-      "director": "Shay Kanot",
-      "production_company": "Not specified",
-      "actors": [],
-      "imdb_url": "https://www.imdb.com/title/tt7083308/",
-      "storyline": "A quirky comedy about a group of people who run a lost-and-found office, uncovering unusual stories behind the items they handle."
-    },
-    {
-      "title": "Ulai Hapa'am",
-      "hebrew_title": "אולי הפעם",
-      "year": "2006–2008",
-      "episodes": 74,
-      "director": "Not specified",
-      "production_company": "Not specified",
-      "actors": ["Yael Bar-Zohar", "Oshri Cohen", "Shani Cohen", "Shlomi Koriat"],
-      "storyline": "A romantic comedy series that follows the lives of young people in Tel Aviv, dealing with love, relationships, and the challenges of adulthood.",
-      "imdb_url": "https://www.imdb.com/title/tt1409483/"
-      
-    },
-    {
-      "title": "When Will We Kiss",
-      "hebrew_title": "מתי נתנשק",
-      "year": "2007–2008",
-      "episodes": 14,
-      "director": "Dalit Kahan",
-      "production_company": "Not specified",
-      "actors": ["Yael Abecassis", "Yoram Toledano", "Maya Dagan"],
-      "imdb_url": "https://www.imdb.com/title/tt0925510/",
-      "storyline": "A romantic drama series that explores the lives and relationships of several characters, focusing on love, betrayal, and the complexities of human emotions."
-    }
-    ,
-    {
-      "title": "The Little Traitor",
-      "hebrew_title": "Not specified",
-      "year": 2007,
-      "episodes": null,
-      "director": "Lynn Roth",
-      "production_company": "Eitan Evan, David Mandil",
-      "actors": ["Alfred Molina", "Ido Port", "Toby Stephens"],
-      "imdb_url": "https://www.imdb.com/title/tt0818170/",
-      "storyline": "A coming-of-age tale about a young Israeli boy who befriends a British soldier during the final years of the British Mandate in Palestine."
-    },
-    {
-      "title": "Beaufort",
-      "hebrew_title": "בופור",
-      "year": 2007,
-      "episodes": "Film",
-      "director": "Joseph Cedar",
-      "production_company": "Moshe Edery, Leon Edery",
-      "actors": ["Oshri Cohen", "Itay Tiran", "Ohad Knoller"],
-      "imdb_url": "https://www.imdb.com/title/tt0758732/",
-      "storyline": "The story of a group of Israeli soldiers stationed at an outpost prior to the withdrawal from Lebanon in 2000.",
-      "prizes": "Silver Bear for Best Director at the Berlin International Film Festival"
-    }
-    ,
-    {
-      "title": "Yeladot Ra'ot",
-      "hebrew_title": "ילדות רעות",
-      "year": 2006,
-      "episodes": null,
-      "director": "Adi Binyaminov",
-      "production_company": "Not specified",
-      "actors": ["Ania Bukstein", "Moran Atias", "Mili Avital"],
-      "storyline": "Three high school girls navigate the challenges of adolescence, friendship, and rebellion in a small Israeli town.",
-      "imdb_url": "https://www.imdb.com/title/tt0490764/"    }
-    ,
-    {
-      "title": "Lemarit Ain",
-      "hebrew_title": "למרעית עין",
-      "year": 2006,
-      "episodes": null,
-      "director": "Danny Sirkin",
-      "production_company": "Not specified",
-      "actors": ["Tinkerbell", "Assi Dayan", "Sandra Sade", "Moni Moshonov", "Rami Heuberger"],
-      "imdb_url": "https://www.imdb.com/title/tt0759604/",
-      "storyline": "A blind woman becomes entangled in a dangerous web of lies and deceit after witnessing a murder through her heightened senses."
-    }
-    ,
-    {
-      "title": "Live and Become",
-      "hebrew_title": "לחיות ולהיות",
-      "year": 2005,
-      "episodes": null,
-      "director": "Radu Mihaileanu",
-      "production_company": "Denis Carot, Jean-Philippe Amar",
-      "actors": ["Moshe Agazai", "Roschdy Zem", "Lubna Azabal"],
-      "imdb_url": "https://www.imdb.com/title/tt0388505/",
-      "storyline": "An Ethiopian boy is airlifted to Israel under the pretext of being Jewish, but he must hide his true identity to survive."
-    }    ,
-    {
-      "title": "Rosh Gadol",
-      "hebrew_title": "ראש גדול",
-      "year": "2004–2007",
-      "episodes": 3,
-      "director": "Renny Saar",
-      "production_company": "Not specified",
-      "actors": ["Idan Alterman", "Shira Naor", "Omer Hazan", "Liat Harlev"],
-      "imdb_url": "https://www.imdb.com/title/tt0498751/",
-      "storyline": "A group of high school students navigate their way through adolescence, dealing with friendships, relationships, and the challenges of growing up, all while participating in a unique educational program."
-    }
-    ,
-    {
-      "title": "Meorav Yerushalmi",
-      "hebrew_title": "מעורב ירושלמי",
-      "year": 2004,
-      "episodes": 1,
-      "director": "Nir Bergman, Jacob Goldwasser, Shay Kanot",
-      "production_company": "Not specified",
-      "actors": ["Shmil Ben Ari", "Tzahi Grad", "Michaela Eshet", "Yoram Toledano"],
-      "imdb_url": "https://www.imdb.com/title/tt0380126/",
-      "storyline": "A drama that follows the lives of several families in Jerusalem, exploring their struggles, relationships, and the cultural diversity of the city."
-    },
-    {
-      "title": "Delusions",
-      "hebrew_title": "אשליות",
-      "year": 2004,
-      "episodes": null,
-      "director": "Moshe Mizrahi",
-      "production_company": "Not specified",
-      "actors": ["Gila Almagor", "Assi Dayan", "Rami Heuberger"],
-      "imdb_url": "https://www.imdb.com/title/tt0461929/",
-      "storyline": "A psychological drama about a woman who struggles with her past and present, blurring the lines between reality and illusion."
-    },
-    {
-      "title": "The Last Scene",
-      "hebrew_title": "הסצנה האחרונה",
-      "year": 2004,
-      "episodes": null,
-      "director": "Eli Cohen",
-      "production_company": "Not specified",
-      "actors": ["Yehuda Levi", "Maya Maron", "Rami Baruch"],
-      "imdb_url": "https://www.imdb.com/title/tt0452859/",
-      "storyline": "A young filmmaker documents the final days of a legendary actor, uncovering secrets and truths about the world of cinema and life itself."
-    },
-    {
-      "title": "Colombian Love",
-      "hebrew_title": "אהבה קולומביאנית",
-      "year": 2004,
-      "episodes": null,
-      "director": "Shay Kanot",
-      "production_company": "Not specified",
-      "actors": ["Ran Danker", "Osnat Fishman", "Tali Sharon", "Sharon Alexander"],
-      "imdb_url": "https://www.imdb.com/title/tt0358925/",
-      "storyline": "A romantic comedy that intertwines the lives of three friends as they navigate love, relationships, and cultural differences in modern-day Israel."
-    },
-    {
-      "title": "Summer Story",
-      "hebrew_title": "סיפור קיץ",
-      "year": 2004,
-      "episodes": null,
-      "director": "Arik Lubetzky",
-      "production_company": "Not specified",
-      "actors": [],
-      "imdb_url": "https://www.imdb.com/title/tt0420229/"
-    },
-    {
-      "title": "Hallelujah",
-      "hebrew_title": "האללויה",
-      "year": 2003,
-      "episodes": null,
-      "director": "Daniel Syrkin",
-      "production_company": "Not specified",
-      "actors": [],
-      "imdb_url": "https://www.imdb.com/title/tt1142564/"
-    },
-    {
-      "title": "BeKetzev HaKetzev",
-      "hebrew_title": "בקצב הקצב",
-      "year": 2002,
-      "episodes": null,
-      "director": "Oren Ben-Simon",
-      "production_company": "Not specified",
-      "actors": [],
-      "imdb_url": "https://www.imdb.com/title/tt0312094/"
-    },
-    {
-      "title": "Shaul",
-      "hebrew_title": "שאול",
-      "year": 2002,
-      "episodes": null,
-      "director": "Eitan Anner, Shirley Stern",
-      "production_company": "Not specified",
-      "actors": [],
-      "imdb_url": "https://www.imdb.com/title/tt0313127/"
-    },
-    {
-      "title": "The Azzany's",
-      "hebrew_title": "האזאני",
-      "year": 1999,
-      "episodes": null,
-      "director": "Arnon Zadok",
-      "production_company": "Not specified",
-    "actors": ["Arnon Zadok","Gali Atari","Gabi Amrani", "Yona Atari", "Yossi Zabari"],
-      
-      "imdb_url": "https://www.imdb.com/title/tt0259149/"
-    }
-    ,
-   { "title": "Hafuch",
-    "hebrew_title": "הפוך",
-    "year": "1996–1999",
-    "episodes": null,
-    "director": "Shmuel Haimovich, Arik Rothstein",
-    "production_company": "Not specified",
-"actors": ["Orna Pitussi", "Einat Weitzman", "Danny Steg", "Nir Levy"],
-    "imdb_url": "https://www.imdb.com/title/tt0166915/"
-    }
+          {
+                    "title": "Night Therapy",
+                    "hebrew_title": "טיפול לילי",
+                    "year": 2024,
+                    "episodes": 7,
+                    "director": "Gavriel Bibliowicz",
+                    "production_company": "Dafna Danenberg, Aviram Avraham, Benny Menache",
+                    "actors": [
+                              "Yousef Sweid",
+                              "Shira Haas",
+                              "Yaakov Zada-Daniel"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt28231892/",
+                    "storyline": "A drama series about a psychologist who runs a night therapy clinic, dealing with patients' secrets and his own personal struggles."
+          },
+          {
+                    "title": "8200",
+                    "hebrew_title": "רוח צפונית",
+                    "year": 2024,
+                    "episodes": 8,
+                    "director": "Assaf Bernstein",
+                    "production_company": "Not specified",
+                    "actors": [
+                              "Lucy Ayoub",
+                              "Michael Aloni",
+                              "Elisha Banai",
+                              "Yaniv Biton"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt23059694/",
+                    "storyline": "A suspenseful drama following young recruits in Israel's elite intelligence unit 8200 as they navigate the pressures of national security and personal relationships."
+          },
+          {
+                    "title": "Manayek",
+                    "hebrew_title": "מנאייכ",
+                    "year": "2020–2024",
+                    "episodes": 30,
+                    "director": "Alon Zingman",
+                    "production_company": "Not specified",
+                    "actors": [
+                              "Shalom Assayag",
+                              "Amos Tamam",
+                              "Liraz Chamami",
+                              "Doron Ben-David"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt12819234/",
+                    "header_image_url": "/images/accordion-headers/manayek_header.jpg",
+                    "storyline": "A veteran police officer investigates corruption within the Israeli police force, uncovering a web of betrayal and moral dilemmas."
+          },
+          {
+                    "title": "Metukim",
+                    "hebrew_title": "מתוקים",
+                    "year": 2024,
+                    "episodes": 7,
+                    "director": "Yaron Arazi",
+                    "production_company": "Not specified",
+                    "actors": [
+                              "Bar Brimer",
+                              "Nevo Katan",
+                              "Neta Carmeli",
+                              "Assi Azar",
+                              "Rotem Sela"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt31308890/",
+                    "storyline": "A comedy-drama about a group of friends who open a bakery together, facing challenges in business and their personal lives."
+          },
+          {
+                    "title": "Dismissed",
+                    "hebrew_title": "המפקדת",
+                    "year": "2021–2024",
+                    "episodes": 30,
+                    "director": "Atara Frish",
+                    "production_company": "Not specified",
+                    "actors": [
+                              "Alona Sa'ar",
+                              "Noam Lugasy",
+                              "Maya Dagan",
+                              "Maya Landsman"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt14426644/",
+                    "storyline": "A comedic drama about a young female commander in the Israeli army, balancing her duties, soldiers, and personal growth."
+          },
+          {
+                    "title": "Red Skies",
+                    "hebrew_title": "שמיים אדומים",
+                    "year": 2023,
+                    "episodes": 8,
+                    "director": "Alon Zingman",
+                    "production_company": "Not specified",
+                    "actors": [
+                              "Amir Khoury",
+                              "Maor Schwietzer",
+                              "Lihi Kornowski",
+                              "Yaakov Zada-Daniel"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt23136682/",
+                    "storyline": "Set during the Second Intifada, two childhood friends—one Israeli, one Palestinian—find themselves on opposite sides of the conflict, testing their loyalty and humanity."
+          },
+          {
+                    "title": "Six Zeros",
+                    "hebrew_title": "שש אפסים",
+                    "year": 2023,
+                    "episodes": 8,
+                    "director": "Nir Bergman",
+                    "production_company": "Not specified",
+                    "actors": [
+                              "Shlomo Bar-Aba",
+                              "Liora Rivlin",
+                              "Ofer Hayoun",
+                              "Roni Daloomi",
+                              "Rotem Keinan",
+                              "Elisha Banai",
+                              "Shani Klein"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt28079116/",
+                    "storyline": "A drama series about a group of people whose lives are changed after winning the lottery, exploring the impact of sudden wealth on their relationships and values."
+          },
+          {
+                    "title": "Alef",
+                    "hebrew_title": "אלף",
+                    "year": 2023,
+                    "episodes": 6,
+                    "director": "Moish Goldberg",
+                    "production_company": "Not specified",
+                    "actors": [
+                              "Nelly Mira-Rubin",
+                              "Avraham Shalom Levi",
+                              "Yaakov Zada-Daniel",
+                              "Dana Meinrath"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt27869794/",
+                    "storyline": "Inspired by real events, Unsilenced is a 6 episodes story of a newly elected President with rumors of sexual assault and rape of a staffer named Oshrat swirling around him. His top adviser Avinoam realizes that if news of this leaks out, the scandal could destroy the President's career and his own. Yet more women are stepping forward to corroborate Oshrat's account. Will this lead to the conviction of the man seated in the highest office in the land?"
+          },
+          {
+                    "title": "June Zero",
+                    "hebrew_title": "יוני אפס",
+                    "year": 2022,
+                    "episodes": "Feature Film",
+                    "director": "Jake Paltrow",
+                    "production_company": "Not specified",
+                    "actors": ["Tzahi Grad", "Joy Rieger", "Noam Ovadia"],
+                    "imdb_url": "https://www.imdb.com/title/tt18834372/",
+                    "storyline": "Set in 1962 Israel, the film follows three characters whose lives intersect around the trial and execution of Adolf Eichmann, exploring the impact of history and justice."
+          },
+          {
+                    "title": "Chanshi",
+                    "hebrew_title": "חאנשי",
+                    "year": 2022,
+                    "episodes": 10,
+                    "director": "Aaron Geva, Mickey Triest",
+                    "production_company": "Not specified",
+                    "actors": [
+                              "Aleeza Chanowitz",
+                              "Marnina Schon",
+                              "Danielle Jadelyn",
+                              "Henry Winkler"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt15495784/",
+                    "storyline": "A comedic drama about a young American woman who moves to Israel in search of adventure and self-discovery, challenging cultural norms and her own expectations."
+          },
+          {
+                    "title": "Broken Ties",
+                    "hebrew_title": "קשרים שבורים",
+                    "year": 2022,
+                    "episodes": 7,
+                    "director": "Dalit Kahan, Ilan Abudi",
+                    "production_company": "Not specified",
+                    "actors": [
+                              "Yiftach Klein",
+                              "Alon Hamawi",
+                              "Lee Biran",
+                              "Naomi Levov"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt18245948/",
+                    "storyline": "A homeless pregnant woman is recruited against her will by a police inspector to serve as an undercover agent in an international criminal investigation focused on the kidnapping and trafficking of newborn babies."
+          },
+          {
+                    "title": "Malkot",
+                    "hebrew_title": "מלכות",
+                    "year": "2018–2022",
+                    "episodes": 11,
+                    "director": "Amir Mann, Itay Morag",
+                    "production_company": "Not specified",
+                    "actors": [
+                              "Roi Miller",
+                              "Adiv Sfadi",
+                              "Benjamin Schwabe",
+                              "Orly Silbersatz",
+                              "Michael Aloni"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt9182572/",
+                    "storyline": "Queens tells the story of women survivors of a crime family's multiple murder. They struggle to reclaim their lives and status, fighting against other mafia families bent on destroying them."
+          },
+          {
+                    "title": "Kfulim",
+                    "hebrew_title": "כפולים",
+                    "year": "2015–2022",
+                    "episodes": 16,
+                    "director": "Oded Ruskin, Oded Raz",
+                    "production_company": "Not specified",
+                    "actors": [
+                              "Miki Leon",
+                              "Angel Bonanni",
+                              "Moris Cohen",
+                              "Ishai Golan",
+                              "Magi Azarzar",
+                              "Ania Bukstein"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt3602528/",
+                    "storyline": "Five ordinary people wake up one morning to discover that they are implicated in a ruthless kidnapping operation following the disappearance of the Iranian Defence Minister while on a secret visit to Israel."
+          },
+          {
+                    "title": "Sad City Girls",
+                    "hebrew_title": "בנות העיר העצובות",
+                    "year": 2021,
+                    "episodes": 2,
+                    "director": "Talya Lavie",
+                    "production_company": "Not specified",
+                    "actors": [
+                              "Niv Sultan",
+                              "Menashe Noy",
+                              "Sara von Schwarze",
+                              "Tali Sharon"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt15869988/",
+                    "storyline": "When you're in your early twenties, your best friend is like a song you can't stop listening to on a loop, until you never want to hear it again. Sad City Girls is a dramedy about that kind of friendship."
+          },
+          {
+                    "title": "Me'ila",
+                    "hebrew_title": "מעילה",
+                    "year": 2021,
+                    "episodes": 7,
+                    "director": "Yotam Guendelman",
+                    "production_company": "Not specified",
+                    "actors": [
+                              "Dover Koshashvili",
+                              "Or Ben-Melech",
+                              "Shalom Assayag",
+                              "Shani Klein",
+                              "Yaakov Zada-Daniel"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt15144408/",
+                    "storyline": "The story of Eti Alon, an employee in the 'Bank LeMischar', who embezzled a quarter of a billion shekels from the customers' money and gave it to her gambling addict brother Ofer."
+          },
+          {
+                    "title": "Michael",
+                    "hebrew_title": "מייקל",
+                    "year": "2018–2021",
+                    "episodes": 10,
+                    "director": "Yona Rozenkier",
+                    "production_company": "Koda Communications",
+                    "creators": ["Yona Rozenkier", "Shlomo Mashiach"],
+                    "actors": [
+                              "Avi Dangur",
+                              "Meital Raz",
+                              "Nadav Hollander",
+                              "Natalia Poast",
+                              "Hila Goldenberg"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt10433430/",
+                    "storyline": "An Israeli dark comedy about a dysfunctional family, based on the cult fringe show 'Michael'."
+          },
+          {
+                    "title": "Shtisel",
+                    "hebrew_title": "שטיסל",
+                    "year": "2013–2021",
+                    "episodes": 33,
+                    "director": "Alon Zigman",
+                    "production_company": "Dori Media Paran",
+                    "creators": ["Yehonatan Indursky", "Ori Elon"],
+                    "actors": ["Michael Aloni", "Neta Riskin", "Sasson Gabai"],
+                    "imdb_url": "https://www.imdb.com/title/tt3069894/",
+                    "storyline": "The story of a Haredi family in Jerusalem. Shulem Schtisel the father of a large family is dealing with his younger son who he wants to see married soon. His daughter, Giti is dealing in secret with marital problems while his other son Zvi Arie tries to patch everything up."
+          },
+          {
+                    "title": "Valley of Tears",
+                    "hebrew_title": "שעת נעילה",
+                    "year": 2020,
+                    "episodes": 8,
+                    "director": "Yaron Zilberman",
+                    "production_company": "Endemol Israel",
+                    "creators": ["Ron Leshem", "Amit Cohen", "Daniel Amsel"],
+                    "actors": ["Aviv Alush", "Lee Biran", "Shahar Taboch"],
+                    "imdb_url": "https://www.imdb.com/title/tt8190688/",
+                    "storyline": "On October 6th, 1973, the Middle East was shaken by the biggest war it had ever seen. Valley of Tears follows the personal stories of soldiers and civilians during the Yom Kippur War, a conflict that forever changed the region."
+          },
+          {
+                    "title": "The Big Special Thing",
+                    "hebrew_title": "הדבר הגדול המיוחד",
+                    "year": 2020,
+                    "episodes": 8,
+                    "director": "Shmuel Haimovich",
+                    "production_company": "Kan",
+                    "writers": ["Shmuel Haimovich", "Jonathan Aroch"],
+                    "actors": [
+                              "Einat Weitzman",
+                              "Orna Pitussi",
+                              "Talia Shemer",
+                              "Gur Bentwich"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt11967090/",
+                    "storyline": "Not specified"
+          },
+          {
+                    "title": "The Attaché",
+                    "hebrew_title": "הקונסול",
+                    "year": "2019–2020",
+                    "episodes": 10,
+                    "director": "Asi Cohen",
+                    "production_company": "Yoav Gross Productions",
+                    "creators": ["Asi Cohen", "Alon Gur"],
+                    "actors": [
+                              "Eli Ben-David",
+                              "Héloïse Godet",
+                              "Ilay Lax",
+                              "Florence Bloch",
+                              "Ohad Knoller"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt11694076/",
+                    "storyline": "An Israeli couple moves to Paris for the wife's new job at the Israeli embassy, but their marriage is tested as they struggle to adjust to a new life in the aftermath of terrorist attacks."
+          },
+          {
+                    "title": "Happy Times",
+                    "hebrew_title": "זמנים טובים",
+                    "year": 2019,
+                    "episodes": null,
+                    "director": "Michael Mayer",
+                    "production_company": "M Square Films",
+                    "creators": ["Michael Mayer", "Roni Sina"],
+                    "actors": [],
+                    "imdb_url": "https://www.imdb.com/title/tt8563656/",
+                    "storyline": "A seemingly friendly dinner party erupts into a night of violence and terror at a lush Hollywood estate."
+          },
+          {
+                    "title": "The Red Sea Diving Resort",
+                    "hebrew_title": "מרכז החופשה בצפון",
+                    "year": 2019,
+                    "episodes": null,
+                    "director": "Gideon Raff",
+                    "production_company": "Bron Studios",
+                    "creators": ["Gideon Raff"],
+                    "actors": ["Chris Evans", "Haley Bennett", "Ben Kingsley"],
+                    "imdb_url": "https://www.imdb.com/title/tt4995776/",
+                    "storyline": "Inspired by true events, this film tells the story of international agents who use a deserted holiday resort as a front to smuggle thousands of Ethiopian Jewish refugees to Israel in the early 1980s."
+          },
+          {
+                    "title": "Our Boys",
+                    "hebrew_title": "הבנים שלנו",
+                    "year": 2019,
+                    "episodes": 10,
+                    "directors": [
+                              "Hagai Levi",
+                              "Joseph Cedar",
+                              "Dani Rosenberg"
+                    ],
+                    "production_company": "Keshet Studios, HBO",
+                    "creators": [
+                              "Hagai Levi",
+                              "Joseph Cedar",
+                              "Tawfik Abu-Wael"
+                    ],
+                    "actors": ["Adam Gabay", "Tom Mercier", "Shlomi Bertonov"],
+                    "imdb_url": "https://www.imdb.com/title/tt10517426/",
+                    "storyline": "Based on the true events which led to the outbreak of war in Gaza 2014."
+          },
+          {
+                    "title": "The Spy",
+                    "hebrew_title": "הרגל",
+                    "year": 2019,
+                    "episodes": 1,
+                    "director": "Gideon Raff",
+                    "production_company": "Netflix, Legende Films",
+                    "creators": ["Gideon Raff"],
+                    "actors": [
+                              "Sacha Baron Cohen",
+                              "Noah Emmerich",
+                              "Hadar Ratzon Rotem"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt5952634/",
+                    "storyline": "Based on the true story of Eli Cohen, an Israeli clerk-turned-secret agent who infiltrated the Syrian government in the 1960s and became one of the most legendary spies in history."
+          },
+          {
+                    "title": "Flawless",
+                    "hebrew_title": "ללא רבב",
+                    "year": 2018,
+                    "episodes": null,
+                    "director": "Talya Lavie",
+                    "production_company": "Tender Productions",
+                    "creators": ["Talya Lavie", "Halil Nehama"],
+                    "actors": ["Stav Strashko", "Noam Lugassy", "Yael Youssef"],
+                    "imdb_url": "https://www.imdb.com/title/tt8653840/",
+                    "storyline": "Three teenagers from Jerusalem sell their kidneys to pay for cosmetic surgery and prom dresses. As a secret uncovers they realize nothing is as it seems."
+          },
+          {
+                    "title": "Beirut",
+                    "hebrew_title": "ביירות",
+                    "year": 2018,
+                    "episodes": null,
+                    "director": "Brad Anderson",
+                    "production_company": "Bleecker Street",
+                    "creators": ["Tony Gilroy"],
+                    "note": "This is an American film, not Israeli.",
+                    "actors": ["Jon Hamm", "Rosamund Pike", "Dean Norris"],
+                    "imdb_url": "https://www.imdb.com/title/tt4669264/",
+                    "storyline": "Caught in the crossfires of civil war, CIA operatives must send a former U.S. diplomat to negotiate for the life of a friend he left behind."
+          },
+          {
+                    "title": "The Conductor",
+                    "hebrew_title": "המנצח",
+                    "year": 2018,
+                    "episodes": 10,
+                    "director": "Dror Sabo",
+                    "production_company": "Dori Media Paran",
+                    "creators": ["Dror Sabo", "Dror Nobelman"],
+                    "actors": [],
+                    "imdb_url": "https://www.imdb.com/title/tt9207222/",
+                    "storyline": "No one knows why Noah, a famous pianist, leaves Chicago just before a concert."
+          },
+          {
+                    "title": "Autonomies",
+                    "hebrew_title": "אוטונומיות",
+                    "year": 2018,
+                    "episodes": 6,
+                    "director": "Yehonatan Indursky",
+                    "production_company": "Not specified",
+                    "actors": [
+                              "Daniella Kertesz",
+                              "Shuli Rand",
+                              "Nir Di-Nur",
+                              "Tali Sharon",
+                              "Dan Kastoriano"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt8365214/",
+                    "storyline": "A dystopian drama set in an alternate Israel, split into secular and ultra-Orthodox states, exploring issues of identity, religion, politics, and personal freedom."
+          },
+          {
+                    "title": "Commandments",
+                    "hebrew_title": "מצוות",
+                    "year": "2017–2018",
+                    "episodes": 8,
+                    "director": "Alon Zingman",
+                    "production_company": "Not specified",
+                    "actors": [
+                              "Roy Nik",
+                              "Dolev Mesika",
+                              "Adi Alon",
+                              "Ofri Biterman",
+                              "Ori Atia"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt7620360/",
+                    "storyline": "Kipat Barzel (Iron Yarmulke), about three ultra-Orthodox young men who have chosen to serve in the IDF - despite the communal taboos associated with it."
+          },
+          {
+                    "title": "Driver",
+                    "hebrew_title": "נהג",
+                    "year": 2017,
+                    "episodes": null,
+                    "director": "Yehonatan Indursky",
+                    "production_company": "Not specified",
+                    "actors": [
+                              "Moshe Folkenflick",
+                              "Manuel Elkaslassy",
+                              "Rivka Michaeli",
+                              "Dov Navon",
+                              "Alexander Peleg"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt6213004/",
+                    "storyline": "A 'Driver' in the ultra-Orthodox community takes his daughter on his nightly journey, exposing her to the more questionable members of this pious society in the dark alleys of Bnei Brak."
+          },
+          {
+                    "title": "Norman",
+                    "hebrew_title": "נורמן",
+                    "year": 2016,
+                    "episodes": null,
+                    "director": "Joseph Cedar",
+                    "production_company": "Oscar Isaac, David Litvak",
+                    "actors": [
+                              "Lior Ashkenazi",
+                              "Richard Gere",
+                              "Charlotte Gainsbourg",
+                              "Steve Buscemi"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt4191702/",
+                    "storyline": "Norman Oppenheimer is a small-time operator who befriends a young politician at a low point in his life. When the politician becomes an influential world leader, Norman's life dramatically changes for better and worse."
+          },
+          {
+                    "title": "Plan B",
+                    "hebrew_title": "החדש של עומרי גורדון'",
+                    "year": 2015,
+                    "episodes": 2,
+                    "director": "Ido Rosenblum",
+                    "production_company": "Not specified",
+                    "actors": [
+                              "Ido Rosenblum",
+                              "Romi Aboulafia",
+                              "Udi Kagan",
+                              "Neta Riskin",
+                              "Yuval Mendelson"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt4892646/"
+          },
+          {
+                    "title": "Imported",
+                    "hebrew_title": "שחקן זר",
+                    "year": 2015,
+                    "episodes": 8,
+                    "director": "Daniel Syrkin",
+                    "production_company": "Not specified",
+                    "actors": [],
+                    "imdb_url": "https://www.imdb.com/title/tt4711894/"
+          },
+          {
+                    "title": "Fauda",
+                    "hebrew_title": "פאודה",
+                    "year": 2015,
+                    "episodes": 12,
+                    "director": "Avi Issacharoff, Lior Raz",
+                    "production_company": "Avi Issacharoff, Lior Raz",
+                    "actors": [
+                              "Lior Raz",
+                              "Yaakov Zada-Daniel",
+                              "Rona-Lee Shimon",
+                              "Shadi Mar'i",
+                              "Laëtitia Eïdo"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt4565380/",
+                    "storyline": "'Fauda' (Arabic for 'Chaos') depicts the two-sided story of the Israeli-Palestinian conflict. Doron, a commander of undercover Israeli unit, the Israeli Special Forces, operating inside Palestinian territories, and his team, are hunting down Hamas terrorist Abu-Ahmed. On the other side of the fence, the life of Abu-Ahmed and his family, who has thus far murdered 143 Israelis, will never accept the State of Israel, and will continue Jihad for as long as it takes."
+          },
+          {
+                    "title": "Dig",
+                    "hebrew_title": "Not specified",
+                    "year": 2015,
+                    "episodes": 2,
+                    "director": "Tim Kring, Gideon Raff",
+                    "production_company": "Tim Kring, Gideon Raff",
+                    "actors": [
+                              "Jason Isaacs",
+                              "Alison Sudol",
+                              "David Costabile"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt3597606/"
+          },
+          {
+                    "title": "A Tale of Love and Darkness",
+                    "hebrew_title": "סיפור על אהבה וחושך",
+                    "year": 2015,
+                    "episodes": null,
+                    "director": "Natalie Portman",
+                    "production_company": "Natalie Portman, Ram Bergman",
+                    "actors": ["Natalie Portman", "Amir Tessler", "Shira Haas"],
+                    "imdb_url": "https://www.imdb.com/title/tt1135989/"
+          },
+          {
+                    "title": "The Gordin Cell",
+                    "hebrew_title": "תא גורדין",
+                    "year": "2012–2015",
+                    "episodes": 22,
+                    "director": "Daniel Syrkin",
+                    "production_company": "Tedy Productions",
+                    "actors": [
+                              "Ran Danker",
+                              "Moni Moshonov",
+                              "Mark Ivanir",
+                              "Helena Yaralova",
+                              "Aviv Alush",
+                              "Anastasia Fein",
+                              "Neta Riskin",
+                              "Nati Ganot",
+                              "Svetlana Norbayeva",
+                              "Slava Bibergal",
+                              "Anton Ostrovsky",
+                              "Samuel Calderon",
+                              "Valeria Polyakova",
+                              "Alex Shtendler",
+                              "Natasha Manor",
+                              "Dana Meinrath",
+                              "Igal Naor",
+                              "Ishai Golan",
+                              "Hadar Ratzon Rotem"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt2860176/"
+          },
+          {
+                    "title": "Hill Start",
+                    "hebrew_title": "זינוק בעליה",
+                    "year": "2014",
+                    "episodes": null,
+                    "director": "Oren Shalom",
+                    "production_company": "Not specified",
+                    "actors": [
+                              "Shlomo Bar-Aba",
+                              "Mili Avital",
+                              "Itay Tiran",
+                              "Rotem Zissman-Cohen"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt3919692/",
+                    "storyline": "A comedy about a family dealing with the aftermath of a car accident that leaves the mother in a coma, forcing them to confront their relationships and personal issues."
+          },
+          {
+                    "title": "Temporarily Dead",
+                    "hebrew_title": "מתים לרגע",
+                    "year": 2014,
+                    "episodes": 77,
+                    "director": "Renny Saar",
+                    "production_company": "Not specified",
+                    "actors": [
+                              "Ofer Shechter",
+                              "Avigail Harari",
+                              "Agam Rudberg"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt3830828/",
+                    "storyline": "A group of medical students discovers a way to temporarily bring themselves back from the dead, leading to unforeseen consequences and moral dilemmas."
+          },
+          {
+                    "title": "A Place in Heaven",
+                    "hebrew_title": "מקום בגן עדן",
+                    "year": 2013,
+                    "episodes": null,
+                    "director": "Joseph Cedar",
+                    "production_company": "David Mandil, Michael Sharfman",
+                    "actors": [
+                              "Lior Ashkenazi",
+                              "Alon Aboutboul",
+                              "Yuval Scharf"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt2960994/",
+                    "storyline": "A young officer makes a deal with a dying cook during Israel's War of Independence, trading his place in heaven for a meal. Years later, his son embarks on a journey to understand his father's life and choices."
+          },
+          {
+                    "title": "Euphoria",
+                    "hebrew_title": "אופוריה",
+                    "year": "2012–2013",
+                    "episodes": 10,
+                    "director": "Ron Ninio",
+                    "production_company": "Not specified",
+                    "actors": [
+                              "Roni Dalumi",
+                              "Maor Schwitzer",
+                              "Gefen Barkai",
+                              "Lihi Kornowski"
+                    ],
+                    "storyline": "Euphoria follows a group of Israeli teenagers as they navigate the complexities of love, friendship, and identity while dealing with the challenges of adolescence in a world filled with drugs, violence, and social pressures.",
+                    "imdb_url": "https://www.imdb.com/title/tt2896496/",
+                    "prizes": "Not specified"
+          },
+          {
+                    "title": "Lost Islands",
+                    "hebrew_title": "האיים האבודים",
+                    "year": 2008,
+                    "episodes": null,
+                    "director": "Reshef Levi",
+                    "production_company": "Not specified",
+                    "actors": [],
+                    "imdb_url": "https://www.imdb.com/title/tt1210351/",
+                    "storyline": "Two brothers compete for the love of the same woman in 1980s Israel, leading to family tensions and personal sacrifices."
+          },
+          {
+                    "title": "Restless",
+                    "hebrew_title": "חסר מנוח",
+                    "year": 2008,
+                    "episodes": null,
+                    "director": "Avi Nesher",
+                    "production_company": "Not specified",
+                    "actors": [],
+                    "imdb_url": "https://www.imdb.com/title/tt1075644/",
+                    "storyline": "A young man returns to Israel to reconnect with his estranged father and discovers a hidden family history."
+          },
+          {
+                    "title": "Deus",
+                    "hebrew_title": "דיאוס",
+                    "year": 2008,
+                    "episodes": null,
+                    "director": "Not specified",
+                    "production_company": "Not specified",
+                    "actors": [],
+                    "imdb_url": "https://www.imdb.com/title/tt1397645/",
+                    "storyline": "A group of teenagers discovers a mysterious artificial intelligence that begins to influence their lives in unexpected ways."
+          },
+          {
+                    "title": "Lost and Found",
+                    "hebrew_title": "אבודים ונמצאים",
+                    "year": "2007–2008",
+                    "episodes": 3,
+                    "director": "Shay Kanot",
+                    "production_company": "Not specified",
+                    "actors": [],
+                    "imdb_url": "https://www.imdb.com/title/tt7083308/",
+                    "storyline": "A quirky comedy about a group of people who run a lost-and-found office, uncovering unusual stories behind the items they handle."
+          },
+          {
+                    "title": "Ulai Hapa'am",
+                    "hebrew_title": "אולי הפעם",
+                    "year": "2006–2008",
+                    "episodes": 74,
+                    "director": "Not specified",
+                    "production_company": "Not specified",
+                    "actors": [
+                              "Yael Bar-Zohar",
+                              "Oshri Cohen",
+                              "Shani Cohen",
+                              "Shlomi Koriat"
+                    ],
+                    "storyline": "A romantic comedy series that follows the lives of young people in Tel Aviv, dealing with love, relationships, and the challenges of adulthood.",
+                    "imdb_url": "https://www.imdb.com/title/tt1409483/"
+          },
+          {
+                    "title": "When Will We Kiss",
+                    "hebrew_title": "מתי נתנשק",
+                    "year": "2007–2008",
+                    "episodes": 14,
+                    "director": "Dalit Kahan",
+                    "production_company": "Not specified",
+                    "actors": [
+                              "Yael Abecassis",
+                              "Yoram Toledano",
+                              "Maya Dagan"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt0925510/",
+                    "storyline": "A romantic drama series that explores the lives and relationships of several characters, focusing on love, betrayal, and the complexities of human emotions."
+          },
+          {
+                    "title": "The Little Traitor",
+                    "hebrew_title": "Not specified",
+                    "year": 2007,
+                    "episodes": null,
+                    "director": "Lynn Roth",
+                    "production_company": "Eitan Evan, David Mandil",
+                    "actors": ["Alfred Molina", "Ido Port", "Toby Stephens"],
+                    "imdb_url": "https://www.imdb.com/title/tt0818170/",
+                    "storyline": "A coming-of-age tale about a young Israeli boy who befriends a British soldier during the final years of the British Mandate in Palestine."
+          },
+          {
+                    "title": "Beaufort",
+                    "hebrew_title": "בופור",
+                    "year": 2007,
+                    "episodes": "Film",
+                    "director": "Joseph Cedar",
+                    "production_company": "Moshe Edery, Leon Edery",
+                    "actors": ["Oshri Cohen", "Itay Tiran", "Ohad Knoller"],
+                    "imdb_url": "https://www.imdb.com/title/tt0758732/",
+                    "storyline": "The story of a group of Israeli soldiers stationed at an outpost prior to the withdrawal from Lebanon in 2000.",
+                    "prizes": "Silver Bear for Best Director at the Berlin International Film Festival"
+          },
+          {
+                    "title": "Yeladot Ra'ot",
+                    "hebrew_title": "ילדות רעות",
+                    "year": 2006,
+                    "episodes": null,
+                    "director": "Adi Binyaminov",
+                    "production_company": "Not specified",
+                    "actors": ["Ania Bukstein", "Moran Atias", "Mili Avital"],
+                    "storyline": "Three high school girls navigate the challenges of adolescence, friendship, and rebellion in a small Israeli town.",
+                    "imdb_url": "https://www.imdb.com/title/tt0490764/"
+          },
+          {
+                    "title": "Lemarit Ain",
+                    "hebrew_title": "למרעית עין",
+                    "year": 2006,
+                    "episodes": null,
+                    "director": "Danny Sirkin",
+                    "production_company": "Not specified",
+                    "actors": [
+                              "Tinkerbell",
+                              "Assi Dayan",
+                              "Sandra Sade",
+                              "Moni Moshonov",
+                              "Rami Heuberger"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt0759604/",
+                    "storyline": "A blind woman becomes entangled in a dangerous web of lies and deceit after witnessing a murder through her heightened senses."
+          },
+          {
+                    "title": "Live and Become",
+                    "hebrew_title": "לחיות ולהיות",
+                    "year": 2005,
+                    "episodes": null,
+                    "director": "Radu Mihaileanu",
+                    "production_company": "Denis Carot, Jean-Philippe Amar",
+                    "actors": ["Moshe Agazai", "Roschdy Zem", "Lubna Azabal"],
+                    "imdb_url": "https://www.imdb.com/title/tt0388505/",
+                    "storyline": "An Ethiopian boy is airlifted to Israel under the pretext of being Jewish, but he must hide his true identity to survive."
+          },
+          {
+                    "title": "Rosh Gadol",
+                    "hebrew_title": "ראש גדול",
+                    "year": "2004–2007",
+                    "episodes": 3,
+                    "director": "Renny Saar",
+                    "production_company": "Not specified",
+                    "actors": [
+                              "Idan Alterman",
+                              "Shira Naor",
+                              "Omer Hazan",
+                              "Liat Harlev"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt0498751/",
+                    "storyline": "A group of high school students navigate their way through adolescence, dealing with friendships, relationships, and the challenges of growing up, all while participating in a unique educational program."
+          },
+          {
+                    "title": "Meorav Yerushalmi",
+                    "hebrew_title": "מעורב ירושלמי",
+                    "year": 2004,
+                    "episodes": 1,
+                    "director": "Nir Bergman, Jacob Goldwasser, Shay Kanot",
+                    "production_company": "Not specified",
+                    "actors": [
+                              "Shmil Ben Ari",
+                              "Tzahi Grad",
+                              "Michaela Eshet",
+                              "Yoram Toledano"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt0380126/",
+                    "storyline": "A drama that follows the lives of several families in Jerusalem, exploring their struggles, relationships, and the cultural diversity of the city."
+          },
+          {
+                    "title": "Delusions",
+                    "hebrew_title": "אשליות",
+                    "year": 2004,
+                    "episodes": null,
+                    "director": "Moshe Mizrahi",
+                    "production_company": "Not specified",
+                    "actors": ["Gila Almagor", "Assi Dayan", "Rami Heuberger"],
+                    "imdb_url": "https://www.imdb.com/title/tt0461929/",
+                    "storyline": "A psychological drama about a woman who struggles with her past and present, blurring the lines between reality and illusion."
+          },
+          {
+                    "title": "The Last Scene",
+                    "hebrew_title": "הסצנה האחרונה",
+                    "year": 2004,
+                    "episodes": null,
+                    "director": "Eli Cohen",
+                    "production_company": "Not specified",
+                    "actors": ["Yehuda Levi", "Maya Maron", "Rami Baruch"],
+                    "imdb_url": "https://www.imdb.com/title/tt0452859/",
+                    "storyline": "A young filmmaker documents the final days of a legendary actor, uncovering secrets and truths about the world of cinema and life itself."
+          },
+          {
+                    "title": "Colombian Love",
+                    "hebrew_title": "אהבה קולומביאנית",
+                    "year": 2004,
+                    "episodes": null,
+                    "director": "Shay Kanot",
+                    "production_company": "Not specified",
+                    "actors": [
+                              "Ran Danker",
+                              "Osnat Fishman",
+                              "Tali Sharon",
+                              "Sharon Alexander"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt0358925/",
+                    "storyline": "A romantic comedy that intertwines the lives of three friends as they navigate love, relationships, and cultural differences in modern-day Israel."
+          },
+          {
+                    "title": "Summer Story",
+                    "hebrew_title": "סיפור קיץ",
+                    "year": 2004,
+                    "episodes": null,
+                    "director": "Arik Lubetzky",
+                    "production_company": "Not specified",
+                    "actors": [],
+                    "imdb_url": "https://www.imdb.com/title/tt0420229/"
+          },
+          {
+                    "title": "Hallelujah",
+                    "hebrew_title": "האללויה",
+                    "year": 2003,
+                    "episodes": null,
+                    "director": "Daniel Syrkin",
+                    "production_company": "Not specified",
+                    "actors": [],
+                    "imdb_url": "https://www.imdb.com/title/tt1142564/"
+          },
+          {
+                    "title": "BeKetzev HaKetzev",
+                    "hebrew_title": "בקצב הקצב",
+                    "year": 2002,
+                    "episodes": null,
+                    "director": "Oren Ben-Simon",
+                    "production_company": "Not specified",
+                    "actors": [],
+                    "imdb_url": "https://www.imdb.com/title/tt0312094/"
+          },
+          {
+                    "title": "Shaul",
+                    "hebrew_title": "שאול",
+                    "year": 2002,
+                    "episodes": null,
+                    "director": "Eitan Anner, Shirley Stern",
+                    "production_company": "Not specified",
+                    "actors": [],
+                    "imdb_url": "https://www.imdb.com/title/tt0313127/"
+          },
+          {
+                    "title": "The Azzany's",
+                    "hebrew_title": "האזאני",
+                    "year": 1999,
+                    "episodes": null,
+                    "director": "Arnon Zadok",
+                    "production_company": "Not specified",
+                    "actors": [
+                              "Arnon Zadok",
+                              "Gali Atari",
+                              "Gabi Amrani",
+                              "Yona Atari",
+                              "Yossi Zabari"
+                    ],
+
+                    "imdb_url": "https://www.imdb.com/title/tt0259149/"
+          },
+          {
+                    "title": "Hafuch",
+                    "hebrew_title": "הפוך",
+                    "year": "1996–1999",
+                    "episodes": null,
+                    "director": "Shmuel Haimovich, Arik Rothstein",
+                    "production_company": "Not specified",
+                    "actors": [
+                              "Orna Pitussi",
+                              "Einat Weitzman",
+                              "Danny Steg",
+                              "Nir Levy"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt0166915/"
+          }
 ]
