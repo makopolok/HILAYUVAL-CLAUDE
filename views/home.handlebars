@@ -22,7 +22,7 @@
                     -->
                     <button class="accordion-button collapsed custom-accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{@index}}" aria-expanded="false" aria-controls="collapse-{{@index}}">
                         {{#if header_image_url}}
-                            <img src="{{header_image_url}}" alt="{{title}} header image" class="accordion-header-image-top">
+                            <img src="{{header_image_url}}" alt="{{title}} header image" class="accordion-header-image-top" {{#if header_image_style_override}}style="{{header_image_style_override}}"{{/if}}>
                         {{/if}}
                         <span class="accordion-header-text-line {{#if header_image_url}}overlay{{/if}}">
                             <span class="accordion-header-title-text">

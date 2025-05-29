@@ -54,15 +54,27 @@
     bottom: 0;
     left: 0;
     right: 0;
-    background-color: rgba(200, 0, 0, 0.8); /* Red background with some transparency */
-    color: white; /* Text color for contrast */
-    padding: 0.5rem 1.25rem; /* Adjust padding as needed for overlay */
+    padding: 0.5rem 1.25rem; /* Padding for the line itself, for spacing title and icon */
     z-index: 10; /* Ensure it's above the image */
+    /* display: flex; justify-content: space-between; align-items: center; are already on the base class */
 }
 
 .accordion-header-title-text {
+    /* flex-grow: 1; */ /* REMOVED from base style */
+}
+
+/* Apply flex-grow only when NOT an overlay */
+.accordion-header-text-line:not(.overlay) .accordion-header-title-text {
     flex-grow: 1;
-    /* color: white; */ /* Will be inherited from .overlay or default color */
+}
+
+.accordion-header-text-line.overlay .accordion-header-title-text {
+    flex-grow: 0; /* Prevent the title text from growing when overlaying */
+    background-color: rgba(200, 0, 0, 0.8); /* Red background with some transparency */
+    color: white; /* Text color for contrast */
+    padding: 0.25rem 0.6rem; /* Padding for the text itself within its background */
+    border-radius: 3px; /* Optional: slightly rounded corners for the text background */
+    display: inline-block; /* To make padding and background wrap content correctly */
 }
 
 .accordion-custom-icon::after {
@@ -75,6 +87,11 @@
 
 .accordion-header-text-line.overlay .accordion-custom-icon::after {
     color: white; /* Ensure icon is visible on red background when overlaying */
+}
+
+/* Added: Ensure icon has a color when not an overlay */
+.accordion-header-text-line:not(.overlay) .accordion-custom-icon::after {
+    color: inherit; /* Or your desired default icon color */
 }
 
 .custom-accordion-button:not(.collapsed) .accordion-custom-icon::after {

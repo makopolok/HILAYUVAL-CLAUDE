@@ -44,7 +44,8 @@
                               "Doron Ben-David"
                     ],
                     "imdb_url": "https://www.imdb.com/title/tt12819234/",
-                    "header_image_url": "/images/accordion-headers/manayek_header.jpg",
+                    "header_image_url": "/images/accordion-headers/manayek_header_blue.jpg",
+
                     "storyline": "A veteran police officer investigates corruption within the Israeli police force, uncovering a web of betrayal and moral dilemmas."
           },
           {
@@ -78,6 +79,8 @@
                               "Maya Landsman"
                     ],
                     "imdb_url": "https://www.imdb.com/title/tt14426644/",
+                    "header_image_url": "/images/accordion-headers/dissmissed_poster_red.png",
+                    "header_image_style_override": "object-position: center 70%;",
                     "storyline": "A comedic drama about a young female commander in the Israeli army, balancing her duties, soldiers, and personal growth."
           },
           {
@@ -113,6 +116,8 @@
                               "Shani Klein"
                     ],
                     "imdb_url": "https://www.imdb.com/title/tt28079116/",
+                    "header_image_url": "/images/accordion-headers/sixzeros_header_yellow.jpg",
+                    "header_image_style_override": "object-position: center 35%;",
                     "storyline": "A drama series about a group of people whose lives are changed after winning the lottery, exploring the impact of sudden wealth on their relationships and values."
           },
           {
@@ -609,6 +614,8 @@
                               "Agam Rudberg"
                     ],
                     "imdb_url": "https://www.imdb.com/title/tt3830828/",
+                    "header_image_url": "/images/accordion-headers/metim_rega_header.png",
+                    "header_image_style_override": "object-position: center 40%;",
                     "storyline": "A group of medical students discovers a way to temporarily bring themselves back from the dead, leading to unforeseen consequences and moral dilemmas."
           },
           {
