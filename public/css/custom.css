@@ -15,6 +15,18 @@
     /* margin-bottom: 10px; */ /* Removed: Text will float over */
 }
 
+.accordion-header-image-top.portrait {
+    object-fit: contain;
+    height: 100%;
+    min-height: 200px;
+    max-height: 400px;
+    width: auto;
+    max-width: 100%;
+    margin: 0 auto;
+    display: block;
+    background: #000; /* or your preferred background color */
+}
+
 .custom-accordion-button {
     display: flex;
     flex-direction: column; /* Stack image and text vertically (image is normal flow, text overlay) */
@@ -102,4 +114,10 @@
 /* Hide default Bootstrap accordion icon */
 .custom-accordion-button::after {
     display: none !important;
+}
+
+.carousel-image {
+    object-fit: cover;
+    height: 100%;
+    width: 100%;
 }

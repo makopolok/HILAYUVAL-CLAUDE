@@ -286,6 +286,10 @@
                     "production_company": "Endemol Israel",
                     "creators": ["Ron Leshem", "Amit Cohen", "Daniel Amsel"],
                     "actors": ["Aviv Alush", "Lee Biran", "Shahar Taboch"],
+                    "header_image_url": "/images/accordion-headers/valley_of_tears_poster.webp",
+
+                    "header_image_style_override": "object-fit: contain; height: 1200px; width: auto; max-width: 100%; object-position: left 50%;",
+
                     "imdb_url": "https://www.imdb.com/title/tt8190688/",
                     "storyline": "On October 6th, 1973, the Middle East was shaken by the biggest war it had ever seen. Valley of Tears follows the personal stories of soldiers and civilians during the Yom Kippur War, a conflict that forever changed the region."
           },
