@@ -44,7 +44,7 @@
                               "Doron Ben-David"
                     ],
                     "imdb_url": "https://www.imdb.com/title/tt12819234/",
-                    "header_image_url": "/images/accordion-headers/manayek_header_blue.jpg",
+                    "header_image_url": "/images/accordion-headers/menayek_header.jpg",
 
                     "storyline": "A veteran police officer investigates corruption within the Israeli police force, uncovering a web of betrayal and moral dilemmas."
           },
@@ -79,7 +79,7 @@
                               "Maya Landsman"
                     ],
                     "imdb_url": "https://www.imdb.com/title/tt14426644/",
-                    "header_image_url": "/images/accordion-headers/dissmissed_poster_red.png",
+                    "header_image_url": "/images/accordion-headers/dissmissed_header.jpg",
                     "header_image_style_override": "object-position: center 70%;",
                     "storyline": "A comedic drama about a young female commander in the Israeli army, balancing her duties, soldiers, and personal growth."
           },
@@ -116,7 +116,7 @@
                               "Shani Klein"
                     ],
                     "imdb_url": "https://www.imdb.com/title/tt28079116/",
-                    "header_image_url": "/images/accordion-headers/sixzeros_header_yellow.jpg",
+                    "header_image_url": "/images/accordion-headers/sixzeros_header.jpg",
                     "header_image_style_override": "object-position: center 35%;",
                     "storyline": "A drama series about a group of people whose lives are changed after winning the lottery, exploring the impact of sudden wealth on their relationships and values."
           },
@@ -286,9 +286,9 @@
                     "production_company": "Endemol Israel",
                     "creators": ["Ron Leshem", "Amit Cohen", "Daniel Amsel"],
                     "actors": ["Aviv Alush", "Lee Biran", "Shahar Taboch"],
-                    "header_image_url": "/images/accordion-headers/valley_of_tears_poster.webp",
+                    "header_image_url": "/images/accordion-headers/valey of tears_header.webp",
 
-                    "header_image_style_override": "object-fit: contain; height: 1200px; width: auto; max-width: 100%; object-position: left 50%;",
+                    "header_image_style_override": "object-fit: contain; height:auto; width: auto; max-width: 100%; object-position: left 50%;",
 
                     "imdb_url": "https://www.imdb.com/title/tt8190688/",
                     "storyline": "On October 6th, 1973, the Middle East was shaken by the biggest war it had ever seen. Valley of Tears follows the personal stories of soldiers and civilians during the Yom Kippur War, a conflict that forever changed the region."
@@ -618,7 +618,7 @@
                               "Agam Rudberg"
                     ],
                     "imdb_url": "https://www.imdb.com/title/tt3830828/",
-                    "header_image_url": "/images/accordion-headers/metim_rega_header.png",
+                    "header_image_url": "/images/accordion-headers/metim_rega_header.jpg",
                     "header_image_style_override": "object-position: center 40%;",
                     "storyline": "A group of medical students discovers a way to temporarily bring themselves back from the dead, leading to unforeseen consequences and moral dilemmas."
           },
