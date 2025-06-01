@@ -2,25 +2,44 @@
 :root {
     --primary-red: #FF0000;
     --dark-red: #BC2525;
-    --dark-blue: #0C005A;
+    --dark-blue: #0C005A; /* Kept for potential other uses, but primary elements will use red */
     --light-gray: #EAEAEA;
     --grayish: #EEEEEE;
+    /* --text-dark: #333333; Removed */
+}
+
+/* Global Typography */
+body {
+    /* font-family: 'Open Sans', sans-serif; Removed to use Bootstrap default */
+    line-height: 1.6; /* Improved line spacing */
+    /* color: var(--text-dark); Removed, color set on specific elements or inherited */
 }
 
 /* Headlines */
 .display-1, .display-2, .display-3, .display-4, .display-5, .display-6 {
-    color: var(--primary-red);
+    color: var(--primary-red); /* Changed back to red */
+    margin-bottom: 0.75rem; /* Added spacing below headings */
 }
+
+/* Removed explicit font-weight rules for .display-* as Bootstrap handles these.
+.display-1 { font-weight: 700; }
+.display-2 { font-weight: 600; }
+.display-3 { font-weight: 500; }
+.display-4 { font-weight: 500; }
+.display-5 { font-weight: 400; }
+.display-6 { font-weight: 400; }
+*/
 
 /* Paragraph text */
 p {
-    color: var(--primary-red);
+    color: var(--primary-red); /* Changed back to red */
+    margin-bottom: 1rem; /* Added default spacing */
 }
 
 /* Accordion styling */
 .accordion-button {
     background-color: var(--light-gray) !important;
-    color: var(--primary-red) !important;
+    color: var(--primary-red) !important; /* Changed back to red */
     /* Combined focus styles */
     box-shadow: none !important;
     border-color: transparent !important;
@@ -29,7 +48,7 @@ p {
 
 .accordion-button:not(.collapsed) {
     background-color: var(--grayish) !important;
-    color: var(--primary-red) !important;
+    color: var(--primary-red) !important; /* Changed back to red */
     &::after {
         border-color: transparent;
     }
@@ -37,8 +56,8 @@ p {
 
 .accordion-body {
     background-color: var(--light-gray);
-    color: var(--light-gray);
-    padding-bottom: 6rem; 
+    color: var(--dark-red); /* Changed to dark-red for readability */
+    padding-bottom: 2rem; /* Kept reduced padding */
 }
 
 /* Project card */
@@ -56,7 +75,8 @@ p {
 
 .card-title {
     font-size: 1.5rem;
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem; /* Adjusted spacing */
+    color: var(--dark-red); /* Changed to dark-red */
 }
 
 .project-details {
@@ -65,20 +85,22 @@ p {
 
 .card-body {
     background-color: var(--light-gray);
-    color: var(--light-gray);
+    color: var(--dark-red); /* Changed to dark-red for readability */
 }
 
 /* Buttons */
 .btn-custom {
     background-color: var(--grayish);
-    color: var(--primary-red);
-    border: 1px solid var(--primary-red);
-    
+    color: var(--primary-red); /* Changed back to red */
+    border: 1px solid var(--primary-red); /* Border to red */
+    padding: 0.5rem 1rem; /* Added some padding */
+    transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out; /* Smooth transition */
 }
 
 .btn-custom:hover {
-    /*background-color: var(--primary-red); */
-    color: var(--primary-red);
+    background-color: var(--primary-red); /* Red background on hover */
+    color: var(--light-gray); /* Light gray text on hover */
+    border-color: var(--primary-red); /* Border to red */
 }
 
 /* Carousel controls */
