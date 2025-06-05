@@ -1,0 +1,67 @@
+{{! views/audition.handlebars }}
+{{!-- audition.handlebars: Project-specific or generic audition submission form --}}
+{{> header}}
+<div class="container mt-5">
+  <h1 class="display-4 mb-4">
+    {{!-- Show project name if present, otherwise generic heading --}}
+    {{#if project}}
+      Submit Audition for <span class="text-primary">{{project.name}}</span>
+    {{else}}
+      Submit Your Audition
+    {{/if}}
+  </h1>
+  {{!-- Form action is dynamic: /audition/:projectId for project-specific, /audition for generic --}}
+  <form action="{{#if project}}/audition/{{project.id}}{{else}}/audition{{/if}}" method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
+    <div class="mb-3">
+      <label for="name" class="form-label">Your Name</label>
+      <input type="text" class="form-control" id="name" name="name" required>
+      <div class="invalid-feedback">Please enter your name.</div>
+    </div>
+    <div class="mb-3">
+      <label for="email" class="form-label">Email</label>
+      <input type="email" class="form-control" id="email" name="email" required>
+      <div class="invalid-feedback">Please enter a valid email address.</div>
+    </div>
+    {{!-- If project, show dropdown of roles; else, show free text input --}}
+    {{#if project}}
+    <div class="mb-3">
+      <label for="role" class="form-label">Role</label>
+      <select class="form-select" id="role" name="role" required>
+        <option value="" selected disabled>Select a role</option>
+        {{#each project.roles}}
+          <option value="{{this.name}}">{{this.name}}</option>
+        {{/each}}
+      </select>
+      <div class="invalid-feedback">Please select a role.</div>
+    </div>
+    {{else}}
+    <div class="mb-3">
+      <label for="role" class="form-label">Role (optional)</label>
+      <input type="text" class="form-control" id="role" name="role">
+    </div>
+    {{/if}}
+    <div class="mb-3">
+      <label for="video" class="form-label">Self-Tape Video</label>
+      <input type="file" class="form-control" id="video" name="video" accept="video/*" required>
+      <div class="invalid-feedback">Please upload a video file.</div>
+    </div>
+    <button type="submit" class="btn btn-primary">Submit Audition</button>
+  </form>
+</div>
+{{> footer}}
+<script>
+// Bootstrap validation for client-side feedback
+(function () {
+  'use strict';
+  var forms = document.querySelectorAll('.needs-validation');
+  Array.prototype.slice.call(forms).forEach(function (form) {
+    form.addEventListener('submit', function (event) {
+      if (!form.checkValidity()) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      form.classList.add('was-validated');
+    }, false);
+  });
+})();
+</script>
