@@ -54,10 +54,23 @@ function addRoleToProject(projectId, newRoleObj) {
   return false;
 }
 
+function addAuditionToProject(projectId, roleName, audition) {
+  const projects = readProjects();
+  const project = projects.find(p => p.id === projectId);
+  if (!project) return false;
+  const role = project.roles.find(r => r.name === roleName);
+  if (!role) return false;
+  if (!role.auditions) role.auditions = [];
+  role.auditions.push(audition);
+  writeProjects(projects);
+  return true;
+}
+
 module.exports = {
   getAllProjects,
   getProjectById,
   addProject,
   updateProject,
   addRoleToProject,
+  addAuditionToProject,
 };

@@ -60,7 +60,10 @@ module.exports = {
         
         const safeLabel = Handlebars.Utils.escapeExpression(label);
         return new Handlebars.SafeString(`<p>${safeLabel}: ${displayValueStr}</p>`);
-    }
+    },
+    eq: function(a, b) {
+        return a === b;
+    },
     // You can add more helpers here, e.g.:
     // anotherHelper: function(options) { ... }
 };

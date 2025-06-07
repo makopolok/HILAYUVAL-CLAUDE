@@ -40,11 +40,27 @@
       <input type="text" class="form-control" id="role" name="role">
     </div>
     {{/if}}
+    {{#if project}}
+      {{#if (eq project.uploadMethod "cloud")}}
+        <div class="mb-3">
+          <label for="video" class="form-label">Self-Tape Video (Private Upload)</label>
+          <input type="file" class="form-control" id="video" name="video" accept="video/*" required>
+          <div class="invalid-feedback">Please upload a video file.</div>
+        </div>
+      {{else}}
+        <div class="mb-3">
+          <label for="video" class="form-label">Self-Tape Video (YouTube Upload)</label>
+          <input type="file" class="form-control" id="video" name="video" accept="video/*" required>
+          <div class="invalid-feedback">Please upload a video file.</div>
+        </div>
+      {{/if}}
+    {{else}}
     <div class="mb-3">
       <label for="video" class="form-label">Self-Tape Video</label>
       <input type="file" class="form-control" id="video" name="video" accept="video/*" required>
       <div class="invalid-feedback">Please upload a video file.</div>
     </div>
+    {{/if}}
     <button type="submit" class="btn btn-primary">Submit Audition</button>
   </form>
 </div>

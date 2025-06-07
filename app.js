@@ -13,6 +13,9 @@ const multer = require('multer');
 const upload = multer({ dest: 'uploads/' }); // Store uploads temporarily on disk
 const projectService = require('./services/projectService');
 const nodemailer = require('nodemailer');
+const youtubeUploadService = require('./services/youtubeUploadService');
+const cloudUploadService = require('./services/cloudUploadService');
+const cloudflareUploadService = require('./services/cloudflareUploadService');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -162,7 +165,7 @@ app.get('/projects/create', (req, res) => {
 
 // Route to handle project creation
 app.post('/projects/create', async (req, res) => {
-  const { name, description } = req.body;
+  const { name, description, uploadMethod } = req.body;
   let rolesInput = req.body.roles;
   if (!name || !rolesInput) {
     return res.status(400).send('Project name and at least one role are required.');
@@ -238,6 +241,7 @@ app.post('/projects/create', async (req, res) => {
     id: `proj_${Date.now()}`,
     name,
     description,
+    uploadMethod: uploadMethod || 'youtube', // Store the chosen upload method
     roles: playlists,
     createdAt: new Date().toISOString(),
   };
@@ -287,7 +291,7 @@ app.get('/audition/:projectId', (req, res) => {
   res.render('audition', { project });
 });
 
-// POST route to handle project-specific audition form submission and upload to YouTube
+// POST route to handle project-specific audition form submission and upload
 app.post('/audition/:projectId', upload.single('video'), async (req, res) => {
   const { name, email, role } = req.body;
   const videoFile = req.file;
@@ -302,51 +306,46 @@ app.post('/audition/:projectId', upload.single('video'), async (req, res) => {
   if (!selectedRole) {
     return res.status(400).send('Invalid role selected.');
   }
-  try {
-    oauth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
-    const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
-    // Upload video to YouTube
-    const response = await youtube.videos.insert({
-      part: ['snippet', 'status'],
-      requestBody: {
-        snippet: {
-          title: `Audition: ${name} for ${role} (${project.name})`,
-          description: `Audition submitted by ${name} (${email}) for role: ${role} in project: ${project.name}.`,
-        },
-        status: {
-          privacyStatus: 'unlisted',
-        },
-      },
-      media: {
-        body: fs.createReadStream(videoFile.path),
-      },
-    });
-    // Add video to the correct playlist
-    await youtube.playlistItems.insert({
-      part: ['snippet'],
-      requestBody: {
-        snippet: {
-          playlistId: selectedRole.playlistId,
-          resourceId: {
-            kind: 'youtube#video',
-            videoId: response.data.id,
-          },
-        },
-      },
-    });
-    fs.unlinkSync(videoFile.path);
-    const videoUrl = `https://www.youtube.com/watch?v=${response.data.id}`;
-    res.send(`<h2>Thank you for your submission!</h2><p>Your audition has been received.</p><p>YouTube Link: <a href="${videoUrl}" target="_blank">${videoUrl}</a></p>`);
-  } catch (error) {
-    console.error('Error uploading audition:', error);
-    res.status(500).send(`<h2>Error uploading audition.</h2><pre>${error && error.message ? error.message : error}</pre><pre>${error && error.response && error.response.data ? JSON.stringify(error.response.data, null, 2) : ''}</pre>`);
+  // Delegate to the correct upload service
+  if (project.uploadMethod === 'cloud') {
+    await cloudflareUploadService.handleUpload(req, res, project, selectedRole);
+  } else {
+    await youtubeUploadService.handleUpload(req, res, project, selectedRole);
   }
 });
 
 // Route to list all projects
 app.get('/projects', (req, res) => {
   const projects = projectService.getAllProjects();
-  res.render('projects', { projects });
+  const { name, email, role } = req.query;
+  let filteredProjects = projects;
+  // If global search is used, filter projects to only those with matching auditions or role names
+  if ((name && name.trim()) || (email && email.trim()) || (role && role.trim())) {
+    filteredProjects = projects.map(project => {
+      // For each role, filter auditions and/or match role name
+      const roles = (project.roles || []).map(r => {
+        let auditions = r.auditions || [];
+        let roleMatch = false;
+        if (role && role.trim()) {
+          roleMatch = r.name && r.name.toLowerCase().includes(role.toLowerCase());
+        }
+        if (name && name.trim()) {
+          auditions = auditions.filter(a => a.name && a.name.toLowerCase().includes(name.toLowerCase()));
+        }
+        if (email && email.trim()) {
+          auditions = auditions.filter(a => a.email && a.email.toLowerCase().includes(email.toLowerCase()));
+        }
+        // If role name matches, show all auditions for that role
+        if (roleMatch && !name && !email) {
+          return { ...r };
+        }
+        // Otherwise, only show roles with matching auditions
+        return { ...r, auditions };
+      }).filter(r => (role && role.trim()) ? (r.name && r.name.toLowerCase().includes(role.toLowerCase())) || (r.auditions && r.auditions.length > 0) : (r.auditions && r.auditions.length > 0));
+      return { ...project, roles };
+    }).filter(project => project.roles.length > 0);
+  }
+  res.render('projects', { projects: filteredProjects, query: req.query });
 });
 
 // Route to render the edit project form
@@ -425,6 +424,33 @@ app.post('/projects/:id/add-role', async (req, res) => {
     return res.send(`<h2>Role added with default playlist due to YouTube quota limits.</h2><p>The new role <b>${newRole}</b> was assigned to the default playlist. Please check your YouTube quota or try again later for dedicated playlists.</p><a href="/projects/${project.id}/edit">Back to Edit Project</a>`);
   }
   res.redirect(`/projects/${project.id}/edit`);
+});
+
+// Route to display all auditions for a project (Cloudflare Stream playlist equivalent)
+app.get('/projects/:id/auditions', (req, res) => {
+  const project = projectService.getProjectById(req.params.id);
+  if (!project) {
+    return res.status(404).send('Project not found.');
+  }
+  // Filtering logic
+  const { name, email, role } = req.query;
+  let filteredRoles = project.roles;
+  if (role && role.trim()) {
+    filteredRoles = filteredRoles.filter(r => r.name === role);
+  }
+  // For each role, filter auditions by name/email if provided
+  filteredRoles = filteredRoles.map(r => {
+    let auditions = r.auditions || [];
+    if (name && name.trim()) {
+      auditions = auditions.filter(a => a.name && a.name.toLowerCase().includes(name.toLowerCase()));
+    }
+    if (email && email.trim()) {
+      auditions = auditions.filter(a => a.email && a.email.toLowerCase().includes(email.toLowerCase()));
+    }
+    return { ...r, auditions };
+  });
+  // Pass query params for sticky form
+  res.render('auditions', { project: { ...project, roles: filteredRoles }, query: req.query });
 });
 
 // Error handling

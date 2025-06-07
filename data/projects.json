@@ -126,5 +126,80 @@
       }
     ],
     "createdAt": "2025-06-05T12:28:00.489Z"
+  },
+  {
+    "id": "proj_1749199329905",
+    "name": "White Rose",
+    "description": "firdst cloud fare test",
+    "uploadMethod": "cloud",
+    "roles": [
+      {
+        "name": "Jorgen",
+        "playlistId": "PLjbMUg1d7vaWQUkzFzxhh1aHG9kJIS4KU"
+      },
+      {
+        "name": "Lea",
+        "playlistId": "PLjbMUg1d7vaVMuDjouRs5IOk9cjnd4XeK"
+      }
+    ],
+    "createdAt": "2025-06-06T08:42:09.905Z"
+  },
+  {
+    "id": "proj_1749207457398",
+    "name": "Blue Bird",
+    "description": "",
+    "uploadMethod": "cloud",
+    "roles": [
+      {
+        "name": "Moise",
+        "playlistId": "PLjbMUg1d7vaVEoUO2gLlO5z26uYdJRKnY"
+      }
+    ],
+    "createdAt": "2025-06-06T10:57:37.398Z"
+  },
+  {
+    "id": "proj_1749220975289",
+    "name": "Green Room",
+    "description": "Ladida baluchistan brook",
+    "uploadMethod": "cloud",
+    "roles": [
+      {
+        "name": "Dave",
+        "playlistId": "PLjbMUg1d7vaW7sIIuL3vupJPmAwf8IWl4",
+        "auditions": [
+          {
+            "name": "Yoji Shakamoto",
+            "email": "yoj@jamoo.com",
+            "videoId": "56f88763a6eb45eeb98fa1eadc69b0e8",
+            "submittedAt": "2025-06-06T14:44:00.970Z"
+          },
+          {
+            "name": "Shampp Shakamoto",
+            "email": "botok@jamoo.com",
+            "videoId": "3ab0ffe2e060444abce20209432461d3",
+            "submittedAt": "2025-06-06T14:44:51.126Z"
+          }
+        ]
+      },
+      {
+        "name": "Plague",
+        "playlistId": "PLjbMUg1d7vaWWCs2LPqNGViAQaOmiEvaU",
+        "auditions": [
+          {
+            "name": "Shampp Shakamoto",
+            "email": "botok@jamoo.com",
+            "videoId": "af6d06d4c9554709bd07660082c06e37",
+            "submittedAt": "2025-06-06T14:45:35.586Z"
+          },
+          {
+            "name": "Bamboo Shakamoto",
+            "email": "botok@jamoo.com",
+            "videoId": "61c09ccd0f5c4afb9557998e75e8de53",
+            "submittedAt": "2025-06-06T14:46:25.674Z"
+          }
+        ]
+      }
+    ],
+    "createdAt": "2025-06-06T14:42:55.289Z"
   }
 ]
