@@ -57,5 +57,28 @@ module.exports = {
       console.error('Cloudflare upload error:', err);
       res.status(500).send('Failed to upload audition to Cloudflare Stream.');
     }
+  },
+
+  // New: uploadVideo for backend service use
+  async uploadVideo(videoFile) {
+    if (!videoFile) throw new Error('No video file provided.');
+    const uploadUrl = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream`;
+    const form = new FormData();
+    form.append('file', fs.createReadStream(videoFile.path));
+    form.append('name', videoFile.originalname || videoFile.filename);
+    const response = await axios.post(uploadUrl, form, {
+      headers: {
+        ...form.getHeaders(),
+        'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`
+      },
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity,
+    });
+    fs.unlinkSync(videoFile.path);
+    if (response.data && response.data.result && response.data.result.uid) {
+      return { uid: response.data.result.uid };
+    } else {
+      throw new Error('Cloudflare Stream upload failed.');
+    }
   }
 };

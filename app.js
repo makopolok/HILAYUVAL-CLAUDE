@@ -16,6 +16,7 @@ const nodemailer = require('nodemailer');
 const youtubeUploadService = require('./services/youtubeUploadService');
 const cloudUploadService = require('./services/cloudUploadService');
 const cloudflareUploadService = require('./services/cloudflareUploadService');
+const auditionService = require('./services/auditionService');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -291,26 +292,76 @@ app.get('/audition/:projectId', (req, res) => {
   res.render('audition', { project });
 });
 
-// POST route to handle project-specific audition form submission and upload
-app.post('/audition/:projectId', upload.single('video'), async (req, res) => {
-  const { name, email, role } = req.body;
-  const videoFile = req.file;
+// Update multer to handle multiple profile pictures and a video
+const auditionUpload = multer({ dest: 'uploads/' });
+
+// Updated POST route to handle project-specific audition form submission and upload
+app.post('/audition/:projectId', auditionUpload.fields([
+  { name: 'video', maxCount: 1 },
+  { name: 'profile_pictures', maxCount: 10 }
+]), async (req, res) => {
   const project = projectService.getProjectById(req.params.projectId);
   if (!project) {
     return res.status(404).send('Project not found.');
   }
-  if (!videoFile) {
+  const body = req.body;
+  const files = req.files;
+  // Validate video
+  if (!files || !files.video || !files.video[0]) {
     return res.status(400).send('No video file uploaded.');
   }
-  const selectedRole = project.roles.find(r => r.name === role);
+  // Validate profile pictures
+  if (!files.profile_pictures || files.profile_pictures.length === 0) {
+    return res.status(400).send('At least one profile picture is required.');
+  }
+  // Find selected role
+  const selectedRole = project.roles.find(r => r.name === body.role);
   if (!selectedRole) {
     return res.status(400).send('Invalid role selected.');
   }
-  // Delegate to the correct upload service
-  if (project.uploadMethod === 'cloud') {
-    await cloudflareUploadService.handleUpload(req, res, project, selectedRole);
-  } else {
-    await youtubeUploadService.handleUpload(req, res, project, selectedRole);
+  // Handle video upload (Cloudflare or YouTube)
+  let video_url = null;
+  let video_type = null;
+  try {
+    if (project.uploadMethod === 'cloud') {
+      // Cloudflare upload
+      const result = await cloudflareUploadService.uploadVideo(files.video[0]);
+      video_url = result.uid; // Store Cloudflare UID
+      video_type = 'cloudflare';
+    } else {
+      // YouTube upload
+      const result = await youtubeUploadService.uploadVideo(files.video[0], body, selectedRole);
+      video_url = result.url; // Store YouTube URL
+      video_type = 'youtube';
+    }
+  } catch (err) {
+    return res.status(500).send('Video upload failed: ' + err.message);
+  }
+  // Handle profile picture uploads (just store file paths for now)
+  const profilePicturePaths = files.profile_pictures.map(f => f.path);
+  // Prepare audition object
+  const audition = {
+    project_id: project.id,
+    role: body.role,
+    first_name_he: body.first_name_he,
+    last_name_he: body.last_name_he,
+    first_name_en: body.first_name_en,
+    last_name_en: body.last_name_en,
+    phone: body.phone,
+    email: body.email,
+    agency: body.agency,
+    age: body.age,
+    height: body.height,
+    profile_pictures: profilePicturePaths,
+    showreel_url: body.showreel_url,
+    video_url,
+    video_type
+  };
+  try {
+    await auditionService.insertAudition(audition);
+    res.send('<h2>Thank you for your submission!</h2><p>Your audition has been received.</p>');
+  } catch (err) {
+    res.status(500).send('Failed to save audition: ' + err.message);
   }
 });
 
@@ -427,30 +478,44 @@ app.post('/projects/:id/add-role', async (req, res) => {
 });
 
 // Route to display all auditions for a project (Cloudflare Stream playlist equivalent)
-app.get('/projects/:id/auditions', (req, res) => {
+app.get('/projects/:id/auditions', async (req, res) => {
   const project = projectService.getProjectById(req.params.id);
   if (!project) {
     return res.status(404).send('Project not found.');
   }
-  // Filtering logic
+  // Fetch all auditions for this project from Postgres
   const { name, email, role } = req.query;
-  let filteredRoles = project.roles;
+  let query = 'SELECT * FROM auditions WHERE project_id = $1';
+  const params = [project.id];
+  let paramIdx = 2;
   if (role && role.trim()) {
-    filteredRoles = filteredRoles.filter(r => r.name === role);
+    query += ` AND role = $${paramIdx++}`;
+    params.push(role);
   }
-  // For each role, filter auditions by name/email if provided
-  filteredRoles = filteredRoles.map(r => {
-    let auditions = r.auditions || [];
-    if (name && name.trim()) {
-      auditions = auditions.filter(a => a.name && a.name.toLowerCase().includes(name.toLowerCase()));
-    }
-    if (email && email.trim()) {
-      auditions = auditions.filter(a => a.email && a.email.toLowerCase().includes(email.toLowerCase()));
-    }
-    return { ...r, auditions };
-  });
-  // Pass query params for sticky form
-  res.render('auditions', { project: { ...project, roles: filteredRoles }, query: req.query });
+  if (name && name.trim()) {
+    query += ` AND (LOWER(first_name_he) LIKE $${paramIdx} OR LOWER(last_name_he) LIKE $${paramIdx} OR LOWER(first_name_en) LIKE $${paramIdx} OR LOWER(last_name_en) LIKE $${paramIdx})`;
+    params.push(`%${name.toLowerCase()}%`);
+    paramIdx++;
+  }
+  if (email && email.trim()) {
+    query += ` AND LOWER(email) LIKE $${paramIdx}`;
+    params.push(`%${email.toLowerCase()}%`);
+    paramIdx++;
+  }
+  query += ' ORDER BY created_at DESC';
+  let auditions = [];
+  try {
+    const { rows } = await auditionService.pool.query(query, params);
+    auditions = rows;
+  } catch (err) {
+    return res.status(500).send('Failed to fetch auditions: ' + err.message);
+  }
+  // Group auditions by role for the view
+  const roles = (project.roles || []).map(r => ({
+    name: r.name,
+    auditions: auditions.filter(a => a.role === r.name)
+  }));
+  res.render('auditions', { project: { ...project, roles }, query: req.query });
 });
 
 // Error handling

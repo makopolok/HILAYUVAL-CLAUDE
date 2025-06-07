@@ -12,17 +12,52 @@
   </h1>
   {{!-- Form action is dynamic: /audition/:projectId for project-specific, /audition for generic --}}
   <form action="{{#if project}}/audition/{{project.id}}{{else}}/audition{{/if}}" method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
+    <div class="row">
+      <div class="col-md-6 mb-3">
+        <label for="first_name_he" class="form-label">שם פרטי (First Name, Hebrew)</label>
+        <input type="text" class="form-control" id="first_name_he" name="first_name_he" dir="rtl" required>
+        <div class="invalid-feedback">נא להזין שם פרטי בעברית.</div>
+      </div>
+      <div class="col-md-6 mb-3">
+        <label for="last_name_he" class="form-label">שם משפחה (Last Name, Hebrew)</label>
+        <input type="text" class="form-control" id="last_name_he" name="last_name_he" dir="rtl" required>
+        <div class="invalid-feedback">נא להזין שם משפחה בעברית.</div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-6 mb-3">
+        <label for="first_name_en" class="form-label">First Name (English)</label>
+        <input type="text" class="form-control" id="first_name_en" name="first_name_en" required>
+        <div class="invalid-feedback">Please enter your first name in English.</div>
+      </div>
+      <div class="col-md-6 mb-3">
+        <label for="last_name_en" class="form-label">Last Name (English)</label>
+        <input type="text" class="form-control" id="last_name_en" name="last_name_en" required>
+        <div class="invalid-feedback">Please enter your last name in English.</div>
+      </div>
+    </div>
     <div class="mb-3">
-      <label for="name" class="form-label">Your Name</label>
-      <input type="text" class="form-control" id="name" name="name" required>
-      <div class="invalid-feedback">Please enter your name.</div>
+      <label for="phone" class="form-label">Phone Number</label>
+      <input type="tel" class="form-control" id="phone" name="phone" pattern="[0-9\-+() ]{7,}" required>
+      <div class="invalid-feedback">Please enter a valid phone number.</div>
     </div>
     <div class="mb-3">
       <label for="email" class="form-label">Email</label>
       <input type="email" class="form-control" id="email" name="email" required>
       <div class="invalid-feedback">Please enter a valid email address.</div>
     </div>
-    {{!-- If project, show dropdown of roles; else, show free text input --}}
+    <div class="mb-3">
+      <label for="agency" class="form-label">Agency</label>
+      <input type="text" class="form-control" id="agency" name="agency">
+    </div>
+    <div class="mb-3">
+      <label for="age" class="form-label">Age (optional)</label>
+      <input type="number" class="form-control" id="age" name="age" min="1" max="120">
+    </div>
+    <div class="mb-3">
+      <label for="height" class="form-label">Height (cm, optional)</label>
+      <input type="number" class="form-control" id="height" name="height" min="50" max="250">
+    </div>
     {{#if project}}
     <div class="mb-3">
       <label for="role" class="form-label">Role</label>
@@ -40,6 +75,11 @@
       <input type="text" class="form-control" id="role" name="role">
     </div>
     {{/if}}
+    <div class="mb-3">
+      <label for="profile_pictures" class="form-label">Profile Picture(s)</label>
+      <input type="file" class="form-control" id="profile_pictures" name="profile_pictures" accept="image/*" multiple required>
+      <div class="invalid-feedback">Please upload at least one profile picture.</div>
+    </div>
     {{#if project}}
       {{#if (eq project.uploadMethod "cloud")}}
         <div class="mb-3">
@@ -61,6 +101,10 @@
       <div class="invalid-feedback">Please upload a video file.</div>
     </div>
     {{/if}}
+    <div class="mb-3">
+      <label for="showreel_url" class="form-label">Showreel Link (optional)</label>
+      <input type="url" class="form-control" id="showreel_url" name="showreel_url" placeholder="https://...">
+    </div>
     <button type="submit" class="btn btn-primary">Submit Audition</button>
   </form>
 </div>
