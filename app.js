@@ -7,16 +7,15 @@ const express = require('express');
 const { engine } = require('express-handlebars');
 // const Handlebars = require('handlebars'); // No longer directly needed here for SafeString/Utils if helpers are self-contained
 const customHelpers = require('./helpers/handlebarsHelpers'); // Import custom helpers
-const errorHandler = require('./middleware/errorHandler');
-const portfolioRoutes = require('./routes/portfolio');
-const multer = require('multer');
-const upload = multer({ dest: 'uploads/' }); // Store uploads temporarily on disk
 const projectService = require('./services/projectService');
-const nodemailer = require('nodemailer');
-const youtubeUploadService = require('./services/youtubeUploadService');
-const cloudUploadService = require('./services/cloudUploadService');
-const cloudflareUploadService = require('./services/cloudflareUploadService');
 const auditionService = require('./services/auditionService');
+const { upload } = require('./services/cloudflareUploadService'); // Assuming upload is configured here
+const errorHandler = require('./middleware/errorHandler');
+const handlebarsHelpers = require('./helpers/handlebarsHelpers');
+const rateLimit = require('express-rate-limit');
+
+// Add a version log at the top for deployment verification
+console.log('INFO: app.js version 2025-06-08_2100_DEBUG running');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -317,69 +316,97 @@ const auditionUpload = multer({ dest: 'uploads/' });
 app.post('/audition/:projectId', auditionUpload.fields([
   { name: 'video', maxCount: 1 },
   { name: 'profile_pictures', maxCount: 10 }
-]), async (req, res) => {
-  const project = projectService.getProjectById(req.params.projectId);
-  if (!project) {
-    return res.status(404).send('Project not found.');
-  }
-  const body = req.body;
-  const files = req.files;
-  // Validate video
-  if (!files || !files.video || !files.video[0]) {
-    return res.status(400).send('No video file uploaded.');
-  }
-  // Validate profile pictures
-  if (!files.profile_pictures || files.profile_pictures.length === 0) {
-    return res.status(400).send('At least one profile picture is required.');
-  }
-  // Find selected role
-  const selectedRole = project.roles.find(r => r.name === body.role);
-  if (!selectedRole) {
-    return res.status(400).send('Invalid role selected.');
-  }
-  // Handle video upload (Cloudflare or YouTube)
-  let video_url = null;
-  let video_type = null;
+]), async (req, res, next) => { // Added next for error handling
+  // LOGS AT THE VERY START OF THE HANDLER
+  console.log(`POST_AUDITION_HANDLER_ENTRY: projectId = ${projectId}, timestamp = ${new Date().toISOString()}`);
+  console.log(`POST_AUDITION_HANDLER_REQ_BODY_RAW: ${JSON.stringify(req.body)}`);
+  console.log(`POST_AUDITION_HANDLER_REQ_FILES_RAW: ${JSON.stringify(req.files)}`);
+
   try {
-    if (project.uploadMethod === 'cloud') {
-      // Cloudflare upload
-      const result = await cloudflareUploadService.uploadVideo(files.video[0]);
-      video_url = result.uid; // Store Cloudflare UID
-      video_type = 'cloudflare';
+    console.log(`POST_AUDITION_TRY_BLOCK_START: projectId = ${projectId}`);
+    const project = await projectService.getProjectById(projectId);
+
+    if (project) {
+      console.log(`POST_AUDITION_PROJECT_FETCHED: project ID = ${project.id}, project name = ${project.name}`);
+      if (project.roles) {
+        console.log(`POST_AUDITION_PROJECT_ROLES_EXIST: Roles count = ${project.roles.length}, Roles type = ${typeof project.roles}, isArray = ${Array.isArray(project.roles)}, Content = ${JSON.stringify(project.roles)}`);
+      } else {
+        console.log(`POST_AUDITION_PROJECT_ROLES_MISSING: project.roles is null, undefined or falsy.`);
+      }
     } else {
-      // YouTube upload
-      const result = await youtubeUploadService.uploadVideo(files.video[0], body, selectedRole);
-      video_url = result.url; // Store YouTube URL
-      video_type = 'youtube';
+      console.log(`POST_AUDITION_PROJECT_NOT_FOUND: Project is null or undefined for projectId = ${projectId}`);
+      // It's crucial to stop if project is not found.
+      return res.status(404).send('Project not found');
     }
-  } catch (err) {
-    return res.status(500).send('Video upload failed: ' + err.message);
-  }
-  // Handle profile picture uploads (just store file paths for now)
-  const profilePicturePaths = files.profile_pictures.map(f => f.path);
-  // Prepare audition object
-  const audition = {
-    project_id: project.id,
-    role: body.role,
-    first_name_he: body.first_name_he,
-    last_name_he: body.last_name_he,
-    first_name_en: body.first_name_en,
-    last_name_en: body.last_name_en,
-    phone: body.phone,
-    email: body.email,
-    agency: body.agency,
-    age: body.age,
-    height: body.height,
-    profile_pictures: profilePicturePaths,
-    showreel_url: body.showreel_url,
-    video_url,
-    video_type
-  };
-  try {
+
+    // This check is critical. If project was found but roles are bad, log it.
+    if (!project.roles || !Array.isArray(project.roles)) {
+      console.error(`POST_AUDITION_ROLES_INVALID: Project roles are missing or not an array for project ID: ${projectId}. Current roles value: ${JSON.stringify(project.roles)}`);
+      // If roles are not an array, the .find() will crash.
+      // Consider sending an error response here, but for now, let it proceed to the crash line to confirm.
+      // return res.status(500).send('Project data is incomplete (roles).');
+    }
+
+    const body = req.body;
+    console.log(`POST_AUDITION_BODY_CONTENT: ${JSON.stringify(body)}`);
+    
+    // Defensive check for project and project.roles before the .find() call
+    if (!(project && project.roles && Array.isArray(project.roles))) {
+      console.error(`POST_AUDITION_PRE_FIND_ERROR: project or project.roles is not in a valid state to call .find(). Project exists: ${!!project}, Roles exist and is array: ${!!(project && project.roles && Array.isArray(project.roles))}`);
+      // This indicates a serious issue if we reach here and project.roles is not a findable array.
+      return res.status(500).send('Internal server error: project data integrity issue.');
+    }
+    
+    console.log(`POST_AUDITION_BEFORE_FIND: Attempting to find role: "${body.role}" in roles: ${JSON.stringify(project.roles.map(r => r.name))}`);
+    const selectedRole = project.roles.find(r => r.name === body.role); // This is the original crashing line area
+
+    if (selectedRole) {
+      console.log(`POST_AUDITION_SELECTED_ROLE_FOUND: ${JSON.stringify(selectedRole)}`);
+    } else {
+      console.error(`POST_AUDITION_ROLE_NOT_FOUND_IN_PROJECT: Role "${body.role}" not found in project ${projectId}. Available roles: ${project.roles.map(r => r.name).join(', ')}`);
+      return res.status(400).send('Selected role not found for this project.');
+    }
+
+    const { name, email, phone, message } = body;
+    const videoFile = req.files && req.files.video ? req.files.video[0] : null;
+    const profilePictureFiles = req.files && req.files.profile_pictures ? req.files.profile_pictures : [];
+
+    console.log(`POST_AUDITION_DATA_EXTRACTED: Name=${name}, Email=${email}, Role=${body.role}`);
+    if(videoFile) console.log(`POST_AUDITION_VIDEO_FILE: ${videoFile.originalname}, Path: ${videoFile.path}`);
+    console.log(`POST_AUDITION_PROFILE_PICTURE_FILES_COUNT: ${profilePictureFiles.length}`);
+
+    // For Cloudflare upload, assuming uploadVideo function is adapted to handle multiple files if needed
+    const profilePicturePaths = await Promise.all(profilePictureFiles.map(async (file) => {
+      const result = await cloudflareUploadService.uploadVideo(file);
+      return result.uid;
+    }));
+
+    const audition = {
+      project_id: project.id,
+      role: body.role,
+      first_name_he: body.first_name_he,
+      last_name_he: body.last_name_he,
+      first_name_en: body.first_name_en,
+      last_name_en: body.last_name_en,
+      phone: body.phone,
+      email: body.email,
+      agency: body.agency,
+      age: body.age,
+      height: body.height,
+      profile_pictures: profilePicturePaths,
+      showreel_url: body.showreel_url,
+      video_url: videoFile ? videoFile.path : null, // Direct path for now, adapt if using Cloudflare or other services
+      video_type: videoFile ? 'youtube' : null // Set based on actual upload service
+    };
+    console.log(`[App.js POST /audition/:${projectId}] Prepared audition object: ${JSON.stringify(audition)}`);
+
     await auditionService.insertAudition(audition);
+    console.log(`[App.js POST /audition/:${projectId}] Audition saved successfully.`);
     res.send('<h2>Thank you for your submission!</h2><p>Your audition has been received.</p>');
-  } catch (err) {
-    res.status(500).send('Failed to save audition: ' + err.message);
+
+  } catch (error) {
+    console.error(`[App.js POST /audition/:${req.params.projectId}] Critical error in route:`, error.message, error.stack);
+    next(error); // Pass to the main error handler
   }
 });
 
@@ -544,9 +571,41 @@ app.use((req, res) => {
 // Add at the end of middleware chain, before app.listen
 app.use(errorHandler);
 
-// Start server
-app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+const server = app.listen(PORT, () => {
+    console.log(`INFO: Server attempting to run on port ${PORT}. Heroku process.env.PORT: ${process.env.PORT}. Timestamp: ${new Date().toISOString()}`);
+    // Example: Check DB connection after server starts (if auditionService has such a method)
+    if (auditionService && typeof auditionService.checkDbConnection === 'function') {
+        auditionService.checkDbConnection()
+            .then(() => console.log("INFO: DB connection check successful after server start."))
+            .catch(err => console.error("ERROR: DB connection check failed after server start:", err));
+    } else {
+        console.warn("WARN: auditionService.checkDbConnection function not found. Skipping post-start DB check.");
+    }
 });
 
-module.exports = app;
+server.on('listening', () => {
+    console.log(`INFO: Server successfully listening on port ${PORT}. Timestamp: ${new Date().toISOString()}`);
+});
+
+server.on('error', (error) => {
+    console.error(`FATAL_SERVER_ERROR: Failed to start/run server on port ${PORT}. Code: ${error.code}, Syscall: ${error.syscall}. Timestamp: ${new Date().toISOString()}`, error);
+    if (error.syscall !== 'listen') {
+        // If it's not a listen error, it might be an unhandled error during server operation if not caught by route handlers
+        // For listen errors, specific handling:
+        switch (error.code) {
+            case 'EACCES':
+                console.error(`FATAL_PERMISSIONS: Port ${PORT} requires elevated privileges.`);
+                process.exit(1);
+                break;
+            case 'EADDRINUSE':
+                console.error(`FATAL_PORT_IN_USE: Port ${PORT} is already in use.`);
+                process.exit(1);
+                break;
+            // default: // No default throw here, as it might be an operational error passed to server.on('error')
+        }
+    }
+    // For critical startup errors, ensure the process exits if it can't recover.
+    // However, be cautious with process.exit in a web server unless it's truly a fatal startup condition.
+});
+
+module.exports = app; // Ensure app is exported if needed for tests or other modules
