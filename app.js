@@ -302,8 +302,8 @@ app.post('/projects/create', async (req, res) => {
 });
 
 // Route to render project-specific audition form
-app.get('/audition/:projectId', (req, res) => {
-  const project = projectService.getProjectById(req.params.projectId);
+app.get('/audition/:projectId', async (req, res) => {
+  const project = await projectService.getProjectById(req.params.projectId);
   if (!project) {
     return res.status(404).send('Project not found.');
   }
