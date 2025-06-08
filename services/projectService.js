@@ -1,76 +1,62 @@
 // services/projectService.js
-const fs = require('fs');
-const path = require('path');
+const { pool } = require('./auditionService');
 
-const PROJECTS_FILE = path.join(__dirname, '../data/projects.json');
-
-function readProjects() {
+// Add a new project and its roles
+async function addProject(project) {
+  const client = await pool.connect();
   try {
-    const data = fs.readFileSync(PROJECTS_FILE, 'utf8');
-    return JSON.parse(data);
+    await client.query('BEGIN');
+    await client.query(
+      `INSERT INTO projects (id, name, description, upload_method, created_at, director, production_company)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [project.id, project.name, project.description, project.uploadMethod, project.createdAt, project.director, project.production_company]
+    );
+    for (const role of project.roles) {
+      await client.query(
+        `INSERT INTO roles (project_id, name, playlist_id)
+         VALUES ($1, $2, $3)`,
+        [project.id, role.name, role.playlistId]
+      );
+    }
+    await client.query('COMMIT');
   } catch (err) {
-    return [];
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
   }
 }
 
-function writeProjects(projects) {
-  fs.writeFileSync(PROJECTS_FILE, JSON.stringify(projects, null, 2));
+// Get all projects with their roles
+async function getAllProjects() {
+  const projectsRes = await pool.query('SELECT * FROM projects ORDER BY created_at DESC');
+  const rolesRes = await pool.query('SELECT * FROM roles');
+  return projectsRes.rows.map(project => ({
+    ...project,
+    roles: rolesRes.rows.filter(role => role.project_id === project.id)
+  }));
 }
 
-function getAllProjects() {
-  return readProjects();
+// Get a project by ID
+async function getProjectById(id) {
+  const projectRes = await pool.query('SELECT * FROM projects WHERE id = $1', [id]);
+  if (projectRes.rows.length === 0) return null;
+  const rolesRes = await pool.query('SELECT * FROM roles WHERE project_id = $1', [id]);
+  return { ...projectRes.rows[0], roles: rolesRes.rows };
 }
 
-function getProjectById(id) {
-  return readProjects().find(p => p.id === id);
-}
-
-function addProject(project) {
-  const projects = readProjects();
-  projects.push(project);
-  writeProjects(projects);
-}
-
-function updateProject(id, update) {
-  const projects = readProjects();
-  const idx = projects.findIndex(p => p.id === id);
-  if (idx !== -1) {
-    projects[idx] = { ...projects[idx], ...update };
-    writeProjects(projects);
-    return true;
-  }
-  return false;
-}
-
-function addRoleToProject(projectId, newRoleObj) {
-  const projects = readProjects();
-  const idx = projects.findIndex(p => p.id === projectId);
-  if (idx !== -1) {
-    if (!projects[idx].roles) projects[idx].roles = [];
-    projects[idx].roles.push(newRoleObj);
-    writeProjects(projects);
-    return true;
-  }
-  return false;
-}
-
-function addAuditionToProject(projectId, roleName, audition) {
-  const projects = readProjects();
-  const project = projects.find(p => p.id === projectId);
-  if (!project) return false;
-  const role = project.roles.find(r => r.name === roleName);
-  if (!role) return false;
-  if (!role.auditions) role.auditions = [];
-  role.auditions.push(audition);
-  writeProjects(projects);
-  return true;
+// Add a role to a project
+async function addRoleToProject(projectId, role) {
+  await pool.query(
+    `INSERT INTO roles (project_id, name, playlist_id)
+     VALUES ($1, $2, $3)`,
+    [projectId, role.name, role.playlistId]
+  );
 }
 
 module.exports = {
+  addProject,
   getAllProjects,
   getProjectById,
-  addProject,
-  updateProject,
-  addRoleToProject,
-  addAuditionToProject,
+  addRoleToProject
 };

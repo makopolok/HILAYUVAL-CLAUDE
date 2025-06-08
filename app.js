@@ -56,6 +56,7 @@ app.set('views', './views');
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+// Serve static files from the "public" directory
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Routes
@@ -215,19 +216,34 @@ app.post('/projects/create', async (req, res) => {
           playlistId = playlistRes.data.id;
           break;
         } catch (err) {
-          if (err && err.response && err.response.status === 429) {
+          const isRateLimitError = err && err.response && err.response.status === 429;
+          const isQuotaExceededError = err && err.response && err.response.status === 403 &&
+                                     err.response.data && err.response.data.error &&
+                                     err.response.data.error.errors && err.response.data.error.errors.length > 0 &&
+                                     err.response.data.error.errors[0].reason === 'quotaExceeded';
+
+          if (isRateLimitError) {
             if (retries === maxRetries - 1) {
+              console.warn(`Max retries reached for playlist creation (429 error) for role ${role.name}. Using default playlist.`);
               usedDefault = true;
               playlistId = defaultPlaylistId;
               break;
             }
+            console.warn(`Rate limit hit for playlist creation, retrying (attempt ${retries + 1}/${maxRetries})...`);
             await new Promise(resolve => setTimeout(resolve, delay));
             delay *= 2;
             retries++;
             continue;
+          } else if (isQuotaExceededError) {
+            console.warn(`YouTube API quota exceeded for playlist creation for role ${role.name}. Using default playlist.`);
+            usedDefault = true;
+            playlistId = defaultPlaylistId;
+            break; // No point in retrying if quota is exceeded
           } else {
             console.error(`Error creating playlist for role ${role.name}:`, err);
-            let errorDetails = err && err.response && err.response.data ? JSON.stringify(err.response.data, null, 2) : err.stack || err.toString();
+            let errorDetails = err && err.response && err.response.data ? JSON.stringify(err.response.data, null, 2) : (err.stack || err.toString());
+            // Avoid sending raw error details to client in production for security, but useful for dev
+            // For now, keeping the detailed error response for debugging.
             return res.status(500).send(`Error creating playlist for role ${role.name}:<br><pre>${errorDetails}</pre>`);
           }
         }
@@ -242,11 +258,13 @@ app.post('/projects/create', async (req, res) => {
     id: `proj_${Date.now()}`,
     name,
     description,
-    uploadMethod: uploadMethod || 'youtube', // Store the chosen upload method
+    uploadMethod: uploadMethod || 'youtube',
     roles: playlists,
     createdAt: new Date().toISOString(),
+    director: req.body.director,
+    production_company: req.body.production_company
   };
-  projectService.addProject(project);
+  await projectService.addProject(project);
   const auditionUrl = `${req.protocol}://${req.get('host')}/audition/${project.id}`;
   if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
     const transporter = nodemailer.createTransport({
@@ -366,8 +384,8 @@ app.post('/audition/:projectId', auditionUpload.fields([
 });
 
 // Route to list all projects
-app.get('/projects', (req, res) => {
-  const projects = projectService.getAllProjects();
+app.get('/projects', async (req, res) => {
+  const projects = await projectService.getAllProjects();
   const { name, email, role } = req.query;
   let filteredProjects = projects;
   // If global search is used, filter projects to only those with matching auditions or role names
@@ -400,8 +418,8 @@ app.get('/projects', (req, res) => {
 });
 
 // Route to render the edit project form
-app.get('/projects/:id/edit', (req, res) => {
-  const project = projectService.getProjectById(req.params.id);
+app.get('/projects/:id/edit', async (req, res) => {
+  const project = await projectService.getProjectById(req.params.id);
   if (!project) {
     return res.status(404).send('Project not found.');
   }
@@ -469,7 +487,7 @@ app.post('/projects/:id/add-role', async (req, res) => {
   const defaultPlaylistId = 'PLjbMUg1d7vaXP1qiq_5z1nB3Uj4P2f1gj';
   const playlistId = usedDefault ? defaultPlaylistId : playlistRes.data.id;
   const newRoleObj = { name: newRole, playlistId };
-  projectService.addRoleToProject(project.id, newRoleObj);
+  await projectService.addRoleToProject(project.id, newRoleObj);
   // Optionally, show a message if default playlist was used
   if (usedDefault) {
     return res.send(`<h2>Role added with default playlist due to YouTube quota limits.</h2><p>The new role <b>${newRole}</b> was assigned to the default playlist. Please check your YouTube quota or try again later for dedicated playlists.</p><a href="/projects/${project.id}/edit">Back to Edit Project</a>`);
