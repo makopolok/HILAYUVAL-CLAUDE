@@ -1,0 +1,49 @@
+{{!-- views/projects.handlebars --}}
+{{> header}}
+<div class="container mt-5">
+  <h1 class="display-4 mb-4">Projects</h1>
+  <a href="/projects/create" class="btn btn-outline-success mb-3">Create New Project</a>
+  <form class="row g-3 mb-4" method="GET" action="">
+    <div class="col-md-4">
+      <input type="text" class="form-control" name="name" placeholder="Filter by actor name" value="{{query.name}}">
+    </div>
+    <div class="col-md-4">
+      <input type="text" class="form-control" name="email" placeholder="Filter by email" value="{{query.email}}">
+    </div>
+    <div class="col-md-4">
+      <button type="submit" class="btn btn-outline-danger">Global Search</button>
+      <a href="/projects" class="btn btn-outline-secondary ms-2">Clear</a>
+    </div>
+  </form>
+  {{#if projects.length}}
+    <table class="table table-bordered table-hover">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Description</th>
+          <th>Created</th>
+          <th>Audition Form Link</th>
+          <th>Audition Playlist</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each projects}}
+        <tr>
+          <td>{{this.name}}</td>
+          <td>{{this.description}}</td>
+          <td>{{this.createdAt}}</td>
+          <td>
+            <a href="/audition/{{this.id}}" target="_blank">/audition/{{this.id}}</a>
+          </td>
+          <td>
+            <a href="/projects/{{this.id}}/auditions" class="btn btn-outline-danger btn-sm">View Auditions</a>
+          </td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+  {{else}}
+    <p>No projects found.</p>
+  {{/if}}
+</div>
+{{> footer}}

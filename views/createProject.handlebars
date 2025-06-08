@@ -1,0 +1,106 @@
+{{!-- views/createProject.handlebars --}}
+{{> header}}
+<div class="container mt-5">
+  <div class="card shadow-sm mx-auto" style="max-width: 600px;">
+    <div class="card-body">
+      <h1 class="display-6 mb-4 text-danger fw-bold" style="text-shadow:0 1px 2px #f8d7da;">Create New Project</h1>
+      <form action="/projects/create" method="POST" class="needs-validation" novalidate>
+        <div class="mb-3">
+          <label for="name" class="form-label text-danger fw-semibold">Project Name</label>
+          <input type="text" class="form-control text-danger border-danger" id="name" name="name" required placeholder="Enter project name">
+          <div class="invalid-feedback text-danger">Please enter a project name.</div>
+        </div>
+        <div class="mb-3">
+          <label for="description" class="form-label text-danger fw-semibold">Description</label>
+          <textarea class="form-control text-danger border-danger" id="description" name="description" rows="2" placeholder="Project description (optional)"></textarea>
+        </div>
+        <div class="mb-3">
+          <label class="form-label text-danger fw-semibold">Roles</label>
+          <div id="roles-list">
+            <div class="card mb-3 border-danger role-card">
+              <div class="card-body p-3">
+                <div class="row g-2 align-items-center">
+                  <div class="col-12 col-md-6">
+                    <input type="text" class="form-control text-danger border-danger" name="roles[0][name]" placeholder="Role name" required>
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <input type="text" class="form-control text-danger border-danger" name="roles[0][playlist]" placeholder="YouTube playlist URL (optional)">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button type="button" class="btn btn-outline-danger btn-sm mt-2 fw-semibold" id="add-role-btn">+ Add Role</button>
+        </div>
+        <div class="mb-3">
+          <label class="form-label text-danger fw-semibold">Audition Upload Method</label>
+          <div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" name="uploadMethod" id="uploadYouTube" value="youtube" checked>
+              <label class="form-check-label" for="uploadYouTube">YouTube</label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" name="uploadMethod" id="uploadCloud" value="cloud">
+              <label class="form-check-label" for="uploadCloud">Private (Cloudflare Stream)</label>
+              <span class="ms-1 text-muted" style="font-size:0.95em;">(Secure, not public on YouTube)</span>
+            </div>
+          </div>
+          <div class="form-text text-danger">Choose 'Private (Cloudflare Stream)' for secure, non-public video uploads.</div>
+        </div>
+        <button type="submit" class="btn btn-outline-danger fw-bold">Create Project</button>
+      </form>
+    </div>
+  </div>
+</div>
+{{> footer}}
+<script>
+(function () {
+  'use strict';
+  var forms = document.querySelectorAll('.needs-validation');
+  Array.prototype.slice.call(forms).forEach(function (form) {
+    form.addEventListener('submit', function (event) {
+      var roleInputs = form.querySelectorAll('[name^="roles"][name$="[name]"]');
+      var valid = false;
+      for (var i = 0; i < roleInputs.length; i++) {
+        if (roleInputs[i].value.trim()) valid = true;
+      }
+      if (!form.checkValidity() || !valid) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      form.classList.add('was-validated');
+    }, false);
+  });
+  // Add role card logic
+  var addRoleBtn = document.getElementById('add-role-btn');
+  var rolesList = document.getElementById('roles-list');
+  var roleIndex = 1;
+  addRoleBtn.addEventListener('click', function () {
+    var card = document.createElement('div');
+    card.className = 'card mb-3 border-danger role-card';
+    card.innerHTML = `
+      <div class="card-body p-3">
+        <div class="row g-2 align-items-center">
+          <div class="col-12 col-md-6">
+            <input type="text" class="form-control text-danger border-danger" name="roles[${roleIndex}][name]" placeholder="Role name" required>
+          </div>
+          <div class="col-12 col-md-6">
+            <input type="text" class="form-control text-danger border-danger" name="roles[${roleIndex}][playlist]" placeholder="YouTube playlist URL (optional)">
+          </div>
+          <div class="col-12 text-end mt-2">
+            <button type="button" class="btn btn-outline-danger btn-sm remove-role-btn" title="Remove">&times;</button>
+          </div>
+        </div>
+      </div>
+    `;
+    rolesList.appendChild(card);
+    roleIndex++;
+  });
+  // Remove role card logic
+  rolesList.addEventListener('click', function (e) {
+    if (e.target.classList.contains('remove-role-btn')) {
+      e.target.closest('.role-card').remove();
+    }
+  });
+})();
+</script>

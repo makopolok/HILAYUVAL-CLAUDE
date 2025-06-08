@@ -20,9 +20,16 @@
                         aria-controls="collapse-{{@index}}": Links this button to the collapsible content for accessibility. Uses loop index.
                         class="accordion-button collapsed": Standard Bootstrap classes for styling and indicating the collapsed state.
                     -->
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{@index}}" aria-expanded="false" aria-controls="collapse-{{@index}}">
-                        {{! Display project title, year, and Hebrew title in the button }}
-                        {{title}} ({{year}}) - {{hebrew_title}}
+                    <button class="accordion-button collapsed custom-accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{@index}}" aria-expanded="false" aria-controls="collapse-{{@index}}">
+                        {{#if header_image_url}}
+                            <img src="{{header_image_url}}" alt="{{title}} header image" class="accordion-header-image-top" {{#if header_image_style_override}}style="{{header_image_style_override}}"{{/if}}>
+                        {{/if}}
+                        <span class="accordion-header-text-line {{#if header_image_url}}overlay{{/if}}">
+                            <span class="accordion-header-title-text">
+                                {{title}} ({{year}}) - {{hebrew_title}}
+                            </span>
+                            <span class="accordion-custom-icon"></span>
+                        </span>
                     </button>
                 </h2>
                 {{! Collapsible content area for the project details }}

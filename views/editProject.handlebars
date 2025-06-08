@@ -1,0 +1,24 @@
+{{!-- views/editProject.handlebars --}}
+{{! Edit Project: Add new roles }}
+{{> header}}
+<div class="container mt-4">
+  <h2>Edit Project: {{project.name}}</h2>
+  <p>{{project.description}}</p>
+  <h4>Current Roles</h4>
+  <ul>
+    {{#each project.roles}}
+      <li>{{this.name}} <span class="text-muted">({{this.playlistId}})</span></li>
+    {{/each}}
+  </ul>
+  <hr>
+  <h4>Add New Role</h4>
+  <form method="POST" action="/projects/{{project.id}}/add-role">
+    <div class="mb-3">
+      <label for="newRole" class="form-label">Role Name</label>
+      <input type="text" class="form-control" id="newRole" name="newRole" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Add Role</button>
+    <a href="/projects" class="btn btn-secondary">Back to Projects</a>
+  </form>
+</div>
+{{> footer}}
