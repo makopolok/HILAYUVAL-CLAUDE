@@ -262,7 +262,7 @@ app.post('/projects/create', async (req, res) => {
     id: `proj_${Date.now()}`,
     name,
     description,
-    uploadMethod: uploadMethod || 'youtube',
+    uploadMethod: uploadMethod || 'cloudflare', // CHANGED: Default to 'cloudflare'
     roles: playlists,
     createdAt: new Date().toISOString(),
     director: req.body.director,
@@ -380,14 +380,91 @@ app.post('/audition/:projectId', auditionUpload.fields([
     if(videoFile) console.log(`POST_AUDITION_VIDEO_FILE: ${videoFile.originalname}, Path: ${videoFile.path}`);
     console.log(`POST_AUDITION_PROFILE_PICTURE_FILES_COUNT: ${profilePictureFiles.length}`);
 
-    // For Cloudflare upload, assuming uploadVideo function is adapted to handle multiple files if needed
-    const profilePicturePaths = await Promise.all(profilePictureFiles.map(async (file) => {
-      const result = await cloudflareUploadService.uploadVideo(file);
-      return result.uid;
+    // For Cloudflare upload, use uploadImageToCloudflareImages for profile pictures
+    const profilePictureUploadResults = await Promise.all(profilePictureFiles.map(async (file) => {
+      console.log(`POST_AUDITION_UPLOADING_PROFILE_PICTURE: ${file.originalname}`);
+      const result = await cloudflareUploadService.uploadImageToCloudflareImages(file);
+      // result will be an object like { id: '...', url: '...' }
+      console.log(`POST_AUDITION_PROFILE_PICTURE_UPLOADED: ${file.originalname}, ID: ${result.id}, URL: ${result.url}`);
+      return result; 
     }));
 
+    let videoUploadResult = null;
+    let videoType = null;
+    let finalVideoUrl = null; // Using a more descriptive name
+
+    if (videoFile) {
+      console.log(`POST_AUDITION_UPLOADING_VIDEO: ${videoFile.originalname} for project ${project.id}. Project's uploadMethod: ${project.uploadMethod}`);
+      
+      if (project.uploadMethod === 'youtube') {
+        console.log(`POST_AUDITION_ATTEMPTING_YOUTUBE_UPLOAD: Role: ${selectedRole.name}, Playlist ID: ${selectedRole.playlistId}`);
+        if (!REFRESH_TOKEN) {
+          console.error('POST_AUDITION_YOUTUBE_ERROR: Google Refresh Token not configured.');
+          throw new Error('Google Refresh Token not configured. Cannot upload to YouTube.');
+        }
+        if (!selectedRole.playlistId) {
+          console.warn(`POST_AUDITION_YOUTUBE_WARN: No playlistId found for role ${selectedRole.name} in project ${project.name}. Video will be uploaded without adding to a playlist.`);
+        }
+
+        oauth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
+        const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
+
+        const videoTitle = `Audition: ${body.first_name_en || body.first_name_he} ${body.last_name_en || body.last_name_he} for ${selectedRole.name} in ${project.name}`;
+        const videoDescription = `Audition by ${body.first_name_en || body.first_name_he} ${body.last_name_en || body.last_name_he} (${body.email}) for ${selectedRole.name} in ${project.name}. Project ID: ${project.id}. Submitted: ${new Date().toISOString()}`;
+        
+        try {
+          const youtubeResponse = await youtube.videos.insert({
+            part: ['snippet', 'status'],
+            requestBody: {
+              snippet: {
+                title: videoTitle,
+                description: videoDescription,
+                playlistId: selectedRole.playlistId, // This can be null/undefined if not available
+              },
+              status: {
+                privacyStatus: 'unlisted',
+              },
+            },
+            media: {
+              body: fs.createReadStream(videoFile.path),
+            },
+          });
+
+          if (fs.existsSync(videoFile.path)) { // Ensure file exists before unlinking
+            fs.unlinkSync(videoFile.path);
+          }
+
+          const youtubeVideoId = youtubeResponse.data.id;
+          finalVideoUrl = `https://www.youtube.com/watch?v=${youtubeVideoId}`;
+          videoType = 'youtube';
+          videoUploadResult = { id: youtubeVideoId, url: finalVideoUrl }; 
+          console.log(`POST_AUDITION_VIDEO_UPLOADED_YOUTUBE: ${videoFile.originalname}, ID: ${youtubeVideoId}, URL: ${finalVideoUrl}`);
+        } catch (ytError) {
+          console.error('POST_AUDITION_YOUTUBE_UPLOAD_ERROR: Failed to upload video to YouTube.', ytError);
+          if (fs.existsSync(videoFile.path)) { // Clean up temp file on error too
+            fs.unlinkSync(videoFile.path);
+          }
+          throw ytError; // Re-throw to be caught by the main try-catch
+        }
+
+      } else { // Default to Cloudflare Stream (if uploadMethod is 'cloudflare' or anything else)
+        console.log(`POST_AUDITION_UPLOADING_TO_CLOUDFLARE_STREAM: ${videoFile.originalname}`);
+        try {
+          const cfStreamResult = await cloudflareUploadService.uploadVideo(videoFile); // uploadVideo already handles unlinking path
+          finalVideoUrl = cfStreamResult.uid; 
+          videoType = 'cloudflare_stream';
+          videoUploadResult = { id: cfStreamResult.uid }; 
+          console.log(`POST_AUDITION_VIDEO_UPLOADED_CLOUDFLARE: ${videoFile.originalname}, UID: ${cfStreamResult.uid}`);
+        } catch (cfError) {
+          console.error('POST_AUDITION_CLOUDFLARE_UPLOAD_ERROR: Failed to upload video to Cloudflare Stream.', cfError);
+          // cloudflareUploadService.uploadVideo should handle unlinking its temp file on error
+          throw cfError; // Re-throw
+        }
+      }
+    }
+
     const audition = {
-      project_id: project.id,
+      project_id: project.id, 
       role: body.role,
       first_name_he: body.first_name_he,
       last_name_he: body.last_name_he,
@@ -398,15 +475,16 @@ app.post('/audition/:projectId', auditionUpload.fields([
       agency: body.agency,
       age: body.age,
       height: body.height,
-      profile_pictures: profilePicturePaths,
+      profile_pictures: profilePictureUploadResults, 
       showreel_url: body.showreel_url,
-      video_url: videoFile ? videoFile.path : null, // Direct path for now, adapt if using Cloudflare or other services
-      video_type: videoFile ? 'youtube' : null // Set based on actual upload service
+      video_url: finalVideoUrl, 
+      video_type: videoType 
     };
-    console.log(`[App.js POST /audition/:${projectId}] Prepared audition object: ${JSON.stringify(audition)}`);
+    // Corrected logging to use req.params.projectId as projectId is not defined in this scope
+    console.log(`[App.js POST /audition/:${req.params.projectId}] Prepared audition object: ${JSON.stringify(audition)}`);
 
     await auditionService.insertAudition(audition);
-    console.log(`[App.js POST /audition/:${projectId}] Audition saved successfully.`);
+    console.log(`[App.js POST /audition/:${req.params.projectId}] Audition saved successfully.`);
     res.send('<h2>Thank you for your submission!</h2><p>Your audition has been received.</p>');
 
   } catch (error) {
