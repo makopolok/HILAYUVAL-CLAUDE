@@ -8,7 +8,8 @@ const FormData = require('form-data');
 const projectService = require('./projectService');
 
 const CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
-const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
+const CLOUDFLARE_STREAM_API_TOKEN = process.env.CLOUDFLARE_STREAM_API_TOKEN;
+const CLOUDFLARE_IMAGES_API_TOKEN = process.env.CLOUDFLARE_IMAGES_API_TOKEN;
 
 module.exports = {
   async handleUpload(req, res, project, selectedRole) {
@@ -29,7 +30,7 @@ module.exports = {
       const response = await axios.post(uploadUrl, form, {
         headers: {
           ...form.getHeaders(),
-          'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`
+          'Authorization': `Bearer ${CLOUDFLARE_STREAM_API_TOKEN}`
         },
         maxContentLength: Infinity,
         maxBodyLength: Infinity,
@@ -62,6 +63,10 @@ module.exports = {
   // New: uploadVideo for backend service use
   async uploadVideo(videoFile) {
     if (!videoFile) throw new Error('No video file provided.');
+    if (!CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_STREAM_API_TOKEN) {
+      console.error('Cloudflare Account ID or Stream API Token is not configured.');
+      throw new Error('Cloudflare Stream credentials not configured.');
+    }
     const uploadUrl = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream`;
     const form = new FormData();
     form.append('file', fs.createReadStream(videoFile.path));
@@ -70,7 +75,7 @@ module.exports = {
       const response = await axios.post(uploadUrl, form, {
         headers: {
           ...form.getHeaders(),
-          'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`
+          'Authorization': `Bearer ${CLOUDFLARE_STREAM_API_TOKEN}`
         },
         maxContentLength: Infinity,
         maxBodyLength: Infinity,
@@ -108,9 +113,9 @@ module.exports = {
 
   async uploadImageToCloudflareImages(imageFile) {
     if (!imageFile) throw new Error('No image file provided.');
-    if (!CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_API_TOKEN) {
-      console.error('Cloudflare Account ID or API Token is not configured.');
-      throw new Error('Cloudflare credentials not configured.');
+    if (!CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_IMAGES_API_TOKEN) {
+      console.error('Cloudflare Account ID or Images API Token is not configured.');
+      throw new Error('Cloudflare Images credentials not configured.');
     }
 
     const uploadUrl = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/images/v1`;
@@ -128,7 +133,7 @@ module.exports = {
       const response = await axios.post(uploadUrl, form, {
         headers: {
           ...form.getHeaders(),
-          'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`
+          'Authorization': `Bearer ${CLOUDFLARE_IMAGES_API_TOKEN}`
         },
         maxContentLength: Infinity, // Important for file uploads
         maxBodyLength: Infinity    // Important for file uploads
