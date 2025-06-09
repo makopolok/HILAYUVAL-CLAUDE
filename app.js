@@ -4,12 +4,13 @@ const fs = require('fs');
 const path = require('path');
 
 const express = require('express');
+const multer = require('multer'); // Added multer require
 const { engine } = require('express-handlebars');
 // const Handlebars = require('handlebars'); // No longer directly needed here for SafeString/Utils if helpers are self-contained
 const customHelpers = require('./helpers/handlebarsHelpers'); // Import custom helpers
 const projectService = require('./services/projectService');
 const auditionService = require('./services/auditionService');
-const { upload } = require('./services/cloudflareUploadService'); // Assuming upload is configured here
+const cloudflareUploadService = require('./services/cloudflareUploadService'); // MODIFIED - Correctly import the service
 const errorHandler = require('./middleware/errorHandler');
 const handlebarsHelpers = require('./helpers/handlebarsHelpers');
 const rateLimit = require('express-rate-limit');
@@ -59,6 +60,9 @@ app.use(express.urlencoded({ extended: true }));
 // Serve static files from the "public" directory
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Define multer instance for the general /audition route (YouTube upload)
+const generalAuditionUpload = multer({ dest: 'uploads/' }); // ADDED
+
 // Routes
 app.use('/', portfolioRoutes);
 
@@ -68,7 +72,7 @@ app.get('/audition', (req, res) => {
 });
 
 // POST route to handle audition form submission and upload to YouTube
-app.post('/audition', upload.single('video'), async (req, res) => {
+app.post('/audition', generalAuditionUpload.single('video'), async (req, res) => { // MODIFIED - Use the new multer instance
   const { name, email, role } = req.body;
   const videoFile = req.file;
 
