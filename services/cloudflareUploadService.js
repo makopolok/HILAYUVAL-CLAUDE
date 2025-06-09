@@ -85,38 +85,28 @@ module.exports = {
         return { uid: response.data.result.uid };      } else {
         console.error('Cloudflare Stream upload failed - unexpected response structure:', response.data);
         throw new Error('Cloudflare Stream upload failed - unexpected response structure.');
-      }
-    } catch (error) {
-      console.error('=== CLOUDFLARE UPLOAD ERROR CATCH BLOCK ENTERED ===');
-      const util = require('util');
-      if (error.response) {
-        console.error('=== ERROR.RESPONSE EXISTS ===');
-        console.error('Response status:', error.response.status);
-        console.error('Response data type:', typeof error.response.data);
-        console.error('Response data (stringified):', JSON.stringify(error.response.data));
-        
+      }    } catch (error) {
+      console.log('CATCH BLOCK ENTERED');
+      console.log('ERROR TYPE:', typeof error);
+      console.log('ERROR MESSAGE:', error.message);
+      
+      const util = require('util');      if (error.response) {
+        console.log('ERROR HAS RESPONSE');
+        console.log('RESPONSE STATUS:', error.response.status);
+        console.log('RESPONSE DATA:', JSON.stringify(error.response.data, null, 2));        
         if (error.response.data && error.response.data.errors) {
-          console.error('=== CLOUDFLARE ERRORS ARRAY FOUND ===');
-          console.error('Errors type:', typeof error.response.data.errors);
-          console.error('Is errors array?', Array.isArray(error.response.data.errors));
+          console.log('ERRORS FOUND:', JSON.stringify(error.response.data.errors, null, 2));
           
           if (Array.isArray(error.response.data.errors)) {
-            console.error('Errors array length:', error.response.data.errors.length);
             error.response.data.errors.forEach((errObj, idx) => {
-              console.error(`=== ERROR ${idx} ===`);
-              console.error('Error object:', JSON.stringify(errObj));
-              if (errObj.message) console.error('Error message:', errObj.message);
-              if (errObj.code) console.error('Error code:', errObj.code);
+              console.log(`ERROR ${idx}:`, JSON.stringify(errObj, null, 2));
             });
-          } else {
-            console.error('Errors (not array):', JSON.stringify(error.response.data.errors));
           }
         } else {
-          console.error('=== NO ERRORS ARRAY IN RESPONSE ===');
+          console.log('NO ERRORS ARRAY');
         }
       } else {
-        console.error('=== NO ERROR.RESPONSE PRESENT ===');
-        console.error('Error message:', error.message);
+        console.log('NO ERROR RESPONSE');
       }
       if (fs.existsSync(videoFile.path)) {
         fs.unlinkSync(videoFile.path);
