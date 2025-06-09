@@ -76,10 +76,10 @@ module.exports = {
         headers: {
           ...form.getHeaders(),
           'Authorization': `Bearer ${CLOUDFLARE_STREAM_API_TOKEN}`
-        },
-        maxContentLength: Infinity,
+        },        maxContentLength: Infinity,
         maxBodyLength: Infinity,
-      });      fs.unlinkSync(videoFile.path); // Move unlink to after successful upload
+      });
+      fs.unlinkSync(videoFile.path); // Move unlink to after successful upload
       if (response.data && response.data.result && response.data.result.uid) {
         return { uid: response.data.result.uid };
       } else {
