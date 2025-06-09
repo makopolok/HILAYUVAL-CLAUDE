@@ -88,16 +88,24 @@ module.exports = {
         throw new Error('Cloudflare Stream upload failed - unexpected response structure.');
       }
     } catch (error) {
-      // Print the most important Cloudflare error details for debugging
+      // Enhanced error logging for Cloudflare Stream upload
+      const util = require('util');
       if (error.response) {
         try {
-          console.error('Cloudflare error.response.data:', JSON.stringify(error.response.data));
+          console.error('Cloudflare Stream upload error (full response):', JSON.stringify(error.response.data, null, 2));
           if (error.response.data && error.response.data.errors) {
-            console.error('Cloudflare error.response.data.errors:', JSON.stringify(error.response.data.errors));
+            console.error('Cloudflare Stream upload error (errors array):', JSON.stringify(error.response.data.errors, null, 2));
+            // If errors is an array of objects with message fields, print those too
+            if (Array.isArray(error.response.data.errors)) {
+              const messages = error.response.data.errors.map(e => e.message || JSON.stringify(e)).join(' | ');
+              console.error('Cloudflare Stream upload error (joined messages):', messages);
+            }
           }
         } catch (e) {
           console.error('Failed to stringify error.response.data:', e);
         }
+        // Fallback: print the whole error object for deep inspection
+        console.error('Cloudflare Stream upload error (util.inspect):', util.inspect(error, { depth: 5 }));
       } else {
         console.error('No error.response present:', error);
       }
