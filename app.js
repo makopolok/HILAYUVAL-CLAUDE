@@ -323,13 +323,13 @@ app.post('/audition/:projectId', auditionUpload.fields([
   { name: 'profile_pictures', maxCount: 10 }
 ]), async (req, res, next) => { // Added next for error handling
   // LOGS AT THE VERY START OF THE HANDLER
-  console.log(`POST_AUDITION_HANDLER_ENTRY: projectId = ${projectId}, timestamp = ${new Date().toISOString()}`);
+  console.log(`POST_AUDITION_HANDLER_ENTRY: projectId = ${req.params.projectId}, timestamp = ${new Date().toISOString()}`);
   console.log(`POST_AUDITION_HANDLER_REQ_BODY_RAW: ${JSON.stringify(req.body)}`);
   console.log(`POST_AUDITION_HANDLER_REQ_FILES_RAW: ${JSON.stringify(req.files)}`);
 
   try {
-    console.log(`POST_AUDITION_TRY_BLOCK_START: projectId = ${projectId}`);
-    const project = await projectService.getProjectById(projectId);
+    console.log(`POST_AUDITION_TRY_BLOCK_START: projectId = ${req.params.projectId}`);
+    const project = await projectService.getProjectById(req.params.projectId);
 
     if (project) {
       console.log(`POST_AUDITION_PROJECT_FETCHED: project ID = ${project.id}, project name = ${project.name}`);
@@ -339,14 +339,14 @@ app.post('/audition/:projectId', auditionUpload.fields([
         console.log(`POST_AUDITION_PROJECT_ROLES_MISSING: project.roles is null, undefined or falsy.`);
       }
     } else {
-      console.log(`POST_AUDITION_PROJECT_NOT_FOUND: Project is null or undefined for projectId = ${projectId}`);
+      console.log(`POST_AUDITION_PROJECT_NOT_FOUND: Project is null or undefined for projectId = ${req.params.projectId}`);
       // It's crucial to stop if project is not found.
       return res.status(404).send('Project not found');
     }
 
     // This check is critical. If project was found but roles are bad, log it.
     if (!project.roles || !Array.isArray(project.roles)) {
-      console.error(`POST_AUDITION_ROLES_INVALID: Project roles are missing or not an array for project ID: ${projectId}. Current roles value: ${JSON.stringify(project.roles)}`);
+      console.error(`POST_AUDITION_ROLES_INVALID: Project roles are missing or not an array for project ID: ${req.params.projectId}. Current roles value: ${JSON.stringify(project.roles)}`);
       // If roles are not an array, the .find() will crash.
       // Consider sending an error response here, but for now, let it proceed to the crash line to confirm.
       // return res.status(500).send('Project data is incomplete (roles).');
@@ -368,7 +368,7 @@ app.post('/audition/:projectId', auditionUpload.fields([
     if (selectedRole) {
       console.log(`POST_AUDITION_SELECTED_ROLE_FOUND: ${JSON.stringify(selectedRole)}`);
     } else {
-      console.error(`POST_AUDITION_ROLE_NOT_FOUND_IN_PROJECT: Role "${body.role}" not found in project ${projectId}. Available roles: ${project.roles.map(r => r.name).join(', ')}`);
+      console.error(`POST_AUDITION_ROLE_NOT_FOUND_IN_PROJECT: Role "${body.role}" not found in project ${req.params.projectId}. Available roles: ${project.roles.map(r => r.name).join(', ')}`);
       return res.status(400).send('Selected role not found for this project.');
     }
 
