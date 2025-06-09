@@ -208,8 +208,8 @@ app.post('/projects/create', async (req, res) => {
       const match = role.playlist.match(/[?&]list=([a-zA-Z0-9_-]+)/);
       currentRolePlaylistId = match ? match[1] : role.playlist.trim();
     } else if (effectiveUploadMethod === 'youtube') { // No playlist provided, AND project is YouTube type
-      if (!youtube) { 
-        console.error('PROJECT_CREATE_ERROR: YouTube client not available for YouTube project requiring playlist creation. This might indicate a missing refresh token that was not caught earlier.');
+      if (!youtube) { // Should have been initialized if GOOGLE_REFRESH_TOKEN was present
+        console.error('PROJECT_CREATE_ERROR: YouTube client not available for YouTube project requiring playlist creation. This might indicate a missing refresh token that wasn\'t caught earlier.');
         return res.status(500).send('Internal server error: YouTube client setup failed for playlist creation. Check server logs and GOOGLE_REFRESH_TOKEN.');
       }
       
