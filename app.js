@@ -171,38 +171,55 @@ app.get('/projects/create', (req, res) => {
 
 // Route to handle project creation
 app.post('/projects/create', async (req, res) => {
-  const { name, description, uploadMethod } = req.body;
+  const { name, description, uploadMethod: projectUploadMethod } = req.body;
+  const effectiveUploadMethod = projectUploadMethod || 'cloudflare'; // Default to cloudflare
+
   let rolesInput = req.body.roles;
   if (!name || !rolesInput) {
     return res.status(400).send('Project name and at least one role are required.');
   }
-  // rolesInput is an array of objects: [{name, playlist}, ...]
   if (!Array.isArray(rolesInput)) {
-    // If only one role, it may come as an object
     rolesInput = [rolesInput];
   }
-  // Filter out empty role names
   const rolesToCreate = rolesInput.filter(r => r.name && r.name.trim());
   if (rolesToCreate.length === 0) {
     return res.status(400).send('At least one role is required.');
   }
-  oauth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
-  const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
-  const playlists = [];
+
+  const finalProjectRoles = [];
+  let youtube; // YouTube client, initialized if needed
   const defaultPlaylistId = 'PLjbMUg1d7vaXP1qiq_5z1nB3Uj4P2f1gj';
-  let usedDefault = false;
+  let usedDefault = false; // Project-level flag if any role used default YT playlist
+
+  // Initialize YouTube client only if the project is 'youtube' AND some roles might need playlist creation
+  if (effectiveUploadMethod === 'youtube' && rolesToCreate.some(r => !(r.playlist && r.playlist.trim()))) {
+    if (!process.env.GOOGLE_REFRESH_TOKEN) {
+      console.error('PROJECT_CREATE_ERROR: GOOGLE_REFRESH_TOKEN is not set. Cannot create YouTube playlists for a YouTube-designated project if roles are missing playlist URLs.');
+      return res.status(500).send('Server configuration error: YouTube integration is not properly set up. Cannot create new YouTube playlists.');
+    }
+    oauth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
+    youtube = google.youtube({ version: 'v3', auth: oauth2Client });
+  }
+
   for (const role of rolesToCreate) {
-    let playlistId = '';
-    if (role.playlist && role.playlist.trim()) {
-      // Extract playlistId from URL or use as is
+    let currentRolePlaylistId = null;
+
+    if (role.playlist && role.playlist.trim()) { // User explicitly provided a playlist URL
       const match = role.playlist.match(/[?&]list=([a-zA-Z0-9_-]+)/);
-      playlistId = match ? match[1] : role.playlist.trim();
-    } else {
-      // Try to create a new playlist (with exponential backoff)
+      currentRolePlaylistId = match ? match[1] : role.playlist.trim();
+    } else if (effectiveUploadMethod === 'youtube') { // No playlist provided, AND project is YouTube type
+      if (!youtube) { 
+        console.error('PROJECT_CREATE_ERROR: YouTube client not available for YouTube project requiring playlist creation. This might indicate a missing refresh token that was not caught earlier.');
+        return res.status(500).send('Internal server error: YouTube client setup failed for playlist creation. Check server logs and GOOGLE_REFRESH_TOKEN.');
+      }
+      
       let retries = 0;
       const maxRetries = 5;
       let delay = 1000;
       let playlistRes = null;
+      let createdPlaylistIdForRole = null;
+      let usedDefaultForThisRole = false;
+
       while (retries < maxRetries) {
         try {
           playlistRes = await youtube.playlists.insert({
@@ -212,12 +229,10 @@ app.post('/projects/create', async (req, res) => {
                 title: `${name} - ${role.name} Auditions`,
                 description: `Auditions for the role of ${role.name} in project ${name}.`,
               },
-              status: {
-                privacyStatus: 'unlisted',
-              },
+              status: { privacyStatus: 'unlisted' },
             },
           });
-          playlistId = playlistRes.data.id;
+          createdPlaylistIdForRole = playlistRes.data.id;
           break;
         } catch (err) {
           const isRateLimitError = err && err.response && err.response.status === 429;
@@ -229,41 +244,38 @@ app.post('/projects/create', async (req, res) => {
           if (isRateLimitError) {
             if (retries === maxRetries - 1) {
               console.warn(`Max retries reached for playlist creation (429 error) for role ${role.name}. Using default playlist.`);
-              usedDefault = true;
-              playlistId = defaultPlaylistId;
-              break;
+              usedDefaultForThisRole = true; createdPlaylistIdForRole = defaultPlaylistId; break;
             }
-            console.warn(`Rate limit hit for playlist creation, retrying (attempt ${retries + 1}/${maxRetries})...`);
+            console.warn(`Rate limit hit for playlist creation, retrying (attempt ${retries + 1}/${maxRetries}) for role ${role.name}...`);
             await new Promise(resolve => setTimeout(resolve, delay));
-            delay *= 2;
-            retries++;
-            continue;
+            delay *= 2; retries++; continue;
           } else if (isQuotaExceededError) {
             console.warn(`YouTube API quota exceeded for playlist creation for role ${role.name}. Using default playlist.`);
-            usedDefault = true;
-            playlistId = defaultPlaylistId;
-            break; // No point in retrying if quota is exceeded
+            usedDefaultForThisRole = true; createdPlaylistIdForRole = defaultPlaylistId; break;
           } else {
             console.error(`Error creating playlist for role ${role.name}:`, err);
             let errorDetails = err && err.response && err.response.data ? JSON.stringify(err.response.data, null, 2) : (err.stack || err.toString());
-            // Avoid sending raw error details to client in production for security, but useful for dev
-            // For now, keeping the detailed error response for debugging.
-            return res.status(500).send(`Error creating playlist for role ${role.name}:<br><pre>${errorDetails}</pre>`);
+            return res.status(500).send(`Error creating playlist for role ${role.name} in YouTube project:<br><pre>${errorDetails}</pre>`);
           }
         }
       }
-      if (!playlistId) playlistId = defaultPlaylistId;
+      if (!createdPlaylistIdForRole) { 
+          console.warn(`Playlist ID not obtained for role ${role.name} after attempts. Using default.`);
+          createdPlaylistIdForRole = defaultPlaylistId;
+          usedDefaultForThisRole = true;
+      }
+      currentRolePlaylistId = createdPlaylistIdForRole;
+      if (usedDefaultForThisRole) usedDefault = true; 
     }
-    playlists.push({ name: role.name, playlistId });
+    finalProjectRoles.push({ name: role.name, playlistId: currentRolePlaylistId });
   }
 
-  // Add project to JSON
   const project = {
     id: `proj_${Date.now()}`,
     name,
     description,
-    uploadMethod: uploadMethod || 'cloudflare', // CHANGED: Default to 'cloudflare'
-    roles: playlists,
+    uploadMethod: effectiveUploadMethod,
+    roles: finalProjectRoles,
     createdAt: new Date().toISOString(),
     director: req.body.director,
     production_company: req.body.production_company
@@ -294,7 +306,7 @@ app.post('/projects/create', async (req, res) => {
   }
   // Show all roles and their audition form URLs
   let rolesListHtml = '<ul>';
-  for (const role of playlists) {
+  for (const role of finalProjectRoles) {
     const formUrl = `${req.protocol}://${req.get('host')}/audition/${project.id}`;
     rolesListHtml += `<li><b>${role.name}</b> &mdash; <a href="${formUrl}" target="_blank">Audition Form</a></li>`;
   }
