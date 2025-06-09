@@ -88,14 +88,13 @@ module.exports = {
         throw new Error('Cloudflare Stream upload failed - unexpected response structure.');
       }
     } catch (error) {
-      console.error('Cloudflare API Error in uploadVideo:');
-      if (error.response) {
-        // The request was made and the server responded with a status code
-        // that falls out of the range of 2xx
-        console.error('Data:', JSON.stringify(error.response.data, null, 2));
-        console.error('Status:', error.response.status);
-        console.error('Headers:', error.response.headers);
+      // Print the entire error object for debugging
+      console.error('CLOUDFLARE UPLOAD FULL ERROR:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+      if (error.response && error.response.data) {
         console.error('Cloudflare error details:', JSON.stringify(error.response.data, null, 2));
+        if (error.response.data.errors) {
+          console.error('Cloudflare errors array:', JSON.stringify(error.response.data.errors, null, 2));
+        }
       } else if (error.request) {
         // The request was made but no response was received
         console.error('Request:', error.request);
