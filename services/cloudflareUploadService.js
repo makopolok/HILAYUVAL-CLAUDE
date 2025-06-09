@@ -79,21 +79,23 @@ module.exports = {
         },
         maxContentLength: Infinity,
         maxBodyLength: Infinity,
-      });
-      fs.unlinkSync(videoFile.path); // Move unlink to after successful upload
+      });      fs.unlinkSync(videoFile.path); // Move unlink to after successful upload
       if (response.data && response.data.result && response.data.result.uid) {
-        return { uid: response.data.result.uid };      } else {
+        return { uid: response.data.result.uid };
+      } else {
         console.error('Cloudflare Stream upload failed - unexpected response structure:', response.data);
         throw new Error('Cloudflare Stream upload failed - unexpected response structure.');
-      }    } catch (error) {
+      }
+    } catch (error) {
       console.log('CATCH BLOCK ENTERED');
       console.log('ERROR TYPE:', typeof error);
       console.log('ERROR MESSAGE:', error.message);
       
-      const util = require('util');      if (error.response) {
+      const util = require('util');
+      if (error.response) {
         console.log('ERROR HAS RESPONSE');
         console.log('RESPONSE STATUS:', error.response.status);
-        console.log('RESPONSE DATA:', JSON.stringify(error.response.data, null, 2));        
+        console.log('RESPONSE DATA:', JSON.stringify(error.response.data, null, 2));
         if (error.response.data && error.response.data.errors) {
           console.log('ERRORS FOUND:', JSON.stringify(error.response.data.errors, null, 2));
           
