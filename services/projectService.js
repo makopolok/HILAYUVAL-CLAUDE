@@ -1,6 +1,6 @@
 // services/projectService.js
 const { pool } = require('./auditionService');
-const db = require('../config/db'); // Assuming db.js is in a config folder
+const db = require('../config/config.js'); // Assuming db.js is in a config folder
 
 // Add a version log at the top for deployment verification
 console.log('INFO: projectService.js version 2025-06-08_2100_DEBUG running');
