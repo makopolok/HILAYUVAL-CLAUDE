@@ -2,6 +2,7 @@ require('dotenv').config(); // Load environment variables
 const { google } = require('googleapis');
 const fs = require('fs');
 const path = require('path');
+const nodemailer = require('nodemailer'); // Added nodemailer import
 
 const express = require('express');
 const multer = require('multer'); // Added multer require
