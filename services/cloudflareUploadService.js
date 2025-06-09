@@ -82,11 +82,11 @@ module.exports = {
       });
       fs.unlinkSync(videoFile.path); // Move unlink to after successful upload
       if (response.data && response.data.result && response.data.result.uid) {
-        return { uid: response.data.result.uid };
-      } else {
+        return { uid: response.data.result.uid };      } else {
         console.error('Cloudflare Stream upload failed - unexpected response structure:', response.data);
         throw new Error('Cloudflare Stream upload failed - unexpected response structure.');
-      }    } catch (error) {
+      }
+    } catch (error) {
       console.error('=== CLOUDFLARE UPLOAD ERROR CATCH BLOCK ENTERED ===');
       const util = require('util');
       if (error.response) {
