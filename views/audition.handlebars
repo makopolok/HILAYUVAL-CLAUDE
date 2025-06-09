@@ -82,22 +82,21 @@
     </div>    {{#if project}}
       {{#if (eq project.uploadMethod "youtube")}}
         <div class="mb-3">
-          <label for="video" class="form-label">Self-Tape Video (YouTube Upload)</label>
-          <input type="file" class="form-control" id="video" name="video" accept="video/*" required>
-          <div class="invalid-feedback">Please upload a video file.</div>
+          <label for="video" class="form-label">Self-Tape Video <span class="text-muted">(optional)</span> (YouTube Upload)</label>
+          <input type="file" class="form-control" id="video" name="video" accept="video/*">
+          <div class="invalid-feedback">If you wish, you may upload a video file.</div>
         </div>
       {{else}}
         <div class="mb-3">
-          <label for="video" class="form-label">Self-Tape Video (Private Upload)</label>
-          <input type="file" class="form-control" id="video" name="video" accept="video/*" required>
-          <div class="invalid-feedback">Please upload a video file.</div>
+          <label for="video" class="form-label">Self-Tape Video <span class="text-muted">(optional)</span> (Private Upload)</label>
+          <input type="file" class="form-control" id="video" name="video" accept="video/*">
+          <div class="invalid-feedback">If you wish, you may upload a video file.</div>
         </div>
-      {{/if}}
-    {{else}}
+      {{/if}}    {{else}}
     <div class="mb-3">
-      <label for="video" class="form-label">Self-Tape Video</label>
-      <input type="file" class="form-control" id="video" name="video" accept="video/*" required>
-      <div class="invalid-feedback">Please upload a video file.</div>
+      <label for="video" class="form-label">Self-Tape Video <span class="text-muted">(optional)</span></label>
+      <input type="file" class="form-control" id="video" name="video" accept="video/*">
+      <div class="invalid-feedback">If you wish, you may upload a video file.</div>
     </div>
     {{/if}}
     <div class="mb-3">

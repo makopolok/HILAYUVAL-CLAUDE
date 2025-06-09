@@ -59,18 +59,27 @@ module.exports = {
       res.status(500).send('Failed to upload audition to Cloudflare Stream.');
     }
   },
-
   // New: uploadVideo for backend service use
   async uploadVideo(videoFile) {
+    console.log('=== CLOUDFLARE UPLOAD VIDEO STARTED ===');
+    console.log('Video file:', videoFile ? videoFile.originalname : 'null');
+    console.log('Video file size:', videoFile ? videoFile.size : 'unknown');
+    console.log('Account ID configured:', !!CLOUDFLARE_ACCOUNT_ID);
+    console.log('Stream token configured:', !!CLOUDFLARE_STREAM_API_TOKEN);
+    
     if (!videoFile) throw new Error('No video file provided.');
     if (!CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_STREAM_API_TOKEN) {
       console.error('Cloudflare Account ID or Stream API Token is not configured.');
       throw new Error('Cloudflare Stream credentials not configured.');
     }
     const uploadUrl = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream`;
+    console.log('Upload URL:', uploadUrl);
+    
     const form = new FormData();
     form.append('file', fs.createReadStream(videoFile.path));
     form.append('name', videoFile.originalname || videoFile.filename);
+    
+    console.log('=== STARTING AXIOS REQUEST TO CLOUDFLARE ===');
     try {
       const response = await axios.post(uploadUrl, form, {
         headers: {

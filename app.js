@@ -405,9 +405,7 @@ app.post('/audition/:projectId', auditionUpload.fields([
       }));
     } else {
       console.log('POST_AUDITION_NO_PROFILE_PICTURES_UPLOADED');
-    }
-
-    let videoUploadResult = null;
+    }    let videoUploadResult = null;
     let videoType = null;
     let finalVideoUrl = null; // Using a more descriptive name
 
@@ -479,6 +477,10 @@ app.post('/audition/:projectId', auditionUpload.fields([
           throw cfError; // Re-throw
         }
       }
+    } else {
+      console.log('POST_AUDITION_NO_VIDEO_UPLOADED: User submitted audition without video');
+      finalVideoUrl = null;
+      videoType = null;
     }
 
     const audition = {
