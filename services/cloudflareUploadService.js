@@ -92,7 +92,7 @@ module.exports = {
       if (error.response) {
         // The request was made and the server responded with a status code
         // that falls out of the range of 2xx
-        console.error('Data:', error.response.data);
+        console.error('Data:', JSON.stringify(error.response.data, null, 2));
         console.error('Status:', error.response.status);
         console.error('Headers:', error.response.headers);
       } else if (error.request) {
@@ -170,7 +170,7 @@ module.exports = {
     } catch (error) {
       console.error('Cloudflare API Error in uploadImageToCloudflareImages:');
       if (error.response) {
-        console.error('Data:', error.response.data);
+        console.error('Data:', JSON.stringify(error.response.data, null, 2));
         console.error('Status:', error.response.status);
         console.error('Headers:', error.response.headers);
       } else if (error.request) {
