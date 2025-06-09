@@ -86,30 +86,37 @@ module.exports = {
       } else {
         console.error('Cloudflare Stream upload failed - unexpected response structure:', response.data);
         throw new Error('Cloudflare Stream upload failed - unexpected response structure.');
-      }
-    } catch (error) {
+      }    } catch (error) {
+      console.error('=== CLOUDFLARE UPLOAD ERROR CATCH BLOCK ENTERED ===');
       const util = require('util');
       if (error.response) {
-        try {
-          // Log the full response body
-          console.error('Cloudflare Stream upload error (full response):', JSON.stringify(error.response.data, null, 2));
-          // Log the errors array, if present
-          if (error.response.data && Array.isArray(error.response.data.errors)) {
-            console.error('Cloudflare Stream upload error (errors array, length ' + error.response.data.errors.length + '):');
+        console.error('=== ERROR.RESPONSE EXISTS ===');
+        console.error('Response status:', error.response.status);
+        console.error('Response data type:', typeof error.response.data);
+        console.error('Response data (stringified):', JSON.stringify(error.response.data));
+        
+        if (error.response.data && error.response.data.errors) {
+          console.error('=== CLOUDFLARE ERRORS ARRAY FOUND ===');
+          console.error('Errors type:', typeof error.response.data.errors);
+          console.error('Is errors array?', Array.isArray(error.response.data.errors));
+          
+          if (Array.isArray(error.response.data.errors)) {
+            console.error('Errors array length:', error.response.data.errors.length);
             error.response.data.errors.forEach((errObj, idx) => {
-              console.error(`Error [${idx}]:`, util.inspect(errObj, { depth: 5 }));
+              console.error(`=== ERROR ${idx} ===`);
+              console.error('Error object:', JSON.stringify(errObj));
+              if (errObj.message) console.error('Error message:', errObj.message);
+              if (errObj.code) console.error('Error code:', errObj.code);
             });
-          } else if (error.response.data && error.response.data.errors) {
-            // If errors is not an array, log it directly
-            console.error('Cloudflare Stream upload error (errors):', util.inspect(error.response.data.errors, { depth: 5 }));
+          } else {
+            console.error('Errors (not array):', JSON.stringify(error.response.data.errors));
           }
-        } catch (e) {
-          console.error('Failed to stringify error.response.data:', e);
+        } else {
+          console.error('=== NO ERRORS ARRAY IN RESPONSE ===');
         }
-        // Fallback: print the whole error object for deep inspection
-        console.error('Cloudflare Stream upload error (util.inspect):', util.inspect(error, { depth: 5 }));
       } else {
-        console.error('No error.response present:', error);
+        console.error('=== NO ERROR.RESPONSE PRESENT ===');
+        console.error('Error message:', error.message);
       }
       if (fs.existsSync(videoFile.path)) {
         fs.unlinkSync(videoFile.path);
