@@ -13,6 +13,7 @@ const { upload } = require('./services/cloudflareUploadService'); // Assuming up
 const errorHandler = require('./middleware/errorHandler');
 const handlebarsHelpers = require('./helpers/handlebarsHelpers');
 const rateLimit = require('express-rate-limit');
+const portfolioRoutes = require('./routes/portfolio'); // Define portfolioRoutes
 
 // Add a version log at the top for deployment verification
 console.log('INFO: app.js version 2025-06-08_2100_DEBUG running');
