@@ -76,9 +76,9 @@
     </div>
     {{/if}}
     <div class="mb-3">
-      <label for="profile_pictures" class="form-label">Profile Picture(s)</label>
-      <input type="file" class="form-control" id="profile_pictures" name="profile_pictures" accept="image/*" multiple required>
-      <div class="invalid-feedback">Please upload at least one profile picture.</div>
+      <label for="profile_pictures" class="form-label">Profile Picture(s) <span class="text-muted">(optional)</span></label>
+      <input type="file" class="form-control" id="profile_pictures" name="profile_pictures" accept="image/*" multiple>
+      <div class="invalid-feedback">If you wish, you may upload a profile picture.</div>
     </div>
     {{#if project}}
       {{#if (eq project.uploadMethod "cloud")}}

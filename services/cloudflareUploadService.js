@@ -88,18 +88,20 @@ module.exports = {
         throw new Error('Cloudflare Stream upload failed - unexpected response structure.');
       }
     } catch (error) {
-      // Enhanced error logging for Cloudflare Stream upload
       const util = require('util');
       if (error.response) {
         try {
+          // Log the full response body
           console.error('Cloudflare Stream upload error (full response):', JSON.stringify(error.response.data, null, 2));
-          if (error.response.data && error.response.data.errors) {
-            console.error('Cloudflare Stream upload error (errors array):', JSON.stringify(error.response.data.errors, null, 2));
-            // If errors is an array of objects with message fields, print those too
-            if (Array.isArray(error.response.data.errors)) {
-              const messages = error.response.data.errors.map(e => e.message || JSON.stringify(e)).join(' | ');
-              console.error('Cloudflare Stream upload error (joined messages):', messages);
-            }
+          // Log the errors array, if present
+          if (error.response.data && Array.isArray(error.response.data.errors)) {
+            console.error('Cloudflare Stream upload error (errors array, length ' + error.response.data.errors.length + '):');
+            error.response.data.errors.forEach((errObj, idx) => {
+              console.error(`Error [${idx}]:`, util.inspect(errObj, { depth: 5 }));
+            });
+          } else if (error.response.data && error.response.data.errors) {
+            // If errors is not an array, log it directly
+            console.error('Cloudflare Stream upload error (errors):', util.inspect(error.response.data.errors, { depth: 5 }));
           }
         } catch (e) {
           console.error('Failed to stringify error.response.data:', e);
