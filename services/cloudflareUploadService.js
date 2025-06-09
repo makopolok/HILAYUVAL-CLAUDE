@@ -88,26 +88,23 @@ module.exports = {
         throw new Error('Cloudflare Stream upload failed - unexpected response structure.');
       }
     } catch (error) {
-      // Print the entire error object for debugging
-      console.error('CLOUDFLARE UPLOAD FULL ERROR:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
-      if (error.response && error.response.data) {
-        console.error('Cloudflare error details:', JSON.stringify(error.response.data, null, 2));
-        if (error.response.data.errors) {
-          console.error('Cloudflare errors array:', JSON.stringify(error.response.data.errors, null, 2));
+      // Print the most important Cloudflare error details for debugging
+      if (error.response) {
+        try {
+          console.error('Cloudflare error.response.data:', JSON.stringify(error.response.data));
+          if (error.response.data && error.response.data.errors) {
+            console.error('Cloudflare error.response.data.errors:', JSON.stringify(error.response.data.errors));
+          }
+        } catch (e) {
+          console.error('Failed to stringify error.response.data:', e);
         }
-      } else if (error.request) {
-        // The request was made but no response was received
-        console.error('Request:', error.request);
       } else {
-        // Something happened in setting up the request that triggered an Error
-        console.error('Error Message:', error.message);
+        console.error('No error.response present:', error);
       }
-      console.error('Config:', error.config);
-      // Also, ensure the file is unlinked even on error to prevent clutter
       if (fs.existsSync(videoFile.path)) {
         fs.unlinkSync(videoFile.path);
       }
-      throw error; // Re-throw the error to be caught by the calling function in app.js
+      throw error;
     }
   },
 
