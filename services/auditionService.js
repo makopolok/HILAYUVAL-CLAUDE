@@ -16,8 +16,7 @@ async function insertAudition(audition) {
       $1, $2, $3, $4, $5, $6,
       $7, $8, $9, $10, $11, $12, $13, $14, $15
     ) RETURNING *;
-  `;
-  const values = [
+  `;  const values = [
     audition.project_id,
     audition.role,
     audition.first_name_he,
@@ -29,7 +28,7 @@ async function insertAudition(audition) {
     audition.agency,
     audition.age ? parseInt(audition.age) : null,
     audition.height ? parseInt(audition.height) : null,
-    audition.profile_pictures,
+    audition.profile_pictures ? JSON.stringify(audition.profile_pictures) : null,
     audition.showreel_url,
     audition.video_url,
     audition.video_type
