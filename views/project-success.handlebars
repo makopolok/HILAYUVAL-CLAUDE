@@ -12,28 +12,23 @@
             <div class="icon-circle"></div>
             <div class="icon-fix"></div>
           </div>
-        </div>
-        <h1 class="display-5 text-success mt-4 mb-3">Project Created Successfully! 🎬</h1>
+        </div>        <h1 class="display-5 mt-4 mb-3" style="color: var(--primary-red);">Project Created Successfully! 🎬</h1>
         <p class="lead text-muted">Your audition project is ready to receive submissions</p>
-      </div>
-
-      <!-- Project Details Card -->
-      <div class="card border-success shadow-sm mb-4">
-        <div class="card-header bg-success text-white">
+      </div>      <!-- Project Details Card -->
+      <div class="card shadow-sm mb-4" style="border-color: var(--primary-red);">
+        <div class="card-header text-white" style="background-color: var(--primary-red);">
           <h5 class="mb-0">
             <i class="fas fa-film me-2"></i>
             Project Details
           </h5>
         </div>
         <div class="card-body">
-          <div class="row">
-            <div class="col-md-8 mb-3">
+          <div class="row">            <div class="col-md-8 mb-3">
               <h6 class="text-muted mb-1">Project Name</h6>
-              <h4 class="mb-0 text-primary">{{project.name}}</h4>
+              <h4 class="mb-0" style="color: var(--primary-red);">{{project.name}}</h4>
             </div>
             <div class="col-md-4 mb-3">
-              <h6 class="text-muted mb-1">Upload Method</h6>
-              <span class="badge {{#if (eq project.uploadMethod 'youtube')}}bg-danger{{else}}bg-primary{{/if}} fs-6">
+              <h6 class="text-muted mb-1">Upload Method</h6>              <span class="badge {{#if (eq project.uploadMethod 'youtube')}}bg-danger{{else}}{{/if}} fs-6" style="{{#unless (eq project.uploadMethod 'youtube')}}background-color: var(--primary-red)!important; color: white;{{/unless}}">
                 {{#if (eq project.uploadMethod 'youtube')}}
                   <i class="fab fa-youtube me-1"></i> YouTube
                 {{else}}
@@ -81,11 +76,9 @@
         <p class="mb-2">Some roles were assigned to the default playlist due to YouTube API quota limits.</p>
         <p class="mb-0">Please check your YouTube quota or try again later for dedicated playlists.</p>
       </div>
-      {{/if}}
-
-      <!-- Roles Card -->
-      <div class="card border-primary shadow-sm mb-4">
-        <div class="card-header bg-primary text-white">
+      {{/if}}      <!-- Roles Card -->
+      <div class="card shadow-sm mb-4" style="border-color: var(--dark-red);">
+        <div class="card-header text-white" style="background-color: var(--dark-red);">
           <h5 class="mb-0">
             <i class="fas fa-users me-2"></i>
             Roles & Audition Forms
@@ -96,9 +89,8 @@
             {{#each project.roles}}
             <div class="col-md-6">
               <div class="card border-secondary h-100">
-                <div class="card-body">
-                  <h6 class="card-title text-dark">
-                    <i class="fas fa-user-tie me-2 text-primary"></i>
+                <div class="card-body">                  <h6 class="card-title text-dark">
+                    <i class="fas fa-user-tie me-2" style="color: var(--primary-red);"></i>
                     {{this.name}}
                   </h6>
                   {{#if this.playlistId}}
@@ -106,10 +98,9 @@
                     <i class="fas fa-list me-1"></i>
                     Playlist: <code>{{this.playlistId}}</code>
                   </p>
-                  {{/if}}
-                  <a href="{{../audition_base_url}}/{{../project.id}}" 
+                  {{/if}}                  <a href="{{../audition_base_url}}/{{../project.id}}" 
                      target="_blank" 
-                     class="btn btn-outline-primary btn-sm">
+                     class="btn btn-sm" style="background-color: var(--primary-red); border-color: var(--primary-red); color: white;">
                     <i class="fas fa-external-link-alt me-1"></i>
                     Audition Form
                   </a>
@@ -119,11 +110,9 @@
             {{/each}}
           </div>
         </div>
-      </div>
-
-      <!-- Audition Form Links -->
-      <div class="card border-info shadow-sm mb-4">
-        <div class="card-header bg-info text-white">
+      </div>      <!-- Audition Form Links -->
+      <div class="card shadow-sm mb-4" style="border-color: var(--primary-red);">
+        <div class="card-header text-white" style="background-color: var(--primary-red);">
           <h5 class="mb-0">
             <i class="fas fa-link me-2"></i>
             Share These Links
@@ -146,18 +135,17 @@
             </div>
           </div>
           
-          <div class="row g-2">
-            <div class="col-md-6">
+          <div class="row g-2">            <div class="col-md-6">
               <a href="{{audition_base_url}}/{{project.id}}" 
                  target="_blank" 
-                 class="btn btn-primary w-100">
+                 class="btn w-100" style="background-color: var(--primary-red); border-color: var(--primary-red); color: white;">
                 <i class="fas fa-eye me-2"></i>
                 Preview Form
               </a>
             </div>
             <div class="col-md-6">
               <a href="/projects/{{project.id}}/auditions" 
-                 class="btn btn-outline-primary w-100">
+                 class="btn btn-outline w-100" style="border-color: var(--primary-red); color: var(--primary-red);">
                 <i class="fas fa-video me-2"></i>
                 View Submissions
               </a>
@@ -210,8 +198,7 @@
         <a href="/projects" class="btn btn-outline-secondary me-3">
           <i class="fas fa-list me-2"></i>
           View All Projects
-        </a>
-        <a href="/projects/{{project.id}}/auditions" class="btn btn-outline-primary">
+        </a>        <a href="/projects/{{project.id}}/auditions" class="btn btn-outline" style="border-color: var(--primary-red); color: var(--primary-red);">
           <i class="fas fa-video me-2"></i>
           View Submissions
         </a>
@@ -251,10 +238,10 @@ function copyToClipboard(elementId) {
   border-radius: 50%;
   display: block;
   stroke-width: 3;
-  stroke: #4CAF50;
+  stroke: var(--primary-red);
   stroke-miterlimit: 10;
   margin: 10px auto;
-  box-shadow: inset 0px 0px 0px #4CAF50;
+  box-shadow: inset 0px 0px 0px var(--primary-red);
   animation: fill .4s ease-in-out .4s forwards, scale .3s ease-in-out .9s both;
   position: relative;
 }
@@ -266,15 +253,15 @@ function copyToClipboard(elementId) {
   left: 12px;
   top: 12px;
   border-radius: 50%;
-  border: 3px solid #4CAF50;
-  background: #4CAF50;
+  border: 3px solid var(--primary-red);
+  background: var(--primary-red);
 }
 
 .success-checkmark .check-icon::before {
   content: '';
   width: 100%;
   height: 100%;
-  background: #4CAF50;
+  background: var(--primary-red);
   border-radius: 50%;
   position: absolute;
   left: 0;
@@ -375,7 +362,7 @@ function copyToClipboard(elementId) {
 
 @keyframes fill {
   100% {
-    box-shadow: inset 0px 0px 0px 30px #4CAF50;
+    box-shadow: inset 0px 0px 0px 30px var(--primary-red);
   }
 }
 
