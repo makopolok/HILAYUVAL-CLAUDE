@@ -28,7 +28,7 @@ async function insertAudition(audition) {
     audition.agency,
     audition.age ? parseInt(audition.age) : null,
     audition.height ? parseInt(audition.height) : null,
-    audition.profile_pictures ? JSON.stringify(audition.profile_pictures) : null,
+    (audition.profile_pictures && typeof audition.profile_pictures === 'object') ? JSON.stringify(audition.profile_pictures) : (audition.profile_pictures || null),
     audition.showreel_url,
     audition.video_url,
     audition.video_type

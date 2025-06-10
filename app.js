@@ -446,9 +446,9 @@ app.post('/audition/:projectId', auditionUpload.fields([
     let finalVideoUrl = null; // Using a more descriptive name
 
     if (videoFile) {
-      console.log(`POST_AUDITION_UPLOADING_VIDEO: ${videoFile.originalname} for project ${project.id}. Project's uploadMethod: ${project.uploadMethod}`);
+      console.log(`POST_AUDITION_UPLOADING_VIDEO: ${videoFile.originalname} for project ${project.id}. Project's uploadMethod: ${project.upload_method}`);
       
-      if (project.uploadMethod === 'youtube') {
+      if (project.upload_method === 'youtube') { // MODIFIED HERE
         console.log(`POST_AUDITION_ATTEMPTING_YOUTUBE_UPLOAD: Role: ${selectedRole.name}, Playlist ID: ${selectedRole.playlistId}`);
         if (!REFRESH_TOKEN) {
           console.error('POST_AUDITION_YOUTUBE_ERROR: Google Refresh Token not configured.');
