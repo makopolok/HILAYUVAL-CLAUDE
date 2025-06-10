@@ -1,0 +1,392 @@
+{{! views/project-success.handlebars }}
+{{> header}}
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+      <!-- Success Animation -->
+      <div class="text-center mb-4">
+        <div class="success-checkmark">
+          <div class="check-icon">
+            <span class="icon-line line-tip"></span>
+            <span class="icon-line line-long"></span>
+            <div class="icon-circle"></div>
+            <div class="icon-fix"></div>
+          </div>
+        </div>
+        <h1 class="display-5 text-success mt-4 mb-3">Project Created Successfully! 🎬</h1>
+        <p class="lead text-muted">Your audition project is ready to receive submissions</p>
+      </div>
+
+      <!-- Project Details Card -->
+      <div class="card border-success shadow-sm mb-4">
+        <div class="card-header bg-success text-white">
+          <h5 class="mb-0">
+            <i class="fas fa-film me-2"></i>
+            Project Details
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-8 mb-3">
+              <h6 class="text-muted mb-1">Project Name</h6>
+              <h4 class="mb-0 text-primary">{{project.name}}</h4>
+            </div>
+            <div class="col-md-4 mb-3">
+              <h6 class="text-muted mb-1">Upload Method</h6>
+              <span class="badge {{#if (eq project.uploadMethod 'youtube')}}bg-danger{{else}}bg-primary{{/if}} fs-6">
+                {{#if (eq project.uploadMethod 'youtube')}}
+                  <i class="fab fa-youtube me-1"></i> YouTube
+                {{else}}
+                  <i class="fas fa-shield-alt me-1"></i> Private (Cloudflare)
+                {{/if}}
+              </span>
+            </div>
+            {{#if project.description}}
+            <div class="col-12 mb-3">
+              <h6 class="text-muted mb-1">Description</h6>
+              <p class="mb-0">{{project.description}}</p>
+            </div>
+            {{/if}}
+            {{#if project.director}}
+            <div class="col-md-6 mb-3">
+              <h6 class="text-muted mb-1">Director</h6>
+              <p class="mb-0">{{project.director}}</p>
+            </div>
+            {{/if}}
+            {{#if project.production_company}}
+            <div class="col-md-6 mb-3">
+              <h6 class="text-muted mb-1">Production Company</h6>
+              <p class="mb-0">{{project.production_company}}</p>
+            </div>
+            {{/if}}
+            <div class="col-md-6 mb-3">
+              <h6 class="text-muted mb-1">Created</h6>
+              <p class="mb-0">{{submitted_time}}</p>
+            </div>
+            <div class="col-md-6 mb-3">
+              <h6 class="text-muted mb-1">Project ID</h6>
+              <p class="mb-0"><code>{{project.id}}</code></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {{#if used_default_playlist}}
+      <!-- Warning for Default Playlist -->
+      <div class="alert alert-warning shadow-sm mb-4">
+        <h5 class="alert-heading">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          YouTube Quota Limitation
+        </h5>
+        <p class="mb-2">Some roles were assigned to the default playlist due to YouTube API quota limits.</p>
+        <p class="mb-0">Please check your YouTube quota or try again later for dedicated playlists.</p>
+      </div>
+      {{/if}}
+
+      <!-- Roles Card -->
+      <div class="card border-primary shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0">
+            <i class="fas fa-users me-2"></i>
+            Roles & Audition Forms
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            {{#each project.roles}}
+            <div class="col-md-6">
+              <div class="card border-secondary h-100">
+                <div class="card-body">
+                  <h6 class="card-title text-dark">
+                    <i class="fas fa-user-tie me-2 text-primary"></i>
+                    {{this.name}}
+                  </h6>
+                  {{#if this.playlistId}}
+                  <p class="small text-muted mb-2">
+                    <i class="fas fa-list me-1"></i>
+                    Playlist: <code>{{this.playlistId}}</code>
+                  </p>
+                  {{/if}}
+                  <a href="{{../audition_base_url}}/{{../project.id}}" 
+                     target="_blank" 
+                     class="btn btn-outline-primary btn-sm">
+                    <i class="fas fa-external-link-alt me-1"></i>
+                    Audition Form
+                  </a>
+                </div>
+              </div>
+            </div>
+            {{/each}}
+          </div>
+        </div>
+      </div>
+
+      <!-- Audition Form Links -->
+      <div class="card border-info shadow-sm mb-4">
+        <div class="card-header bg-info text-white">
+          <h5 class="mb-0">
+            <i class="fas fa-link me-2"></i>
+            Share These Links
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Main Audition Form URL:</label>
+            <div class="input-group">
+              <input type="text" 
+                     class="form-control" 
+                     value="{{audition_base_url}}/{{project.id}}" 
+                     readonly 
+                     id="mainFormUrl">
+              <button class="btn btn-outline-secondary" 
+                      type="button" 
+                      onclick="copyToClipboard('mainFormUrl')">
+                <i class="fas fa-copy"></i> Copy
+              </button>
+            </div>
+          </div>
+          
+          <div class="row g-2">
+            <div class="col-md-6">
+              <a href="{{audition_base_url}}/{{project.id}}" 
+                 target="_blank" 
+                 class="btn btn-primary w-100">
+                <i class="fas fa-eye me-2"></i>
+                Preview Form
+              </a>
+            </div>
+            <div class="col-md-6">
+              <a href="/projects/{{project.id}}/auditions" 
+                 class="btn btn-outline-primary w-100">
+                <i class="fas fa-video me-2"></i>
+                View Submissions
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Next Steps -->
+      <div class="card border-secondary shadow-sm mb-4">
+        <div class="card-header bg-secondary text-white">
+          <h5 class="mb-0">
+            <i class="fas fa-tasks me-2"></i>
+            Next Steps
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-4 text-center mb-3">
+              <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                <i class="fas fa-share-alt text-primary fs-4"></i>
+              </div>
+              <h6 class="mt-2">Share</h6>
+              <p class="small text-muted">Send the audition form link to actors</p>
+            </div>
+            <div class="col-md-4 text-center mb-3">
+              <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                <i class="fas fa-bell text-warning fs-4"></i>
+              </div>
+              <h6 class="mt-2">Monitor</h6>
+              <p class="small text-muted">Check submissions as they come in</p>
+            </div>
+            <div class="col-md-4 text-center mb-3">
+              <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                <i class="fas fa-star text-success fs-4"></i>
+              </div>
+              <h6 class="mt-2">Review</h6>
+              <p class="small text-muted">Review and shortlist candidates</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="text-center mb-5">
+        <a href="/projects/create" class="btn btn-success me-3">
+          <i class="fas fa-plus me-2"></i>
+          Create Another Project
+        </a>
+        <a href="/projects" class="btn btn-outline-secondary me-3">
+          <i class="fas fa-list me-2"></i>
+          View All Projects
+        </a>
+        <a href="/projects/{{project.id}}/auditions" class="btn btn-outline-primary">
+          <i class="fas fa-video me-2"></i>
+          View Submissions
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Copy to clipboard functionality -->
+<script>
+function copyToClipboard(elementId) {
+  const element = document.getElementById(elementId);
+  element.select();
+  element.setSelectionRange(0, 99999); // For mobile devices
+  document.execCommand('copy');
+  
+  // Show feedback
+  const button = element.nextElementSibling;
+  const originalText = button.innerHTML;
+  button.innerHTML = '<i class="fas fa-check"></i> Copied!';
+  button.classList.remove('btn-outline-secondary');
+  button.classList.add('btn-success');
+  
+  setTimeout(() => {
+    button.innerHTML = originalText;
+    button.classList.remove('btn-success');
+    button.classList.add('btn-outline-secondary');
+  }, 2000);
+}
+</script>
+
+<!-- Custom CSS for success animation -->
+<style>
+.success-checkmark {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: block;
+  stroke-width: 3;
+  stroke: #4CAF50;
+  stroke-miterlimit: 10;
+  margin: 10px auto;
+  box-shadow: inset 0px 0px 0px #4CAF50;
+  animation: fill .4s ease-in-out .4s forwards, scale .3s ease-in-out .9s both;
+  position: relative;
+}
+
+.success-checkmark .check-icon {
+  width: 56px;
+  height: 56px;
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  border-radius: 50%;
+  border: 3px solid #4CAF50;
+  background: #4CAF50;
+}
+
+.success-checkmark .check-icon::before {
+  content: '';
+  width: 100%;
+  height: 100%;
+  background: #4CAF50;
+  border-radius: 50%;
+  position: absolute;
+  left: 0;
+  top: 0;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.success-checkmark .icon-line {
+  height: 3px;
+  background: white;
+  display: block;
+  border-radius: 2px;
+  position: absolute;
+  z-index: 10;
+}
+
+.success-checkmark .icon-line.line-tip {
+  top: 26px;
+  left: 14px;
+  width: 15px;
+  transform: rotate(45deg);
+  animation: icon-line-tip 0.75s;
+}
+
+.success-checkmark .icon-line.line-long {
+  top: 31px;
+  right: 8px;
+  width: 30px;
+  transform: rotate(-45deg);
+  animation: icon-line-long 0.75s;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes icon-line-tip {
+  0% {
+    width: 0;
+    left: 1px;
+    top: 19px;
+  }
+  54% {
+    width: 0;
+    left: 1px;
+    top: 19px;
+  }
+  70% {
+    width: 15px;
+    left: -8px;
+    top: 37px;
+  }
+  84% {
+    width: 17px;
+    left: 21px;
+    top: 48px;
+  }
+  100% {
+    width: 15px;
+    left: 14px;
+    top: 26px;
+  }
+}
+
+@keyframes icon-line-long {
+  0% {
+    width: 0;
+    right: 46px;
+    top: 54px;
+  }
+  65% {
+    width: 0;
+    right: 46px;
+    top: 54px;
+  }
+  84% {
+    width: 30px;
+    right: 0px;
+    top: 17px;
+  }
+  100% {
+    width: 30px;
+    right: 8px;
+    top: 31px;
+  }
+}
+
+@keyframes fill {
+  100% {
+    box-shadow: inset 0px 0px 0px 30px #4CAF50;
+  }
+}
+
+@keyframes scale {
+  0%, 100% {
+    transform: none;
+  }
+  50% {
+    transform: scale3d(1.1, 1.1, 1);
+  }
+}
+</style>
+
+{{> footer}}

@@ -1,0 +1,347 @@
+{{! views/audition-success.handlebars }}
+{{> header}}
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <!-- Success Animation -->
+      <div class="text-center mb-4">
+        <div class="success-checkmark">
+          <div class="check-icon">
+            <span class="icon-line line-tip"></span>
+            <span class="icon-line line-long"></span>
+            <div class="icon-circle"></div>
+            <div class="icon-fix"></div>
+          </div>
+        </div>
+        <h1 class="display-5 text-success mt-4 mb-3">Audition Submitted Successfully! 🎬</h1>
+        <p class="lead text-muted">Thank you {{actor_name}} for your submission</p>
+      </div>
+
+      <!-- Submission Details Card -->
+      <div class="card border-success shadow-sm mb-4">
+        <div class="card-header bg-success text-white">
+          <h5 class="mb-0">
+            <i class="fas fa-check-circle me-2"></i>
+            Submission Details
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <h6 class="text-muted mb-1">Project</h6>
+              <p class="mb-0 fw-semibold">{{project.name}}</p>
+            </div>
+            <div class="col-md-6 mb-3">
+              <h6 class="text-muted mb-1">Role</h6>
+              <p class="mb-0 fw-semibold">{{role}}</p>
+            </div>
+            <div class="col-md-6 mb-3">
+              <h6 class="text-muted mb-1">Actor</h6>
+              <p class="mb-0">{{actor_name}}</p>
+            </div>
+            <div class="col-md-6 mb-3">
+              <h6 class="text-muted mb-1">Email</h6>
+              <p class="mb-0">{{email}}</p>
+            </div>
+            {{#if phone}}
+            <div class="col-md-6 mb-3">
+              <h6 class="text-muted mb-1">Phone</h6>
+              <p class="mb-0">{{phone}}</p>
+            </div>
+            {{/if}}
+            <div class="col-md-6 mb-3">
+              <h6 class="text-muted mb-1">Submitted</h6>
+              <p class="mb-0">{{submitted_time}}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Media Uploads -->
+      {{#if video_url}}
+      <div class="card border-primary shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0">
+            <i class="fas fa-video me-2"></i>
+            Your Video Submission
+          </h5>
+        </div>
+        <div class="card-body">
+          {{#if (eq video_type "cloudflare_stream")}}
+            <div class="ratio ratio-16x9 mb-3">
+              <iframe 
+                src="https://iframe.videodelivery.net/{{video_url}}" 
+                frameborder="0" 
+                allowfullscreen
+                class="rounded">
+              </iframe>
+            </div>
+            <div class="alert alert-info">
+              <i class="fas fa-shield-alt me-2"></i>
+              <strong>Secure Upload:</strong> Your video is privately hosted and only accessible to casting directors.
+            </div>
+          {{else if (eq video_type "youtube")}}
+            <div class="ratio ratio-16x9 mb-3">
+              <iframe 
+                src="https://www.youtube.com/embed/{{video_url}}" 
+                frameborder="0" 
+                allowfullscreen
+                class="rounded">
+              </iframe>
+            </div>
+            <div class="d-flex align-items-center">
+              <i class="fab fa-youtube text-danger me-2"></i>
+              <a href="{{video_url}}" target="_blank" class="btn btn-outline-danger btn-sm">
+                View on YouTube
+              </a>
+            </div>
+          {{/if}}
+        </div>
+      </div>
+      {{/if}}
+
+      {{#if profile_pictures.length}}
+      <div class="card border-info shadow-sm mb-4">
+        <div class="card-header bg-info text-white">
+          <h5 class="mb-0">
+            <i class="fas fa-images me-2"></i>
+            Profile Pictures
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            {{#each profile_pictures}}
+            <div class="col-md-4">
+              <div class="card border-0 shadow-sm">
+                <img src="{{this.url}}" class="card-img-top rounded" alt="Profile picture" style="height: 200px; object-fit: cover;">
+              </div>
+            </div>
+            {{/each}}
+          </div>
+        </div>
+      </div>
+      {{/if}}
+
+      {{#if showreel_url}}
+      <div class="card border-warning shadow-sm mb-4">
+        <div class="card-header bg-warning text-dark">
+          <h5 class="mb-0">
+            <i class="fas fa-film me-2"></i>
+            Showreel
+          </h5>
+        </div>
+        <div class="card-body">
+          <a href="{{showreel_url}}" target="_blank" class="btn btn-outline-warning">
+            <i class="fas fa-external-link-alt me-2"></i>
+            View Showreel
+          </a>
+        </div>
+      </div>
+      {{/if}}
+
+      <!-- Next Steps -->
+      <div class="card border-secondary shadow-sm mb-4">
+        <div class="card-header bg-secondary text-white">
+          <h5 class="mb-0">
+            <i class="fas fa-clock me-2"></i>
+            What Happens Next?
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-4 text-center mb-3">
+              <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                <i class="fas fa-eye text-primary fs-4"></i>
+              </div>
+              <h6 class="mt-2">Review</h6>
+              <p class="small text-muted">Casting directors will review your submission</p>
+            </div>
+            <div class="col-md-4 text-center mb-3">
+              <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                <i class="fas fa-phone text-success fs-4"></i>
+              </div>
+              <h6 class="mt-2">Contact</h6>
+              <p class="small text-muted">If selected, we'll contact you directly</p>
+            </div>
+            <div class="col-md-4 text-center mb-3">
+              <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                <i class="fas fa-star text-warning fs-4"></i>
+              </div>
+              <h6 class="mt-2">Audition</h6>
+              <p class="small text-muted">Further auditions may be scheduled</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="text-center mb-5">
+        <a href="/audition/{{project.id}}" class="btn btn-outline-primary me-3">
+          <i class="fas fa-plus me-2"></i>
+          Submit Another Audition
+        </a>
+        <a href="/projects" class="btn btn-outline-secondary">
+          <i class="fas fa-list me-2"></i>
+          View All Projects
+        </a>
+      </div>
+
+      <!-- Contact Information -->
+      <div class="text-center text-muted">
+        <p>
+          <i class="fas fa-envelope me-2"></i>
+          Questions? Contact us at 
+          <a href="mailto:casting@hilayuval.com">casting@hilayuval.com</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Custom CSS for success animation -->
+<style>
+.success-checkmark {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: block;
+  stroke-width: 3;
+  stroke: #4CAF50;
+  stroke-miterlimit: 10;
+  margin: 10px auto;
+  box-shadow: inset 0px 0px 0px #4CAF50;
+  animation: fill .4s ease-in-out .4s forwards, scale .3s ease-in-out .9s both;
+  position: relative;
+}
+
+.success-checkmark .check-icon {
+  width: 56px;
+  height: 56px;
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  border-radius: 50%;
+  border: 3px solid #4CAF50;
+  background: #4CAF50;
+}
+
+.success-checkmark .check-icon::before {
+  content: '';
+  width: 100%;
+  height: 100%;
+  background: #4CAF50;
+  border-radius: 50%;
+  position: absolute;
+  left: 0;
+  top: 0;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.success-checkmark .icon-line {
+  height: 3px;
+  background: white;
+  display: block;
+  border-radius: 2px;
+  position: absolute;
+  z-index: 10;
+}
+
+.success-checkmark .icon-line.line-tip {
+  top: 26px;
+  left: 14px;
+  width: 15px;
+  transform: rotate(45deg);
+  animation: icon-line-tip 0.75s;
+}
+
+.success-checkmark .icon-line.line-long {
+  top: 31px;
+  right: 8px;
+  width: 30px;
+  transform: rotate(-45deg);
+  animation: icon-line-long 0.75s;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes icon-line-tip {
+  0% {
+    width: 0;
+    left: 1px;
+    top: 19px;
+  }
+  54% {
+    width: 0;
+    left: 1px;
+    top: 19px;
+  }
+  70% {
+    width: 15px;
+    left: -8px;
+    top: 37px;
+  }
+  84% {
+    width: 17px;
+    left: 21px;
+    top: 48px;
+  }
+  100% {
+    width: 15px;
+    left: 14px;
+    top: 26px;
+  }
+}
+
+@keyframes icon-line-long {
+  0% {
+    width: 0;
+    right: 46px;
+    top: 54px;
+  }
+  65% {
+    width: 0;
+    right: 46px;
+    top: 54px;
+  }
+  84% {
+    width: 30px;
+    right: 0px;
+    top: 17px;
+  }
+  100% {
+    width: 30px;
+    right: 8px;
+    top: 31px;
+  }
+}
+
+@keyframes fill {
+  100% {
+    box-shadow: inset 0px 0px 0px 30px #4CAF50;
+  }
+}
+
+@keyframes scale {
+  0%, 100% {
+    transform: none;
+  }
+  50% {
+    transform: scale3d(1.1, 1.1, 1);
+  }
+}
+</style>
+
+{{> footer}}

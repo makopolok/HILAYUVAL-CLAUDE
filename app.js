@@ -107,11 +107,28 @@ app.post('/audition', generalAuditionUpload.single('video'), async (req, res) =>
     fs.unlinkSync(videoFile.path);
 
     // Get YouTube video link
-    const videoId = response.data.id;
-    const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    const videoId = response.data.id;    const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
-    // Render a success page or send a response
-    res.send(`<h2>Thank you for your submission!</h2><p>Your audition has been received.</p><p>YouTube Link: <a href="${videoUrl}" target="_blank">${videoUrl}</a></p>`);
+    // Render beautiful success page for YouTube upload
+    const submissionData = {
+      actor_name: name || 'Actor',
+      email: email,
+      role: role,
+      video_url: videoId, // For YouTube, we store the video ID
+      video_type: 'youtube',
+      profile_pictures: [],
+      submitted_time: new Date().toLocaleString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
+      project: { name: 'General Audition', id: 'general' }
+    };
+    
+    res.render('audition-success', submissionData);
   } catch (error) {
     console.error('Error uploading audition:', error);
     res.status(500).send(`<h2>Error uploading audition.</h2><pre>${error && error.message ? error.message : error}</pre><pre>${error && error.response && error.response.data ? JSON.stringify(error.response.data, null, 2) : ''}</pre>`);
@@ -304,18 +321,24 @@ app.post('/projects/create', async (req, res) => {
     } catch (err) {
       console.error('Failed to send email:', err);
     }
-  }
-  // Show all roles and their audition form URLs
-  let rolesListHtml = '<ul>';
-  for (const role of finalProjectRoles) {
-    const formUrl = `${req.protocol}://${req.get('host')}/audition/${project.id}`;
-    rolesListHtml += `<li><b>${role.name}</b> &mdash; <a href="${formUrl}" target="_blank">Audition Form</a></li>`;
-  }
-  rolesListHtml += '</ul>';
-  if (usedDefault) {
-    return res.send(`<h2>Project created, but some or all roles were assigned to the default playlist due to YouTube quota limits.</h2><p>Please check your YouTube quota or try again later for dedicated playlists.</p>${rolesListHtml}<a href="/projects">Back to Projects</a><pre>${JSON.stringify(project, null, 2)}</pre>`);
-  }
-  res.send(`<h2>Project created!</h2>${rolesListHtml}<p><a href="/projects/create">Create another</a></p><pre>${JSON.stringify(project, null, 2)}</pre>`);
+  }  // Show all roles and their audition form URLs
+  const auditionBaseUrl = `${req.protocol}://${req.get('host')}/audition`;
+  
+  const projectData = {
+    project,
+    audition_base_url: auditionBaseUrl,
+    used_default_playlist: usedDefault,
+    submitted_time: new Date().toLocaleString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  };
+  
+  res.render('project-success', projectData);
 });
 
 // Route to render project-specific audition form
@@ -501,11 +524,35 @@ app.post('/audition/:projectId', auditionUpload.fields([
       video_type: videoType 
     };
     // Corrected logging to use req.params.projectId as projectId is not defined in this scope
-    console.log(`[App.js POST /audition/:${req.params.projectId}] Prepared audition object: ${JSON.stringify(audition)}`);
-
-    await auditionService.insertAudition(audition);
+    console.log(`[App.js POST /audition/:${req.params.projectId}] Prepared audition object: ${JSON.stringify(audition)}`);    await auditionService.insertAudition(audition);
     console.log(`[App.js POST /audition/:${req.params.projectId}] Audition saved successfully.`);
-    res.send('<h2>Thank you for your submission!</h2><p>Your audition has been received.</p>');
+    
+    // Render beautiful success page
+    const actorName = [body.first_name_he, body.last_name_he, body.first_name_en, body.last_name_en]
+      .filter(name => name && name.trim())
+      .join(' ') || 'Actor';
+    
+    const submissionData = {
+      project,
+      role: body.role,
+      actor_name: actorName,
+      email: body.email,
+      phone: body.phone,
+      video_url: finalVideoUrl,
+      video_type: videoType,
+      profile_pictures: profilePictureUploadResults || [],
+      showreel_url: body.showreel_url,
+      submitted_time: new Date().toLocaleString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    };
+    
+    res.render('audition-success', submissionData);
 
   } catch (error) {
     console.error(`[App.js POST /audition/:${req.params.projectId}] Critical error in route:`, error.message, error.stack);
