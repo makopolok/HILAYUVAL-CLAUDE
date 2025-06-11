@@ -16,10 +16,9 @@
           <option value="{{this.name}}" {{#if (eq ../query.role this.name)}}selected{{/if}}>{{this.name}}</option>
         {{/each}}
       </select>
-    </div>
-    <div class="col-12">
+    </div>    <div class="col-12">
       <button type="submit" class="btn btn-outline-danger">Filter</button>
-      <a href="" class="btn btn-outline-secondary ms-2">Clear</a>
+      <a href="/auditions/{{project.id}}" class="btn btn-outline-secondary ms-2">Clear</a>
     </div>
   </form>
   {{#if project.roles.length}}
