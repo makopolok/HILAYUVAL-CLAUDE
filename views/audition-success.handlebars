@@ -62,16 +62,48 @@
             <i class="fas fa-video me-2"></i>
             Your Video Submission
           </h5>
-        </div>
-        <div class="card-body">
+        </div>        <div class="card-body">
           {{#if (eq video_type "cloudflare_stream")}}
-            <div class="ratio ratio-16x9 mb-3">
-              <iframe 
-                src="https://iframe.videodelivery.net/{{video_url}}" 
-                frameborder="0" 
-                allowfullscreen
-                class="rounded">
-              </iframe>
+            <div id="video-container">              <!-- Processing indicator -->
+              <div id="video-processing" class="text-center p-5" style="display: block;">
+                <!-- Large red spinner -->
+                <div class="d-flex justify-content-center mb-4">
+                  <div class="spinner-border" role="status" style="color: var(--primary-red); width: 4rem; height: 4rem; border-width: 0.3em;">
+                    <span class="visually-hidden">Loading...</span>
+                  </div>
+                </div>
+                
+                <!-- Processing message -->
+                <h5 class="mb-3" style="color: var(--primary-red);">
+                  <i class="fas fa-cog fa-spin me-2"></i>
+                  Processing Your Video...
+                </h5>
+                <p class="text-muted mb-4">Your video is being processed by our secure servers. This usually takes 1-3 minutes.</p>
+                
+                <!-- Progress bar -->
+                <div class="progress mb-3" style="height: 8px;">
+                  <div class="progress-bar" role="progressbar" style="background-color: var(--primary-red); width: 0%" id="processing-progress"></div>
+                </div>
+                
+                <!-- Status text -->
+                <small class="text-muted">
+                  <i class="fas fa-shield-alt me-1"></i>
+                  We'll automatically load your video when it's ready
+                </small>
+              </div>
+              
+              <!-- Video player (hidden initially) -->
+              <div id="video-player" style="display: none;">
+                <div class="ratio ratio-16x9 mb-3">
+                  <iframe 
+                    src="https://iframe.videodelivery.net/{{video_url}}" 
+                    frameborder="0" 
+                    allowfullscreen
+                    allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+                    class="rounded w-100 h-100">
+                  </iframe>
+                </div>
+              </div>
             </div>
             <div class="alert alert-info">
               <i class="fas fa-shield-alt me-2"></i>
@@ -83,9 +115,11 @@
                 src="https://www.youtube.com/embed/{{video_url}}" 
                 frameborder="0" 
                 allowfullscreen
-                class="rounded">
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                class="rounded w-100 h-100">
               </iframe>
-            </div>            <div class="d-flex align-items-center">
+            </div>
+            <div class="d-flex align-items-center">
               <i class="fab fa-youtube text-danger me-2"></i>
               <a href="{{video_url}}" target="_blank" class="btn btn-outline-danger btn-sm">
                 View on YouTube
@@ -95,8 +129,8 @@
         </div>
       </div>
       {{/if}}      {{#if profile_pictures.length}}
-      <div class="card shadow-sm mb-4" style="border-color: var(--dark-red);">
-        <div class="card-header text-white" style="background-color: var(--dark-red);">
+      <div class="card shadow-sm mb-4" style="border-color: var(--primary-red);">
+        <div class="card-header text-white" style="background-color: var(--primary-red);">
           <h5 class="mb-0">
             <i class="fas fa-images me-2"></i>
             Profile Pictures
@@ -188,6 +222,23 @@
 
 <!-- Custom CSS for success animation -->
 <style>
+/* Card border fixes */
+.card {
+  border-radius: 0.375rem !important;
+  overflow: hidden;
+}
+
+.card-header {
+  border-bottom: 1px solid rgba(0,0,0,.125);
+  border-top-left-radius: calc(0.375rem - 1px) !important;
+  border-top-right-radius: calc(0.375rem - 1px) !important;
+}
+
+.card-body {
+  border-bottom-left-radius: calc(0.375rem - 1px) !important;
+  border-bottom-right-radius: calc(0.375rem - 1px) !important;
+}
+
 .success-checkmark {
   width: 80px;
   height: 80px;
@@ -333,3 +384,62 @@
 </style>
 
 {{> footer}}
+
+<!-- Cloudflare Stream Video Status Checker -->
+{{#if (eq video_type "cloudflare_stream")}}
+<script>
+let checkCount = 0;
+const maxChecks = 30; // Check for up to 5 minutes (30 checks * 10 seconds)
+const videoUid = '{{video_url}}';
+
+function checkVideoStatus() {
+  checkCount++;
+  
+  // Update progress bar
+  const progress = Math.min((checkCount / maxChecks) * 100, 95);
+  document.getElementById('processing-progress').style.width = progress + '%';
+  
+  // Try to load the iframe to see if video is ready
+  const testIframe = document.createElement('iframe');
+  testIframe.style.display = 'none';
+  testIframe.src = `https://iframe.videodelivery.net/${videoUid}`;
+  
+  testIframe.onload = function() {
+    // Video appears to be ready
+    document.getElementById('video-processing').style.display = 'none';
+    document.getElementById('video-player').style.display = 'block';
+    document.getElementById('processing-progress').style.width = '100%';
+    
+    // Remove test iframe
+    document.body.removeChild(testIframe);
+  };
+  
+  testIframe.onerror = function() {
+    // Video not ready yet
+    document.body.removeChild(testIframe);
+    
+    if (checkCount < maxChecks) {
+      // Continue checking
+      setTimeout(checkVideoStatus, 10000); // Check every 10 seconds
+    } else {
+      // Max checks reached, show video anyway (might work)
+      document.getElementById('video-processing').innerHTML = `
+        <div class="alert alert-warning">
+          <h6>Video Processing Complete</h6>
+          <p>Your video should be ready now. If you don't see it below, please refresh the page.</p>
+        </div>
+      `;
+      document.getElementById('video-player').style.display = 'block';
+    }
+  };
+  
+  document.body.appendChild(testIframe);
+}
+
+// Start checking after page loads
+document.addEventListener('DOMContentLoaded', function() {
+  // Wait 5 seconds before first check to give Cloudflare time
+  setTimeout(checkVideoStatus, 5000);
+});
+</script>
+{{/if}}

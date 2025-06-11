@@ -202,5 +202,35 @@ module.exports = {
       }
       throw error; // Re-throw to be caught by the calling function
     }
+  },
+
+  // Check video processing status
+  async getVideoStatus(videoUid) {
+    if (!CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_STREAM_API_TOKEN) {
+      throw new Error('Cloudflare Stream credentials not configured.');
+    }
+
+    const statusUrl = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream/${videoUid}`;
+    
+    try {
+      const response = await axios.get(statusUrl, {
+        headers: {
+          'Authorization': `Bearer ${CLOUDFLARE_STREAM_API_TOKEN}`
+        }
+      });
+
+      if (response.data && response.data.result) {
+        return {
+          status: response.data.result.status?.state || 'unknown',
+          readyToStream: response.data.result.readyToStream || false,
+          uid: response.data.result.uid
+        };
+      } else {
+        throw new Error('Unable to get video status from Cloudflare Stream.');
+      }
+    } catch (error) {
+      console.error('Error checking video status:', error);
+      throw error;
+    }
   }
 };
