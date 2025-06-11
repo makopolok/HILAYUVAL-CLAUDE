@@ -72,13 +72,12 @@
                     <span class="visually-hidden">Loading...</span>
                   </div>
                 </div>
-                
-                <!-- Processing message -->
+                  <!-- Processing message -->
                 <h5 class="mb-3" style="color: var(--primary-red);">
                   <i class="fas fa-cog fa-spin me-2"></i>
                   Processing Your Video...
                 </h5>
-                <p class="text-muted mb-4">Your video is being processed by our secure servers. This usually takes 1-3 minutes.</p>
+                <p class="text-muted mb-4">Your video has been successfully uploaded and is being optimized for playback. This usually takes 30 seconds to 2 minutes.</p>
                 
                 <!-- Progress bar -->
                 <div class="progress mb-3" style="height: 8px;">
@@ -88,7 +87,7 @@
                 <!-- Status text -->
                 <small class="text-muted">
                   <i class="fas fa-shield-alt me-1"></i>
-                  We'll automatically load your video when it's ready
+                  Checking video readiness...
                 </small>
               </div>
               
@@ -389,17 +388,67 @@
 {{#if (eq video_type "cloudflare_stream")}}
 <script>
 let checkCount = 0;
-const maxChecks = 30; // Check for up to 5 minutes (30 checks * 10 seconds)
+const maxChecks = 40; // Check for up to 6-7 minutes (40 checks * 10 seconds)
 const videoUid = '{{video_url}}';
 
 function checkVideoStatus() {
   checkCount++;
   
-  // Update progress bar
-  const progress = Math.min((checkCount / maxChecks) * 100, 95);
+  // Update status message based on progress
+  const statusElement = document.querySelector('#video-processing small');
+  if (checkCount <= 5) {
+    statusElement.innerHTML = '<i class="fas fa-upload me-1"></i>Optimizing video quality...';
+  } else if (checkCount <= 15) {
+    statusElement.innerHTML = '<i class="fas fa-cog me-1"></i>Processing video for streaming...';
+  } else {
+    statusElement.innerHTML = '<i class="fas fa-clock me-1"></i>Finalizing video processing...';
+  }
+  
+  // Update progress bar - faster initial progress
+  let progress;
+  if (checkCount <= 10) {
+    progress = checkCount * 8; // 0-80% in first 10 checks (100 seconds)
+  } else {
+    progress = 80 + Math.min((checkCount - 10) * 0.5, 15); // Slow down after 80%
+  }
+  progress = Math.min(progress, 95);
   document.getElementById('processing-progress').style.width = progress + '%';
   
-  // Use iframe testing method (more reliable than API for now)
+  // Try API call first (more reliable for status)
+  checkVideoStatusAPI().then(apiReady => {
+    if (apiReady) {
+      // Video is ready according to API
+      videoReady();
+    } else {
+      // Fallback to iframe testing
+      checkVideoStatusIframe();
+    }
+  }).catch(error => {
+    console.warn('API status check failed, using iframe method:', error);
+    // Fallback to iframe testing
+    checkVideoStatusIframe();
+  });
+}
+
+function checkVideoStatusAPI() {
+  return fetch(`/api/video-status/${videoUid}`)
+    .then(response => response.json())
+    .then(data => {
+      if (data.success && data.readyToStream) {
+        console.log('API: Video is ready for streaming');
+        return true;
+      }
+      console.log('API: Video not ready yet, status:', data.status);
+      return false;
+    })
+    .catch(error => {
+      console.warn('API video status check failed:', error);
+      return false;
+    });
+}
+
+function checkVideoStatusIframe() {
+  // Use iframe testing method as fallback
   const testIframe = document.createElement('iframe');
   testIframe.style.display = 'none';
   testIframe.style.position = 'absolute';
@@ -407,34 +456,20 @@ function checkVideoStatus() {
   testIframe.src = `https://iframe.videodelivery.net/${videoUid}`;
   
   let loadTimeout = setTimeout(() => {
-    // If iframe doesn't load within 15 seconds, consider it not ready
+    // If iframe doesn't load within 10 seconds, consider it not ready
     try {
       document.body.removeChild(testIframe);
     } catch(e) {
       // Iframe already removed
     }
     
-    if (checkCount < maxChecks) {
-      // Continue checking
-      setTimeout(checkVideoStatus, 10000); // Check every 10 seconds
-    } else {
-      // Max checks reached, show video anyway (might work)
-      document.getElementById('video-processing').innerHTML = `
-        <div class="alert alert-warning">
-          <h6>Video Processing Complete</h6>
-          <p>Your video should be ready now. If you don't see it below, please refresh the page.</p>
-        </div>
-      `;
-      document.getElementById('video-player').style.display = 'block';
-    }
-  }, 15000);
+    scheduleNextCheck();
+  }, 10000);
   
   testIframe.onload = function() {
     clearTimeout(loadTimeout);
     // Video appears to be ready
-    document.getElementById('video-processing').style.display = 'none';
-    document.getElementById('video-player').style.display = 'block';
-    document.getElementById('processing-progress').style.width = '100%';
+    videoReady();
     
     // Remove test iframe
     try {
@@ -453,28 +488,39 @@ function checkVideoStatus() {
       // Iframe already removed
     }
     
-    if (checkCount < maxChecks) {
-      // Continue checking
-      setTimeout(checkVideoStatus, 10000); // Check every 10 seconds
-    } else {
-      // Max checks reached, show video anyway (might work)
-      document.getElementById('video-processing').innerHTML = `
-        <div class="alert alert-warning">
-          <h6>Video Processing Complete</h6>
-          <p>Your video should be ready now. If you don't see it below, please refresh the page.</p>
-        </div>
-      `;
-      document.getElementById('video-player').style.display = 'block';
-    }
+    scheduleNextCheck();
   };
   
   document.body.appendChild(testIframe);
 }
 
+function scheduleNextCheck() {
+  if (checkCount < maxChecks) {
+    // Continue checking with intelligent intervals
+    const nextCheckDelay = checkCount <= 5 ? 5000 : (checkCount <= 15 ? 8000 : 12000);
+    setTimeout(checkVideoStatus, nextCheckDelay);
+  } else {
+    // Max checks reached, show video anyway (might work)
+    document.getElementById('video-processing').innerHTML = `
+      <div class="alert alert-info">
+        <h6><i class="fas fa-check-circle me-2"></i>Video Processing Complete</h6>
+        <p class="mb-0">Your video should be ready now. If you don't see it below, please refresh the page.</p>
+      </div>
+    `;
+    document.getElementById('video-player').style.display = 'block';
+  }
+}
+
+function videoReady() {
+  document.getElementById('video-processing').style.display = 'none';
+  document.getElementById('video-player').style.display = 'block';
+  document.getElementById('processing-progress').style.width = '100%';
+}
+
 // Start checking after page loads
 document.addEventListener('DOMContentLoaded', function() {
-  // Wait 5 seconds before first check to give Cloudflare time
-  setTimeout(checkVideoStatus, 5000);
+  // Immediate first check (server may have already waited for readiness)
+  setTimeout(checkVideoStatus, 1000);
 });
 </script>
 {{/if}}

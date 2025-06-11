@@ -531,9 +531,7 @@ app.post('/audition/:projectId', auditionUpload.fields([
             fs.unlinkSync(videoFile.path);
           }
           throw ytError; // Re-throw to be caught by the main try-catch
-        }
-
-      } else { // Default to Cloudflare Stream (if uploadMethod is 'cloudflare' or anything else)
+        }      } else { // Default to Cloudflare Stream (if uploadMethod is 'cloudflare' or anything else)
         console.log(`POST_AUDITION_UPLOADING_TO_CLOUDFLARE_STREAM: ${videoFile.originalname}`);
         try {
           const cfStreamResult = await cloudflareUploadService.uploadVideo(videoFile); // uploadVideo already handles unlinking path
@@ -541,6 +539,20 @@ app.post('/audition/:projectId', auditionUpload.fields([
           videoType = 'cloudflare_stream';
           videoUploadResult = { id: cfStreamResult.uid }; 
           console.log(`POST_AUDITION_VIDEO_UPLOADED_CLOUDFLARE: ${videoFile.originalname}, UID: ${cfStreamResult.uid}`);
+          
+          // Wait for video to be ready for immediate playback (with 60-second timeout)
+          console.log(`POST_AUDITION_WAITING_FOR_VIDEO_READY: ${cfStreamResult.uid}`);
+          try {
+            const readyStatus = await cloudflareUploadService.waitForVideoReady(cfStreamResult.uid, 60000); // 1 minute timeout
+            if (readyStatus.ready) {
+              console.log(`POST_AUDITION_VIDEO_READY_IMMEDIATELY: ${cfStreamResult.uid}`);
+            } else {
+              console.log(`POST_AUDITION_VIDEO_NOT_READY_YET: ${cfStreamResult.uid}, will use client-side checking`);
+            }
+          } catch (waitError) {
+            console.warn(`POST_AUDITION_VIDEO_WAIT_ERROR: ${cfStreamResult.uid}`, waitError.message);
+            // Continue anyway, client-side checker will handle it
+          }
         } catch (cfError) {
           console.error('POST_AUDITION_CLOUDFLARE_UPLOAD_ERROR: Failed to upload video to Cloudflare Stream.', cfError);
           // cloudflareUploadService.uploadVideo should handle unlinking its temp file on error
@@ -604,6 +616,30 @@ app.post('/audition/:projectId', auditionUpload.fields([
   } catch (error) {
     console.error(`[App.js POST /audition/:${req.params.projectId}] Critical error in route:`, error.message, error.stack);
     next(error); // Pass to the main error handler
+  }
+});
+
+// API endpoint to check video processing status
+app.get('/api/video-status/:videoUid', async (req, res) => {
+  try {
+    const videoUid = req.params.videoUid;
+    console.log(`API_VIDEO_STATUS_CHECK: ${videoUid}`);
+    
+    const status = await cloudflareUploadService.getVideoStatus(videoUid);
+    console.log(`API_VIDEO_STATUS_RESULT: ${videoUid}`, status);
+    
+    res.json({
+      success: true,
+      status: status.status,
+      readyToStream: status.readyToStream,
+      uid: status.uid
+    });
+  } catch (error) {
+    console.error(`API_VIDEO_STATUS_ERROR: ${req.params.videoUid}`, error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
   }
 });
 

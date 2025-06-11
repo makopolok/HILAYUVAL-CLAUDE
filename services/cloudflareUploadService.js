@@ -232,5 +232,34 @@ module.exports = {
       console.error('Error checking video status:', error);
       throw error;
     }
+  },
+
+  // Wait for video to be ready for streaming with timeout
+  async waitForVideoReady(videoUid, maxWaitTime = 120000) { // Default 2 minutes
+    console.log(`=== WAITING FOR VIDEO TO BE READY: ${videoUid} ===`);
+    const startTime = Date.now();
+    const checkInterval = 3000; // Check every 3 seconds
+    
+    while (Date.now() - startTime < maxWaitTime) {
+      try {
+        const status = await this.getVideoStatus(videoUid);
+        console.log(`Video ${videoUid} status: ${status.status}, readyToStream: ${status.readyToStream}`);
+        
+        if (status.readyToStream || status.status === 'ready') {
+          console.log(`Video ${videoUid} is ready for streaming!`);
+          return { ready: true, status: status.status };
+        }
+        
+        // Wait before next check
+        await new Promise(resolve => setTimeout(resolve, checkInterval));
+      } catch (error) {
+        console.warn(`Error checking video status for ${videoUid}:`, error.message);
+        // Continue checking even if there's an API error
+        await new Promise(resolve => setTimeout(resolve, checkInterval));
+      }
+    }
+    
+    console.log(`Video ${videoUid} not ready after ${maxWaitTime}ms, proceeding anyway`);
+    return { ready: false, timeout: true };
   }
 };
