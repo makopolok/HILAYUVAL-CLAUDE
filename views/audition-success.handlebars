@@ -399,41 +399,88 @@ function checkVideoStatus() {
   const progress = Math.min((checkCount / maxChecks) * 100, 95);
   document.getElementById('processing-progress').style.width = progress + '%';
   
-  // Try to load the iframe to see if video is ready
-  const testIframe = document.createElement('iframe');
-  testIframe.style.display = 'none';
-  testIframe.src = `https://iframe.videodelivery.net/${videoUid}`;
-  
-  testIframe.onload = function() {
-    // Video appears to be ready
-    document.getElementById('video-processing').style.display = 'none';
-    document.getElementById('video-player').style.display = 'block';
-    document.getElementById('processing-progress').style.width = '100%';
-    
-    // Remove test iframe
-    document.body.removeChild(testIframe);
-  };
-  
-  testIframe.onerror = function() {
-    // Video not ready yet
-    document.body.removeChild(testIframe);
-    
-    if (checkCount < maxChecks) {
-      // Continue checking
-      setTimeout(checkVideoStatus, 10000); // Check every 10 seconds
-    } else {
-      // Max checks reached, show video anyway (might work)
-      document.getElementById('video-processing').innerHTML = `
-        <div class="alert alert-warning">
-          <h6>Video Processing Complete</h6>
-          <p>Your video should be ready now. If you don't see it below, please refresh the page.</p>
-        </div>
-      `;
-      document.getElementById('video-player').style.display = 'block';
-    }
-  };
-  
-  document.body.appendChild(testIframe);
+  // Use the API to check video status
+  fetch(`/api/video-status/${videoUid}`)
+    .then(response => response.json())
+    .then(data => {
+      if (data.readyToStream || data.status === 'ready') {
+        // Video is ready
+        document.getElementById('video-processing').style.display = 'none';
+        document.getElementById('video-player').style.display = 'block';
+        document.getElementById('processing-progress').style.width = '100%';
+      } else if (checkCount < maxChecks) {
+        // Video not ready, continue checking
+        setTimeout(checkVideoStatus, 10000); // Check every 10 seconds
+      } else {
+        // Max checks reached, show video anyway (might work)
+        document.getElementById('video-processing').innerHTML = `
+          <div class="alert alert-warning">
+            <h6>Video Processing Complete</h6>
+            <p>Your video should be ready now. If you don't see it below, please refresh the page.</p>
+          </div>
+        `;
+        document.getElementById('video-player').style.display = 'block';
+      }
+    })
+    .catch(error => {
+      console.error('Error checking video status:', error);
+      
+      // Fallback to iframe testing method
+      const testIframe = document.createElement('iframe');
+      testIframe.style.display = 'none';
+      testIframe.style.position = 'absolute';
+      testIframe.style.left = '-9999px';
+      testIframe.src = `https://iframe.videodelivery.net/${videoUid}`;
+      
+      let loadTimeout = setTimeout(() => {
+        try {
+          document.body.removeChild(testIframe);
+        } catch(e) {}
+        
+        if (checkCount < maxChecks) {
+          setTimeout(checkVideoStatus, 10000);
+        } else {
+          document.getElementById('video-processing').innerHTML = `
+            <div class="alert alert-warning">
+              <h6>Video Processing Complete</h6>
+              <p>Your video should be ready now. If you don't see it below, please refresh the page.</p>
+            </div>
+          `;
+          document.getElementById('video-player').style.display = 'block';
+        }
+      }, 15000);
+      
+      testIframe.onload = function() {
+        clearTimeout(loadTimeout);
+        document.getElementById('video-processing').style.display = 'none';
+        document.getElementById('video-player').style.display = 'block';
+        document.getElementById('processing-progress').style.width = '100%';
+        try {
+          document.body.removeChild(testIframe);
+        } catch(e) {}
+      };
+      
+      testIframe.onerror = function() {
+        clearTimeout(loadTimeout);
+        try {
+          document.body.removeChild(testIframe);
+        } catch(e) {}
+        
+        if (checkCount < maxChecks) {
+          setTimeout(checkVideoStatus, 10000);
+        } else {
+          document.getElementById('video-processing').innerHTML = `
+            <div class="alert alert-warning">
+              <h6>Video Processing Complete</h6>
+              <p>Your video should be ready now. If you don't see it below, please refresh the page.</p>
+            </div>
+          `;
+          document.getElementById('video-player').style.display = 'block';
+        }
+      };
+      
+      document.body.appendChild(testIframe);
+    });
 }
 
 // Start checking after page loads

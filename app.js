@@ -726,6 +726,18 @@ app.get('/projects/:id/auditions', async (req, res) => {
   res.render('auditions', { project: { ...project, roles }, query: req.query });
 });
 
+// API endpoint to check Cloudflare Stream video status
+app.get('/api/video-status/:videoId', async (req, res) => {
+  try {
+    const videoId = req.params.videoId;
+    const status = await cloudflareUploadService.getVideoStatus(videoId);
+    res.json(status);
+  } catch (error) {
+    console.error('Error checking video status:', error);
+    res.status(500).json({ error: 'Failed to check video status' });
+  }
+});
+
 // Error handling
 app.use((req, res) => {
     res.status(404).render('error/404');

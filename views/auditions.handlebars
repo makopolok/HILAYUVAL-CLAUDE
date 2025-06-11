@@ -32,12 +32,38 @@
           {{#if this.auditions}}
             <div class="row">
               {{#each this.auditions}}
-                <div class="col-md-6 col-lg-4 mb-4">
-                  <div class="card h-100 border-danger audition-video-card">
+                <div class="col-md-6 col-lg-4 mb-4">                  <div class="card h-100 border-danger audition-video-card">
                     <div class="card-body">
                       <h6 class="card-title text-danger">{{name}}</h6>
                       <p class="card-text small">{{email}}</p>
-                      <iframe src="https://iframe.videodelivery.net/{{videoId}}" width="100%" height="200" frameborder="0" allowfullscreen></iframe>
+                      
+                      <!-- Enhanced video player with loading state -->
+                      <div class="video-container mb-3" data-video-id="{{videoId}}">
+                        <div class="video-loading text-center p-3" style="background-color: #f8f9fa; border-radius: 8px;">
+                          <div class="spinner-border spinner-border-sm text-danger mb-2" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                          </div>
+                          <div class="small text-muted">Loading video...</div>
+                        </div>
+                        <div class="video-player" style="display: none;">
+                          <div class="ratio ratio-16x9">
+                            <iframe 
+                              src="https://iframe.videodelivery.net/{{videoId}}" 
+                              frameborder="0" 
+                              allowfullscreen
+                              allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+                              class="rounded">
+                            </iframe>
+                          </div>
+                        </div>
+                        <div class="video-error text-center p-3" style="display: none; background-color: #f8d7da; border-radius: 8px;">
+                          <div class="small text-danger">
+                            <i class="fas fa-exclamation-triangle me-1"></i>
+                            Video processing in progress. <a href="javascript:void(0)" onclick="retryVideo(this)">Retry</a>
+                          </div>
+                        </div>
+                      </div>
+                      
                       <p class="card-text"><small class="text-muted">Submitted: {{submittedAt}}</small></p>
                     </div>
                   </div>
@@ -52,7 +78,111 @@
     {{/each}}
   {{else}}
     <p>No roles found for this project.</p>
-  {{/if}}
-  <a href="/projects" class="btn btn-outline-danger mt-4">Back to Projects</a>
+  {{/if}}  <a href="/projects" class="btn btn-outline-danger mt-4">Back to Projects</a>
 </div>
+
+<!-- Video Player Enhancement Script -->
+<script>
+function retryVideo(element) {
+  const container = element.closest('.video-container');
+  const videoId = container.dataset.videoId;
+  const loading = container.querySelector('.video-loading');
+  const player = container.querySelector('.video-player');
+  const error = container.querySelector('.video-error');
+  
+  // Show loading, hide error
+  loading.style.display = 'block';
+  error.style.display = 'none';
+  player.style.display = 'none';
+  
+  // Try to load the video again
+  loadVideo(container);
+}
+
+function loadVideo(container) {
+  const videoId = container.dataset.videoId;
+  const loading = container.querySelector('.video-loading');
+  const player = container.querySelector('.video-player');
+  const error = container.querySelector('.video-error');
+  
+  // First try to check video status via API
+  fetch(`/api/video-status/${videoId}`)
+    .then(response => response.json())
+    .then(data => {
+      if (data.readyToStream || data.status === 'ready') {
+        // Video is ready
+        loading.style.display = 'none';
+        player.style.display = 'block';
+        error.style.display = 'none';
+      } else {
+        // Video not ready, try iframe method as fallback
+        testIframeLoad(container);
+      }
+    })
+    .catch(error => {
+      console.error('Error checking video status via API:', error);
+      // API failed, use iframe method as fallback
+      testIframeLoad(container);
+    });
+}
+
+function testIframeLoad(container) {
+  const videoId = container.dataset.videoId;
+  const loading = container.querySelector('.video-loading');
+  const player = container.querySelector('.video-player');
+  const error = container.querySelector('.video-error');
+  
+  // Create a test iframe to check if video is ready
+  const testIframe = document.createElement('iframe');
+  testIframe.style.display = 'none';
+  testIframe.style.position = 'absolute';
+  testIframe.style.left = '-9999px';
+  testIframe.src = `https://iframe.videodelivery.net/${videoId}`;
+  
+  let loadTimeout = setTimeout(() => {
+    // If iframe doesn't load within 10 seconds, show error
+    try {
+      document.body.removeChild(testIframe);
+    } catch(e) {}
+    loading.style.display = 'none';
+    error.style.display = 'block';
+  }, 10000);
+  
+  testIframe.onload = function() {
+    clearTimeout(loadTimeout);
+    // Video is ready
+    loading.style.display = 'none';
+    player.style.display = 'block';
+    error.style.display = 'none';
+    try {
+      document.body.removeChild(testIframe);
+    } catch(e) {}
+  };
+  
+  testIframe.onerror = function() {
+    clearTimeout(loadTimeout);
+    // Video not ready
+    loading.style.display = 'none';
+    error.style.display = 'block';
+    try {
+      document.body.removeChild(testIframe);
+    } catch(e) {}
+  };
+  
+  document.body.appendChild(testIframe);
+}
+
+// Load all videos when page loads
+document.addEventListener('DOMContentLoaded', function() {
+  const videoContainers = document.querySelectorAll('.video-container');
+  
+  videoContainers.forEach((container, index) => {
+    // Stagger the loading to avoid overwhelming the browser
+    setTimeout(() => {
+      loadVideo(container);
+    }, index * 1000); // 1 second delay between each video
+  });
+});
+</script>
+
 {{> footer}}
