@@ -687,7 +687,7 @@ app.post('/projects/:id/add-role', async (req, res) => {
 
 // Route to display all auditions for a project (Cloudflare Stream playlist equivalent)
 app.get('/projects/:id/auditions', async (req, res) => {
-  const project = projectService.getProjectById(req.params.id);
+  const project = await projectService.getProjectById(req.params.id);
   if (!project) {
     return res.status(404).send('Project not found.');
   }
