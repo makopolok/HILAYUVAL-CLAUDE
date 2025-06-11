@@ -105,25 +105,8 @@ function loadVideo(container) {
   const player = container.querySelector('.video-player');
   const error = container.querySelector('.video-error');
   
-  // First try to check video status via API
-  fetch(`/api/video-status/${videoId}`)
-    .then(response => response.json())
-    .then(data => {
-      if (data.readyToStream || data.status === 'ready') {
-        // Video is ready
-        loading.style.display = 'none';
-        player.style.display = 'block';
-        error.style.display = 'none';
-      } else {
-        // Video not ready, try iframe method as fallback
-        testIframeLoad(container);
-      }
-    })
-    .catch(error => {
-      console.error('Error checking video status via API:', error);
-      // API failed, use iframe method as fallback
-      testIframeLoad(container);
-    });
+  // Use iframe method to check if video is ready
+  testIframeLoad(container);
 }
 
 function testIframeLoad(container) {
