@@ -202,8 +202,7 @@ module.exports = {
       }
       throw error; // Re-throw to be caught by the calling function
     }
-  },
-  // Check video processing status
+  },  // Check video processing status with enhanced readiness detection
   async getVideoStatus(videoUid) {
     if (!CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_STREAM_API_TOKEN) {
       throw new Error('Cloudflare Stream credentials not configured.');
@@ -216,37 +215,51 @@ module.exports = {
         headers: {
           'Authorization': `Bearer ${CLOUDFLARE_STREAM_API_TOKEN}`
         },
-        timeout: 10000 // 10 second timeout for API calls
+        timeout: 15000 // 15 second timeout for API calls
       });
 
       if (response.data && response.data.result) {
         const result = response.data.result;
         const statusState = result.status?.state || 'unknown';
         const readyToStream = result.readyToStream === true;
+        const hasPreview = !!result.preview;
+        const hasDuration = result.duration && result.duration > 0;
         
-        // More detailed status analysis
+        // Enhanced readiness detection with multiple conditions
         let isFullyReady = false;
+        let confidence = 'low';
         
-        // Check multiple conditions for video readiness
-        if (readyToStream && statusState === 'ready') {
+        // Primary readiness indicators
+        if (readyToStream && statusState === 'ready' && hasPreview) {
           isFullyReady = true;
-        } else if (readyToStream && statusState === 'live') {
+          confidence = 'high';
+        } else if (statusState === 'ready' && hasPreview && hasDuration) {
+          // Video is processed and has preview/duration even if readyToStream is false
           isFullyReady = true;
-        } else if (statusState === 'ready' && result.preview) {
-          // Sometimes readyToStream is false but video is actually ready
+          confidence = 'medium';
+        } else if (readyToStream && (statusState === 'live' || statusState === 'ready')) {
           isFullyReady = true;
+          confidence = 'medium';
+        } else if (statusState === 'ready' && hasDuration) {
+          // Fallback: if status is ready and has duration, likely playable
+          isFullyReady = true;
+          confidence = 'low';
         }
         
-        console.log(`VIDEO_STATUS_CHECK: ${videoUid} - state:${statusState}, readyToStream:${readyToStream}, fullyReady:${isFullyReady}`);
+        console.log(`VIDEO_STATUS_CHECK: ${videoUid} - state:${statusState}, readyToStream:${readyToStream}, hasPreview:${hasPreview}, duration:${result.duration}, fullyReady:${isFullyReady}, confidence:${confidence}`);
         
         return {
           status: statusState,
-          readyToStream: isFullyReady, // Use our enhanced logic
+          readyToStream: isFullyReady,
+          confidence: confidence,
           uid: result.uid,
-          originalReadyToStream: result.readyToStream, // Keep original for debugging
+          originalReadyToStream: result.readyToStream,
           preview: result.preview,
           duration: result.duration,
-          size: result.size
+          size: result.size,
+          hasPreview: hasPreview,
+          uploaded: result.uploaded,
+          modified: result.modified
         };
       } else {
         throw new Error('Unable to get video status from Cloudflare Stream.');
@@ -261,7 +274,8 @@ module.exports = {
           status: 'checking',
           readyToStream: false,
           uid: videoUid,
-          error: 'timeout'
+          error: 'timeout',
+          confidence: 'none'
         };
       }
       

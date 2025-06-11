@@ -605,7 +605,7 @@ app.post('/audition/:projectId', auditionUpload.fields([
   }
 });
 
-// API endpoint to check video processing status
+// API endpoint to check video processing status with enhanced details
 app.get('/api/video-status/:videoUid', async (req, res) => {
   try {
     const videoUid = req.params.videoUid;
@@ -618,13 +618,19 @@ app.get('/api/video-status/:videoUid', async (req, res) => {
       success: true,
       status: status.status,
       readyToStream: status.readyToStream,
-      uid: status.uid
+      confidence: status.confidence,
+      uid: status.uid,
+      hasPreview: status.hasPreview,
+      duration: status.duration,
+      originalReadyToStream: status.originalReadyToStream,
+      timestamp: new Date().toISOString()
     });
   } catch (error) {
     console.error(`API_VIDEO_STATUS_ERROR: ${req.params.videoUid}`, error.message);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message,
+      timestamp: new Date().toISOString()
     });
   }
 });

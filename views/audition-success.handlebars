@@ -387,290 +387,390 @@
 <!-- Cloudflare Stream Video Status Checker -->
 {{#if (eq video_type "cloudflare_stream")}}
 <script>
-let checkCount = 0;
-const maxChecks = 60; // Check for up to 10 minutes (more time for large videos)
-const videoUid = '{{video_url}}';
-let isVideoReady = false;
-
-function checkVideoStatus() {
-  if (isVideoReady) return; // Prevent multiple calls after video is ready
-  
-  checkCount++;
-  console.log(`Video status check #${checkCount} for ${videoUid}`);
-  
-  // Update status message based on progress
-  const statusElement = document.querySelector('#video-processing small');
-  if (checkCount <= 3) {
-    statusElement.innerHTML = '<i class="fas fa-upload me-1"></i>Video uploaded successfully, starting processing...';
-  } else if (checkCount <= 8) {
-    statusElement.innerHTML = '<i class="fas fa-cog me-1"></i>Analyzing and optimizing video quality...';
-  } else if (checkCount <= 20) {
-    statusElement.innerHTML = '<i class="fas fa-film me-1"></i>Encoding video for streaming...';
-  } else if (checkCount <= 35) {
-    statusElement.innerHTML = '<i class="fas fa-server me-1"></i>Preparing video for delivery...';
-  } else {
-    statusElement.innerHTML = '<i class="fas fa-clock me-1"></i>Final processing steps...';
+// Enhanced video monitoring system with robust error handling
+class VideoMonitor {
+  constructor(videoUid) {
+    this.videoUid = videoUid;
+    this.isVideoReady = false;
+    this.checkCount = 0;
+    this.maxChecks = 50; // Increased limit for very large videos
+    this.destroyed = false;
+    this.apiFailures = 0;
+    this.maxApiFailures = 3;
+    
+    console.log('VideoMonitor initialized for:', videoUid);
   }
   
-  // Update progress bar with more realistic timing
-  let progress;
-  if (checkCount <= 5) {
-    progress = checkCount * 10; // 0-50% in first 5 checks (25 seconds)
-  } else if (checkCount <= 15) {
-    progress = 50 + (checkCount - 5) * 3; // 50-80% next 10 checks
-  } else if (checkCount <= 30) {
-    progress = 80 + (checkCount - 15) * 1; // 80-95% next 15 checks
-  } else {
-    progress = 95 + Math.min((checkCount - 30) * 0.2, 4); // Very slow to 99%
-  }
-  progress = Math.min(progress, 99);
-  document.getElementById('processing-progress').style.width = progress + '%';
-  
-  // Try API call first (more reliable for status)
-  checkVideoStatusAPI().then(apiReady => {
-    if (apiReady) {
-      console.log('API confirmed video is ready');
-      // Double-check with iframe before showing
-      performFinalValidation();
-    } else {
-      console.log('API says video not ready, continuing checks...');
-      scheduleNextCheck();
-    }
-  }).catch(error => {
-    console.warn('API status check failed, using iframe method:', error);
-    // Fallback to iframe testing only
-    checkVideoStatusIframe();
-  });
-}
-
-function checkVideoStatusAPI() {
-  return fetch(`/api/video-status/${videoUid}`)
-    .then(response => {
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      return response.json();
-    })
-    .then(data => {
-      console.log('API response:', data);
-      if (data.success && data.readyToStream) {
-        return true;
-      }
-      return false;
-    })
-    .catch(error => {
-      console.warn('API video status check failed:', error);
-      return false;
-    });
-}
-
-function performFinalValidation() {
-  console.log('Performing final validation before showing video...');
-  
-  // Try multiple validation methods for maximum reliability
-  let validationPassed = 0;
-  let validationFailed = 0;
-  const totalValidations = 2; // We'll run 2 different tests
-  
-  function checkValidationComplete() {
-    if (validationPassed > 0) {
-      // At least one validation passed - show video
-      console.log('Final validation successful - showing video');
-      videoReady();
-    } else if (validationPassed + validationFailed >= totalValidations) {
-      // All validations completed but none passed - still show video with delay
-      console.log('Final validation uncertain - showing video with warning');
-      setTimeout(() => {
-        videoReady();
-      }, 3000);
-    }
-  }
-  
-  // Validation 1: Test iframe with preload
-  const testIframe1 = document.createElement('iframe');
-  testIframe1.style.display = 'none';
-  testIframe1.style.position = 'absolute';
-  testIframe1.style.left = '-9999px';
-  testIframe1.style.width = '1px';
-  testIframe1.style.height = '1px';
-  testIframe1.src = `https://iframe.videodelivery.net/${videoUid}?preload=true&autoplay=false`;
-  
-  let iframe1Timeout = setTimeout(() => {
-    console.log('Iframe validation 1 timeout');
-    cleanupTestIframe(testIframe1);
-    validationFailed++;
-    checkValidationComplete();
-  }, 10000);
-  
-  testIframe1.onload = function() {
-    console.log('Iframe validation 1 successful');
-    clearTimeout(iframe1Timeout);
-    cleanupTestIframe(testIframe1);
-    validationPassed++;
-    checkValidationComplete();
-  };
-  
-  testIframe1.onerror = function() {
-    console.log('Iframe validation 1 failed');
-    clearTimeout(iframe1Timeout);
-    cleanupTestIframe(testIframe1);
-    validationFailed++;
-    checkValidationComplete();
-  };
-  
-  document.body.appendChild(testIframe1);
-  
-  // Validation 2: Test with different iframe approach after delay
-  setTimeout(() => {
-    const testIframe2 = document.createElement('iframe');
-    testIframe2.style.display = 'none';
-    testIframe2.style.position = 'absolute';
-    testIframe2.style.left = '-9999px';
-    testIframe2.style.width = '1px';
-    testIframe2.style.height = '1px';
-    testIframe2.src = `https://iframe.videodelivery.net/${videoUid}`;
-    
-    let iframe2Timeout = setTimeout(() => {
-      console.log('Iframe validation 2 timeout');
-      cleanupTestIframe(testIframe2);
-      validationFailed++;
-      checkValidationComplete();
-    }, 8000);
-    
-    testIframe2.onload = function() {
-      console.log('Iframe validation 2 successful');
-      clearTimeout(iframe2Timeout);
-      cleanupTestIframe(testIframe2);
-      validationPassed++;
-      checkValidationComplete();
-    };
-    
-    testIframe2.onerror = function() {
-      console.log('Iframe validation 2 failed');
-      clearTimeout(iframe2Timeout);
-      cleanupTestIframe(testIframe2);
-      validationFailed++;
-      checkValidationComplete();
-    };
-    
-    document.body.appendChild(testIframe2);
-  }, 2000); // Start second validation after 2 seconds
-}
-
-function checkVideoStatusIframe() {
-  // Fallback iframe testing method
-  const testIframe = document.createElement('iframe');
-  testIframe.style.display = 'none';
-  testIframe.style.position = 'absolute';
-  testIframe.style.left = '-9999px';
-  testIframe.style.width = '1px';
-  testIframe.style.height = '1px';
-  testIframe.src = `https://iframe.videodelivery.net/${videoUid}?preload=true`;
-  
-  let loadTimeout = setTimeout(() => {
-    console.log('Iframe test timeout - video not ready yet');
-    cleanupTestIframe(testIframe);
-    scheduleNextCheck();
-  }, 12000); // Longer timeout for iframe testing
-  
-  testIframe.onload = function() {
-    console.log('Iframe test successful - video appears ready');
-    clearTimeout(loadTimeout);
-    cleanupTestIframe(testIframe);
-    
-    // Add delay before showing to ensure stability
+  start() {
+    console.log('Starting video processing monitoring...');
+    // Initial delay to allow upload to register
     setTimeout(() => {
-      videoReady();
-    }, 3000);
-  };
-  
-  testIframe.onerror = function() {
-    console.log('Iframe test failed - video not ready');
-    clearTimeout(loadTimeout);
-    cleanupTestIframe(testIframe);
-    scheduleNextCheck();
-  };
-  
-  document.body.appendChild(testIframe);
-}
-
-function cleanupTestIframe(iframe) {
-  try {
-    if (iframe && iframe.parentNode) {
-      iframe.parentNode.removeChild(iframe);
-    }
-  } catch(e) {
-    console.warn('Error removing test iframe:', e);
+      this.checkVideoStatus();
+    }, 4000);
   }
-}
-
-function scheduleNextCheck() {
-  if (checkCount < maxChecks && !isVideoReady) {
-    // More conservative intervals - wait longer between checks
-    let nextCheckDelay;
-    if (checkCount <= 3) {
-      nextCheckDelay = 5000; // 5 seconds for first few checks
-    } else if (checkCount <= 10) {
-      nextCheckDelay = 8000; // 8 seconds
-    } else if (checkCount <= 25) {
-      nextCheckDelay = 12000; // 12 seconds
+  
+  destroy() {
+    this.destroyed = true;
+    console.log('VideoMonitor destroyed');
+  }
+  
+  checkVideoStatus() {
+    if (this.destroyed || this.isVideoReady) return;
+    
+    this.checkCount++;
+    console.log(`Video status check #${this.checkCount}/${this.maxChecks} for ${this.videoUid}`);
+    
+    this.updateProgress();
+    
+    // Try API first with better error handling
+    this.checkAPI()
+      .then(apiResult => {
+        if (this.destroyed) return;
+        
+        if (apiResult.ready) {
+          console.log('API confirmed video ready, performing final validation...');
+          this.performFinalValidation();
+        } else {
+          console.log('API says not ready, scheduling next check...');
+          this.scheduleNextCheck();
+        }
+      })
+      .catch(error => {
+        if (this.destroyed) return;
+        
+        console.warn('API check failed:', error);
+        this.apiFailures++;
+        
+        if (this.apiFailures >= this.maxApiFailures) {
+          console.log('Too many API failures, switching to iframe-only testing');
+          this.checkIframeDirectly();
+        } else {
+          this.scheduleNextCheck();
+        }
+      });
+  }
+  
+  async checkAPI() {
+    try {
+      const response = await fetch(`/api/video-status/${this.videoUid}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+        timeout: 10000
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log('API Response:', data);
+      
+      if (data.success) {
+        this.apiFailures = 0; // Reset on success
+        
+        // Enhanced readiness logic based on confidence
+        if (data.readyToStream) {
+          if (data.confidence === 'high') {
+            return { ready: true, confidence: 'high' };
+          } else if (data.confidence === 'medium' && this.checkCount >= 3) {
+            return { ready: true, confidence: 'medium' };
+          } else if (data.confidence === 'low' && this.checkCount >= 8) {
+            return { ready: true, confidence: 'low' };
+          }
+        }
+        
+        // Fallback: if we've checked many times and status is at least 'ready'
+        if (this.checkCount >= 20 && data.status === 'ready') {
+          console.log('Fallback: video status is ready after many checks');
+          return { ready: true, confidence: 'fallback' };
+        }
+      }
+      
+      return { ready: false };
+    } catch (error) {
+      console.error('API request failed:', error);
+      throw error;
+    }
+  }
+  
+  checkIframeDirectly() {
+    console.log('Checking video readiness with direct iframe test...');
+    
+    // Create a more robust iframe test
+    const testContainer = document.createElement('div');
+    testContainer.style.position = 'absolute';
+    testContainer.style.left = '-10000px';
+    testContainer.style.top = '-10000px';
+    testContainer.style.width = '1px';
+    testContainer.style.height = '1px';
+    testContainer.style.overflow = 'hidden';
+    testContainer.style.visibility = 'hidden';
+    
+    const testIframe = document.createElement('iframe');
+    testIframe.style.width = '1px';
+    testIframe.style.height = '1px';
+    testIframe.style.border = 'none';
+    testIframe.src = `https://iframe.videodelivery.net/${this.videoUid}?muted=true&preload=metadata&autoplay=false`;
+    
+    let testTimeout = setTimeout(() => {
+      console.log('Direct iframe test timeout');
+      this.cleanupTest(testContainer);
+      this.scheduleNextCheck();
+    }, 15000);
+    
+    let loadHandled = false;
+    
+    testIframe.onload = () => {
+      if (loadHandled) return;
+      loadHandled = true;
+      
+      console.log('Direct iframe test successful');
+      clearTimeout(testTimeout);
+      this.cleanupTest(testContainer);
+      
+      // Additional verification
+      setTimeout(() => {
+        this.verifyVideoPlayability();
+      }, 2000);
+    };
+    
+    testIframe.onerror = () => {
+      if (loadHandled) return;
+      loadHandled = true;
+      
+      console.log('Direct iframe test failed');
+      clearTimeout(testTimeout);
+      this.cleanupTest(testContainer);
+      this.scheduleNextCheck();
+    };
+    
+    testContainer.appendChild(testIframe);
+    document.body.appendChild(testContainer);
+  }
+  
+  verifyVideoPlayability() {
+    console.log('Performing final playability verification...');
+    
+    // Test with actual video player configuration
+    const testContainer = document.createElement('div');
+    testContainer.style.position = 'absolute';
+    testContainer.style.left = '-10000px';
+    testContainer.style.top = '-10000px';
+    testContainer.style.width = '320px';
+    testContainer.style.height = '180px';
+    testContainer.style.overflow = 'hidden';
+    testContainer.style.visibility = 'hidden';
+    
+    const verificationIframe = document.createElement('iframe');
+    verificationIframe.style.width = '100%';
+    verificationIframe.style.height = '100%';
+    verificationIframe.style.border = 'none';
+    verificationIframe.src = `https://iframe.videodelivery.net/${this.videoUid}`;
+    verificationIframe.frameBorder = '0';
+    verificationIframe.allowFullscreen = true;
+    verificationIframe.allow = 'accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;';
+    
+    let verifyTimeout = setTimeout(() => {
+      console.log('Final verification timeout - showing video anyway');
+      this.cleanupTest(testContainer);
+      this.showVideo();
+    }, 10000);
+    
+    let verifyHandled = false;
+    
+    verificationIframe.onload = () => {
+      if (verifyHandled) return;
+      verifyHandled = true;
+      
+      console.log('Final verification successful - video is ready');
+      clearTimeout(verifyTimeout);
+      this.cleanupTest(testContainer);
+      this.showVideo();
+    };
+    
+    verificationIframe.onerror = () => {
+      if (verifyHandled) return;
+      verifyHandled = true;
+      
+      console.log('Final verification failed - showing with warning');
+      clearTimeout(verifyTimeout);
+      this.cleanupTest(testContainer);
+      this.showVideoWithWarning();
+    };
+    
+    testContainer.appendChild(verificationIframe);
+    document.body.appendChild(testContainer);
+  }
+  
+  performFinalValidation() {
+    console.log('Performing comprehensive final validation...');
+    
+    // Skip extensive validation if we have high confidence
+    if (this.checkCount <= 5) {
+      // For quick ready responses, do a fast validation
+      this.verifyVideoPlayability();
     } else {
-      nextCheckDelay = 15000; // 15 seconds for later checks
+      // For longer processing, show immediately with high confidence
+      setTimeout(() => {
+        this.showVideo();
+      }, 1000);
+    }
+  }
+  
+  cleanupTest(container) {
+    try {
+      if (container && container.parentNode) {
+        container.parentNode.removeChild(container);
+      }
+    } catch (e) {
+      console.warn('Error cleaning up test container:', e);
+    }
+  }
+  
+  updateProgress() {
+    // More realistic progress calculation
+    let progress;
+    if (this.checkCount <= 3) {
+      progress = 10 + (this.checkCount * 15); // 10-55% for first 3 checks
+    } else if (this.checkCount <= 8) {
+      progress = 55 + ((this.checkCount - 3) * 8); // 55-95% next 5 checks
+    } else if (this.checkCount <= 20) {
+      progress = 95 + ((this.checkCount - 8) * 0.3); // Very slow to 98.6%
+    } else {
+      progress = 98.6 + Math.min((this.checkCount - 20) * 0.05, 1.4); // Crawl to 100%
     }
     
-    console.log(`Scheduling next check in ${nextCheckDelay/1000} seconds...`);
-    setTimeout(checkVideoStatus, nextCheckDelay);
-  } else {
-    // Max checks reached or video is ready
-    if (!isVideoReady) {
-      console.log('Max checks reached, showing video anyway');
-      showVideoWithWarning();
+    progress = Math.min(progress, 99.5);
+    
+    const progressBar = document.getElementById('processing-progress');
+    if (progressBar) {
+      progressBar.style.width = progress + '%';
+    }
+    
+    // Update status message
+    this.updateStatusMessage();
+  }
+  
+  updateStatusMessage() {
+    const statusElement = document.querySelector('#video-processing small');
+    if (!statusElement) return;
+    
+    if (this.checkCount <= 2) {
+      statusElement.innerHTML = '<i class="fas fa-upload me-1"></i>Upload complete, initializing processing...';
+    } else if (this.checkCount <= 5) {
+      statusElement.innerHTML = '<i class="fas fa-cog me-1"></i>Analyzing video format and quality...';
+    } else if (this.checkCount <= 12) {
+      statusElement.innerHTML = '<i class="fas fa-film me-1"></i>Encoding video for optimal streaming...';
+    } else if (this.checkCount <= 25) {
+      statusElement.innerHTML = '<i class="fas fa-server me-1"></i>Preparing video for global delivery...';
+    } else if (this.checkCount <= 35) {
+      statusElement.innerHTML = '<i class="fas fa-shield-alt me-1"></i>Final security and quality checks...';
+    } else {
+      statusElement.innerHTML = '<i class="fas fa-clock me-1"></i>Completing processing, almost ready...';
+    }
+  }
+  
+  scheduleNextCheck() {
+    if (this.checkCount >= this.maxChecks || this.destroyed) {
+      console.log('Max checks reached or monitor destroyed, showing video');
+      this.showVideoWithWarning();
+      return;
+    }
+    
+    // Dynamic intervals based on check count
+    let delay;
+    if (this.checkCount <= 3) {
+      delay = 4000; // 4 seconds initially
+    } else if (this.checkCount <= 8) {
+      delay = 6000; // 6 seconds
+    } else if (this.checkCount <= 20) {
+      delay = 10000; // 10 seconds
+    } else {
+      delay = 15000; // 15 seconds for later checks
+    }
+    
+    console.log(`Scheduling next check in ${delay/1000} seconds...`);
+    setTimeout(() => {
+      if (!this.destroyed) {
+        this.checkVideoStatus();
+      }
+    }, delay);
+  }
+  
+  showVideo() {
+    if (this.isVideoReady) return;
+    
+    this.isVideoReady = true;
+    console.log('Showing video player...');
+    
+    // Complete progress
+    const progressBar = document.getElementById('processing-progress');
+    if (progressBar) {
+      progressBar.style.width = '100%';
+    }
+    
+    // Show success message
+    const processingDiv = document.getElementById('video-processing');
+    if (processingDiv) {
+      processingDiv.innerHTML = `
+        <div class="alert alert-success">
+          <h6><i class="fas fa-check-circle me-2"></i>Video Ready!</h6>
+          <p class="mb-0">Your video has been processed and is ready for viewing.</p>
+        </div>
+      `;
+      
+      // Show video player after brief success message
+      setTimeout(() => {
+        processingDiv.style.display = 'none';
+        const playerDiv = document.getElementById('video-player');
+        if (playerDiv) {
+          playerDiv.style.display = 'block';
+        }
+      }, 2500);
+    }
+  }
+  
+  showVideoWithWarning() {
+    if (this.isVideoReady) return;
+    
+    this.isVideoReady = true;
+    console.log('Showing video with warning message...');
+    
+    const processingDiv = document.getElementById('video-processing');
+    if (processingDiv) {
+      processingDiv.innerHTML = `
+        <div class="alert alert-info">
+          <h6><i class="fas fa-info-circle me-2"></i>Video Processing Complete</h6>
+          <p class="mb-2">Your video has been uploaded and should be ready for viewing.</p>
+          <p class="mb-0 small">If the video doesn't load immediately, please wait a moment or refresh the page.</p>
+        </div>
+      `;
+      
+      setTimeout(() => {
+        const playerDiv = document.getElementById('video-player');
+        if (playerDiv) {
+          playerDiv.style.display = 'block';
+        }
+      }, 1500);
     }
   }
 }
 
-function showVideoWithWarning() {
-  document.getElementById('video-processing').innerHTML = `
-    <div class="alert alert-info">
-      <h6><i class="fas fa-info-circle me-2"></i>Video Processing Complete</h6>
-      <p class="mb-2">Your video upload was successful and should be ready for viewing.</p>
-      <p class="mb-0 small">If the video doesn't play immediately, please wait a moment and try refreshing the page.</p>
-    </div>
-  `;
-  setTimeout(() => {
-    document.getElementById('video-player').style.display = 'block';
-  }, 1000);
-}
-
-function videoReady() {
-  if (isVideoReady) return; // Prevent multiple calls
-  
-  isVideoReady = true;
-  console.log('Video is ready! Showing player...');
-  
-  // Complete the progress bar
-  document.getElementById('processing-progress').style.width = '100%';
-  
-  // Show success message briefly
-  document.getElementById('video-processing').innerHTML = `
-    <div class="alert alert-success">
-      <h6><i class="fas fa-check-circle me-2"></i>Video Ready!</h6>
-      <p class="mb-0">Your video has been processed and is ready for viewing.</p>
-    </div>
-  `;
-  
-  // After showing success, display the video player
-  setTimeout(() => {
-    document.getElementById('video-processing').style.display = 'none';
-    document.getElementById('video-player').style.display = 'block';
-  }, 2000);
-}
-
-// Start checking after page loads
+// Initialize video monitoring when page loads
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('Starting video processing monitoring for:', videoUid);
-  // Wait a bit longer before first check to allow initial processing
-  setTimeout(checkVideoStatus, 3000);
+  const videoUid = '{{video_url}}';
+  console.log('Initializing video monitor for:', videoUid);
+  
+  // Create and start monitor
+  const monitor = new VideoMonitor(videoUid);
+  monitor.start();
+  
+  // Cleanup on page unload
+  window.addEventListener('beforeunload', function() {
+    monitor.destroy();
+  });
 });
 </script>
 {{/if}}
