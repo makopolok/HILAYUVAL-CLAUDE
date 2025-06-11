@@ -622,6 +622,7 @@ app.get('/api/video-status/:videoUid', async (req, res) => {
       uid: status.uid,
       hasPreview: status.hasPreview,
       duration: status.duration,
+      pctComplete: status.pctComplete,
       originalReadyToStream: status.originalReadyToStream,
       timestamp: new Date().toISOString()
     });

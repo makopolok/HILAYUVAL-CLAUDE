@@ -90,8 +90,7 @@
                   Checking video readiness...
                 </small>
               </div>
-              
-              <!-- Video player (hidden initially) -->
+                <!-- Video player (hidden initially) -->
               <div id="video-player" style="display: none;">
                 <div class="ratio ratio-16x9 mb-3">
                   <iframe 
@@ -387,26 +386,22 @@
 <!-- Cloudflare Stream Video Status Checker -->
 {{#if (eq video_type "cloudflare_stream")}}
 <script>
-// Enhanced video monitoring system with robust error handling
+// Simplified video monitoring based on Cloudflare Stream documentation
 class VideoMonitor {
   constructor(videoUid) {
     this.videoUid = videoUid;
     this.isVideoReady = false;
     this.checkCount = 0;
-    this.maxChecks = 50; // Increased limit for very large videos
+    this.maxChecks = 30; // Reduced since videos are playable sooner
     this.destroyed = false;
-    this.apiFailures = 0;
-    this.maxApiFailures = 3;
     
     console.log('VideoMonitor initialized for:', videoUid);
   }
   
   start() {
     console.log('Starting video processing monitoring...');
-    // Initial delay to allow upload to register
-    setTimeout(() => {
-      this.checkVideoStatus();
-    }, 4000);
+    // Start checking immediately since CF docs say videos in "ready" state are playable
+    this.checkVideoStatus();
   }
   
   destroy() {
@@ -422,14 +417,14 @@ class VideoMonitor {
     
     this.updateProgress();
     
-    // Try API first with better error handling
+    // Check API status
     this.checkAPI()
       .then(apiResult => {
         if (this.destroyed) return;
         
         if (apiResult.ready) {
-          console.log('API confirmed video ready, performing final validation...');
-          this.performFinalValidation();
+          console.log('API confirmed video ready, showing player...');
+          this.showVideo();
         } else {
           console.log('API says not ready, scheduling next check...');
           this.scheduleNextCheck();
@@ -439,11 +434,10 @@ class VideoMonitor {
         if (this.destroyed) return;
         
         console.warn('API check failed:', error);
-        this.apiFailures++;
-        
-        if (this.apiFailures >= this.maxApiFailures) {
-          console.log('Too many API failures, switching to iframe-only testing');
-          this.checkIframeDirectly();
+        // If we've tried several times and API is failing, try iframe test
+        if (this.checkCount >= 5) {
+          console.log('Multiple API failures, trying direct iframe test...');
+          this.testIframeDirectly();
         } else {
           this.scheduleNextCheck();
         }
@@ -456,8 +450,7 @@ class VideoMonitor {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
-        },
-        timeout: 10000
+        }
       });
       
       if (!response.ok) {
@@ -468,23 +461,9 @@ class VideoMonitor {
       console.log('API Response:', data);
       
       if (data.success) {
-        this.apiFailures = 0; // Reset on success
-        
-        // Enhanced readiness logic based on confidence
-        if (data.readyToStream) {
-          if (data.confidence === 'high') {
-            return { ready: true, confidence: 'high' };
-          } else if (data.confidence === 'medium' && this.checkCount >= 3) {
-            return { ready: true, confidence: 'medium' };
-          } else if (data.confidence === 'low' && this.checkCount >= 8) {
-            return { ready: true, confidence: 'low' };
-          }
-        }
-        
-        // Fallback: if we've checked many times and status is at least 'ready'
-        if (this.checkCount >= 20 && data.status === 'ready') {
-          console.log('Fallback: video status is ready after many checks');
-          return { ready: true, confidence: 'fallback' };
+        // Based on CF docs: videos are playable when state is "ready"
+        if (data.status === 'ready' || data.readyToStream) {
+          return { ready: true, confidence: data.confidence || 'medium' };
         }
       }
       
@@ -495,30 +474,27 @@ class VideoMonitor {
     }
   }
   
-  checkIframeDirectly() {
-    console.log('Checking video readiness with direct iframe test...');
+  testIframeDirectly() {
+    console.log('Testing video readiness with direct iframe...');
     
-    // Create a more robust iframe test
+    // Create a small test iframe to see if video loads
     const testContainer = document.createElement('div');
     testContainer.style.position = 'absolute';
     testContainer.style.left = '-10000px';
-    testContainer.style.top = '-10000px';
     testContainer.style.width = '1px';
     testContainer.style.height = '1px';
     testContainer.style.overflow = 'hidden';
-    testContainer.style.visibility = 'hidden';
     
     const testIframe = document.createElement('iframe');
     testIframe.style.width = '1px';
     testIframe.style.height = '1px';
-    testIframe.style.border = 'none';
-    testIframe.src = `https://iframe.videodelivery.net/${this.videoUid}?muted=true&preload=metadata&autoplay=false`;
+    testIframe.src = `https://iframe.videodelivery.net/${this.videoUid}`;
     
     let testTimeout = setTimeout(() => {
       console.log('Direct iframe test timeout');
       this.cleanupTest(testContainer);
       this.scheduleNextCheck();
-    }, 15000);
+    }, 10000);
     
     let loadHandled = false;
     
@@ -526,14 +502,10 @@ class VideoMonitor {
       if (loadHandled) return;
       loadHandled = true;
       
-      console.log('Direct iframe test successful');
+      console.log('Direct iframe test successful - video ready!');
       clearTimeout(testTimeout);
       this.cleanupTest(testContainer);
-      
-      // Additional verification
-      setTimeout(() => {
-        this.verifyVideoPlayability();
-      }, 2000);
+      this.showVideo();
     };
     
     testIframe.onerror = () => {
@@ -550,75 +522,6 @@ class VideoMonitor {
     document.body.appendChild(testContainer);
   }
   
-  verifyVideoPlayability() {
-    console.log('Performing final playability verification...');
-    
-    // Test with actual video player configuration
-    const testContainer = document.createElement('div');
-    testContainer.style.position = 'absolute';
-    testContainer.style.left = '-10000px';
-    testContainer.style.top = '-10000px';
-    testContainer.style.width = '320px';
-    testContainer.style.height = '180px';
-    testContainer.style.overflow = 'hidden';
-    testContainer.style.visibility = 'hidden';
-    
-    const verificationIframe = document.createElement('iframe');
-    verificationIframe.style.width = '100%';
-    verificationIframe.style.height = '100%';
-    verificationIframe.style.border = 'none';
-    verificationIframe.src = `https://iframe.videodelivery.net/${this.videoUid}`;
-    verificationIframe.frameBorder = '0';
-    verificationIframe.allowFullscreen = true;
-    verificationIframe.allow = 'accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;';
-    
-    let verifyTimeout = setTimeout(() => {
-      console.log('Final verification timeout - showing video anyway');
-      this.cleanupTest(testContainer);
-      this.showVideo();
-    }, 10000);
-    
-    let verifyHandled = false;
-    
-    verificationIframe.onload = () => {
-      if (verifyHandled) return;
-      verifyHandled = true;
-      
-      console.log('Final verification successful - video is ready');
-      clearTimeout(verifyTimeout);
-      this.cleanupTest(testContainer);
-      this.showVideo();
-    };
-    
-    verificationIframe.onerror = () => {
-      if (verifyHandled) return;
-      verifyHandled = true;
-      
-      console.log('Final verification failed - showing with warning');
-      clearTimeout(verifyTimeout);
-      this.cleanupTest(testContainer);
-      this.showVideoWithWarning();
-    };
-    
-    testContainer.appendChild(verificationIframe);
-    document.body.appendChild(testContainer);
-  }
-  
-  performFinalValidation() {
-    console.log('Performing comprehensive final validation...');
-    
-    // Skip extensive validation if we have high confidence
-    if (this.checkCount <= 5) {
-      // For quick ready responses, do a fast validation
-      this.verifyVideoPlayability();
-    } else {
-      // For longer processing, show immediately with high confidence
-      setTimeout(() => {
-        this.showVideo();
-      }, 1000);
-    }
-  }
-  
   cleanupTest(container) {
     try {
       if (container && container.parentNode) {
@@ -630,19 +533,17 @@ class VideoMonitor {
   }
   
   updateProgress() {
-    // More realistic progress calculation
+    // More realistic progress based on typical processing times
     let progress;
-    if (this.checkCount <= 3) {
-      progress = 10 + (this.checkCount * 15); // 10-55% for first 3 checks
-    } else if (this.checkCount <= 8) {
-      progress = 55 + ((this.checkCount - 3) * 8); // 55-95% next 5 checks
-    } else if (this.checkCount <= 20) {
-      progress = 95 + ((this.checkCount - 8) * 0.3); // Very slow to 98.6%
+    if (this.checkCount <= 2) {
+      progress = 15 + (this.checkCount * 20); // 15-55% for first 2 checks
+    } else if (this.checkCount <= 5) {
+      progress = 55 + ((this.checkCount - 2) * 10); // 55-85% next 3 checks
     } else {
-      progress = 98.6 + Math.min((this.checkCount - 20) * 0.05, 1.4); // Crawl to 100%
+      progress = 85 + Math.min((this.checkCount - 5) * 2, 15); // Slowly to 100%
     }
     
-    progress = Math.min(progress, 99.5);
+    progress = Math.min(progress, 99);
     
     const progressBar = document.getElementById('processing-progress');
     if (progressBar) {
@@ -658,37 +559,29 @@ class VideoMonitor {
     if (!statusElement) return;
     
     if (this.checkCount <= 2) {
-      statusElement.innerHTML = '<i class="fas fa-upload me-1"></i>Upload complete, initializing processing...';
+      statusElement.innerHTML = '<i class="fas fa-upload me-1"></i>Processing video for streaming...';
     } else if (this.checkCount <= 5) {
-      statusElement.innerHTML = '<i class="fas fa-cog me-1"></i>Analyzing video format and quality...';
-    } else if (this.checkCount <= 12) {
-      statusElement.innerHTML = '<i class="fas fa-film me-1"></i>Encoding video for optimal streaming...';
-    } else if (this.checkCount <= 25) {
-      statusElement.innerHTML = '<i class="fas fa-server me-1"></i>Preparing video for global delivery...';
-    } else if (this.checkCount <= 35) {
-      statusElement.innerHTML = '<i class="fas fa-shield-alt me-1"></i>Final security and quality checks...';
+      statusElement.innerHTML = '<i class="fas fa-cog me-1"></i>Optimizing video quality...';
     } else {
-      statusElement.innerHTML = '<i class="fas fa-clock me-1"></i>Completing processing, almost ready...';
+      statusElement.innerHTML = '<i class="fas fa-check me-1"></i>Almost ready for playback...';
     }
   }
   
   scheduleNextCheck() {
     if (this.checkCount >= this.maxChecks || this.destroyed) {
-      console.log('Max checks reached or monitor destroyed, showing video');
+      console.log('Max checks reached, showing video anyway');
       this.showVideoWithWarning();
       return;
     }
     
-    // Dynamic intervals based on check count
+    // Faster initial checks, then slower
     let delay;
     if (this.checkCount <= 3) {
-      delay = 4000; // 4 seconds initially
-    } else if (this.checkCount <= 8) {
-      delay = 6000; // 6 seconds
-    } else if (this.checkCount <= 20) {
-      delay = 10000; // 10 seconds
+      delay = 3000; // 3 seconds initially
+    } else if (this.checkCount <= 10) {
+      delay = 5000; // 5 seconds
     } else {
-      delay = 15000; // 15 seconds for later checks
+      delay = 8000; // 8 seconds for later checks
     }
     
     console.log(`Scheduling next check in ${delay/1000} seconds...`);
@@ -711,13 +604,13 @@ class VideoMonitor {
       progressBar.style.width = '100%';
     }
     
-    // Show success message
+    // Show success message briefly, then show player
     const processingDiv = document.getElementById('video-processing');
     if (processingDiv) {
       processingDiv.innerHTML = `
         <div class="alert alert-success">
           <h6><i class="fas fa-check-circle me-2"></i>Video Ready!</h6>
-          <p class="mb-0">Your video has been processed and is ready for viewing.</p>
+          <p class="mb-0">Your video is ready for viewing.</p>
         </div>
       `;
       
@@ -728,7 +621,7 @@ class VideoMonitor {
         if (playerDiv) {
           playerDiv.style.display = 'block';
         }
-      }, 2500);
+      }, 2000);
     }
   }
   
@@ -736,15 +629,14 @@ class VideoMonitor {
     if (this.isVideoReady) return;
     
     this.isVideoReady = true;
-    console.log('Showing video with warning message...');
+    console.log('Showing video with info message...');
     
     const processingDiv = document.getElementById('video-processing');
     if (processingDiv) {
       processingDiv.innerHTML = `
         <div class="alert alert-info">
           <h6><i class="fas fa-info-circle me-2"></i>Video Processing Complete</h6>
-          <p class="mb-2">Your video has been uploaded and should be ready for viewing.</p>
-          <p class="mb-0 small">If the video doesn't load immediately, please wait a moment or refresh the page.</p>
+          <p class="mb-0">Your video should be ready for viewing. If it doesn't load immediately, please wait a moment.</p>
         </div>
       `;
       

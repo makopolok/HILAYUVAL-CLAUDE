@@ -202,7 +202,7 @@ module.exports = {
       }
       throw error; // Re-throw to be caught by the calling function
     }
-  },  // Check video processing status with enhanced readiness detection
+  },  // Check video processing status based on Cloudflare Stream documentation
   async getVideoStatus(videoUid) {
     if (!CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_STREAM_API_TOKEN) {
       throw new Error('Cloudflare Stream credentials not configured.');
@@ -224,33 +224,35 @@ module.exports = {
         const readyToStream = result.readyToStream === true;
         const hasPreview = !!result.preview;
         const hasDuration = result.duration && result.duration > 0;
+        const pctComplete = result.pctComplete || 0;
         
-        // Enhanced readiness detection with multiple conditions
-        let isFullyReady = false;
+        // Based on Cloudflare docs: Videos in "ready" status are playable
+        // but may still be encoding quality levels until pctComplete reaches 100
+        let isPlayable = false;
         let confidence = 'low';
         
-        // Primary readiness indicators
-        if (readyToStream && statusState === 'ready' && hasPreview) {
-          isFullyReady = true;
-          confidence = 'high';
-        } else if (statusState === 'ready' && hasPreview && hasDuration) {
-          // Video is processed and has preview/duration even if readyToStream is false
-          isFullyReady = true;
-          confidence = 'medium';
-        } else if (readyToStream && (statusState === 'live' || statusState === 'ready')) {
-          isFullyReady = true;
-          confidence = 'medium';
-        } else if (statusState === 'ready' && hasDuration) {
-          // Fallback: if status is ready and has duration, likely playable
-          isFullyReady = true;
-          confidence = 'low';
+        if (statusState === 'ready') {
+          // According to Cloudflare docs, videos are playable when state is "ready"
+          isPlayable = true;
+          
+          if (pctComplete >= 100) {
+            confidence = 'high'; // Fully processed
+          } else if (pctComplete >= 50 || readyToStream) {
+            confidence = 'medium'; // Good enough quality available
+          } else {
+            confidence = 'low'; // Basic quality available
+          }
+        } else if (statusState === 'inprogress' && hasPreview && hasDuration) {
+          // Sometimes playable even before "ready" state
+          isPlayable = false; // Stay conservative for inprogress
+          confidence = 'none';
         }
         
-        console.log(`VIDEO_STATUS_CHECK: ${videoUid} - state:${statusState}, readyToStream:${readyToStream}, hasPreview:${hasPreview}, duration:${result.duration}, fullyReady:${isFullyReady}, confidence:${confidence}`);
+        console.log(`VIDEO_STATUS_CHECK: ${videoUid} - state:${statusState}, readyToStream:${readyToStream}, pctComplete:${pctComplete}%, playable:${isPlayable}, confidence:${confidence}`);
         
         return {
           status: statusState,
-          readyToStream: isFullyReady,
+          readyToStream: isPlayable,
           confidence: confidence,
           uid: result.uid,
           originalReadyToStream: result.readyToStream,
@@ -258,6 +260,7 @@ module.exports = {
           duration: result.duration,
           size: result.size,
           hasPreview: hasPreview,
+          pctComplete: pctComplete,
           uploaded: result.uploaded,
           modified: result.modified
         };
