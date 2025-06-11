@@ -203,7 +203,6 @@ module.exports = {
       throw error; // Re-throw to be caught by the calling function
     }
   },
-
   // Check video processing status
   async getVideoStatus(videoUid) {
     if (!CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_STREAM_API_TOKEN) {
@@ -216,20 +215,56 @@ module.exports = {
       const response = await axios.get(statusUrl, {
         headers: {
           'Authorization': `Bearer ${CLOUDFLARE_STREAM_API_TOKEN}`
-        }
+        },
+        timeout: 10000 // 10 second timeout for API calls
       });
 
       if (response.data && response.data.result) {
+        const result = response.data.result;
+        const statusState = result.status?.state || 'unknown';
+        const readyToStream = result.readyToStream === true;
+        
+        // More detailed status analysis
+        let isFullyReady = false;
+        
+        // Check multiple conditions for video readiness
+        if (readyToStream && statusState === 'ready') {
+          isFullyReady = true;
+        } else if (readyToStream && statusState === 'live') {
+          isFullyReady = true;
+        } else if (statusState === 'ready' && result.preview) {
+          // Sometimes readyToStream is false but video is actually ready
+          isFullyReady = true;
+        }
+        
+        console.log(`VIDEO_STATUS_CHECK: ${videoUid} - state:${statusState}, readyToStream:${readyToStream}, fullyReady:${isFullyReady}`);
+        
         return {
-          status: response.data.result.status?.state || 'unknown',
-          readyToStream: response.data.result.readyToStream || false,
-          uid: response.data.result.uid
+          status: statusState,
+          readyToStream: isFullyReady, // Use our enhanced logic
+          uid: result.uid,
+          originalReadyToStream: result.readyToStream, // Keep original for debugging
+          preview: result.preview,
+          duration: result.duration,
+          size: result.size
         };
       } else {
         throw new Error('Unable to get video status from Cloudflare Stream.');
       }
     } catch (error) {
-      console.error('Error checking video status:', error);
+      console.error('Error checking video status:', error.message);
+      
+      // If it's a timeout or network error, don't fail completely
+      if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+        console.warn('Network timeout when checking video status, assuming not ready');
+        return {
+          status: 'checking',
+          readyToStream: false,
+          uid: videoUid,
+          error: 'timeout'
+        };
+      }
+      
       throw error;
     }
   },
