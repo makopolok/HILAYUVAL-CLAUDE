@@ -102,10 +102,35 @@
     <div class="mb-3">
       <label for="showreel_url" class="form-label">Showreel Link (optional)</label>
       <input type="url" class="form-control" id="showreel_url" name="showreel_url" placeholder="https://...">
-    </div>
-    <button type="submit" class="btn btn-primary">Submit Audition</button>
+    </div>    <button type="submit" class="btn btn-primary" id="submit-btn">
+      <span id="submit-text">Submit Audition</span>
+      <span id="submit-spinner" class="d-none">
+        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+        Uploading...
+      </span>
+    </button>
   </form>
 </div>
+
+<!-- Loading Overlay -->
+<div id="loading-overlay" class="d-none position-fixed top-0 start-0 w-100 h-100" style="background-color: rgba(0,0,0,0.8); z-index: 9999;">
+  <div class="d-flex justify-content-center align-items-center h-100">
+    <div class="text-center text-white">
+      <div class="spinner-border mb-3" role="status" style="color: var(--primary-red); width: 4rem; height: 4rem; border-width: 0.3em;">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <h4 style="color: var(--primary-red);">
+        <i class="fas fa-cloud-upload-alt me-2"></i>
+        Uploading Your Audition...
+      </h4>
+      <p class="text-light">Please don't close this page. This may take a few moments.</p>
+      <div class="progress mx-auto mt-3" style="width: 300px; height: 8px;">
+        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="background-color: var(--primary-red); width: 100%"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 {{> footer}}
 <script>
 // Bootstrap validation for client-side feedback
@@ -117,6 +142,12 @@
       if (!form.checkValidity()) {
         event.preventDefault();
         event.stopPropagation();
+      } else {
+        // Show loading overlay and update button
+        document.getElementById('loading-overlay').classList.remove('d-none');
+        document.getElementById('submit-text').classList.add('d-none');
+        document.getElementById('submit-spinner').classList.remove('d-none');
+        document.getElementById('submit-btn').disabled = true;
       }
       form.classList.add('was-validated');
     }, false);
