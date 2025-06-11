@@ -533,26 +533,12 @@ app.post('/audition/:projectId', auditionUpload.fields([
           throw ytError; // Re-throw to be caught by the main try-catch
         }      } else { // Default to Cloudflare Stream (if uploadMethod is 'cloudflare' or anything else)
         console.log(`POST_AUDITION_UPLOADING_TO_CLOUDFLARE_STREAM: ${videoFile.originalname}`);
-        try {
-          const cfStreamResult = await cloudflareUploadService.uploadVideo(videoFile); // uploadVideo already handles unlinking path
+        try {          const cfStreamResult = await cloudflareUploadService.uploadVideo(videoFile); // uploadVideo already handles unlinking path
           finalVideoUrl = cfStreamResult.uid; 
           videoType = 'cloudflare_stream';
           videoUploadResult = { id: cfStreamResult.uid }; 
           console.log(`POST_AUDITION_VIDEO_UPLOADED_CLOUDFLARE: ${videoFile.originalname}, UID: ${cfStreamResult.uid}`);
-          
-          // Wait for video to be ready for immediate playback (with 60-second timeout)
-          console.log(`POST_AUDITION_WAITING_FOR_VIDEO_READY: ${cfStreamResult.uid}`);
-          try {
-            const readyStatus = await cloudflareUploadService.waitForVideoReady(cfStreamResult.uid, 60000); // 1 minute timeout
-            if (readyStatus.ready) {
-              console.log(`POST_AUDITION_VIDEO_READY_IMMEDIATELY: ${cfStreamResult.uid}`);
-            } else {
-              console.log(`POST_AUDITION_VIDEO_NOT_READY_YET: ${cfStreamResult.uid}, will use client-side checking`);
-            }
-          } catch (waitError) {
-            console.warn(`POST_AUDITION_VIDEO_WAIT_ERROR: ${cfStreamResult.uid}`, waitError.message);
-            // Continue anyway, client-side checker will handle it
-          }
+          console.log(`POST_AUDITION_VIDEO_PROCESSING: Client-side monitoring will handle video readiness checking for ${cfStreamResult.uid}`);
         } catch (cfError) {
           console.error('POST_AUDITION_CLOUDFLARE_UPLOAD_ERROR: Failed to upload video to Cloudflare Stream.', cfError);
           // cloudflareUploadService.uploadVideo should handle unlinking its temp file on error

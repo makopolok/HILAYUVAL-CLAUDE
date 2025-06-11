@@ -233,12 +233,11 @@ module.exports = {
       throw error;
     }
   },
-
   // Wait for video to be ready for streaming with timeout
-  async waitForVideoReady(videoUid, maxWaitTime = 120000) { // Default 2 minutes
-    console.log(`=== WAITING FOR VIDEO TO BE READY: ${videoUid} ===`);
+  async waitForVideoReady(videoUid, maxWaitTime = 15000) { // Default 15 seconds to avoid Heroku timeout
+    console.log(`=== QUICK VIDEO READINESS CHECK: ${videoUid} (${maxWaitTime}ms) ===`);
     const startTime = Date.now();
-    const checkInterval = 3000; // Check every 3 seconds
+    const checkInterval = 2000; // Check every 2 seconds for faster response
     
     while (Date.now() - startTime < maxWaitTime) {
       try {
@@ -254,12 +253,12 @@ module.exports = {
         await new Promise(resolve => setTimeout(resolve, checkInterval));
       } catch (error) {
         console.warn(`Error checking video status for ${videoUid}:`, error.message);
-        // Continue checking even if there's an API error
-        await new Promise(resolve => setTimeout(resolve, checkInterval));
+        // Continue checking even if there's an API error, but don't wait as long
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
     
-    console.log(`Video ${videoUid} not ready after ${maxWaitTime}ms, proceeding anyway`);
+    console.log(`Video ${videoUid} not ready after ${maxWaitTime}ms, proceeding to success page`);
     return { ready: false, timeout: true };
   }
 };
