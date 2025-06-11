@@ -74,29 +74,120 @@
       <label for="role" class="form-label">Role (optional)</label>
       <input type="text" class="form-control" id="role" name="role">
     </div>
-    {{/if}}
-    <div class="mb-3">
+    {{/if}}    <div class="mb-3">
       <label for="profile_pictures" class="form-label">Profile Picture(s) <span class="text-muted">(optional)</span></label>
       <input type="file" class="form-control" id="profile_pictures" name="profile_pictures" accept="image/*" multiple>
       <div class="invalid-feedback">If you wish, you may upload a profile picture.</div>
+      <div class="form-text text-muted">
+        <i class="fas fa-info-circle me-1"></i>
+        Maximum 10 files, 500MB each. Supported: JPG, PNG, WebP, GIF
+      </div>
+      <!-- Profile pictures preview -->
+      <div id="profile-pictures-preview" class="mt-2 d-none">
+        <div class="row g-2" id="profile-pictures-list"></div>
+      </div>
     </div>    {{#if project}}
       {{#if (eq project.uploadMethod "youtube")}}
         <div class="mb-3">
           <label for="video" class="form-label">Self-Tape Video <span class="text-muted">(optional)</span> (YouTube Upload)</label>
           <input type="file" class="form-control" id="video" name="video" accept="video/*">
           <div class="invalid-feedback">If you wish, you may upload a video file.</div>
+          <div class="form-text text-muted">
+            <i class="fas fa-info-circle me-1"></i>
+            Maximum 500MB. Supported: MP4, AVI, MOV, WMV, FLV, WebM, MKV
+          </div>
+          <!-- Video preview and validation -->
+          <div id="video-preview" class="mt-2 d-none">
+            <div class="card border-success">
+              <div class="card-body p-3">
+                <div class="d-flex align-items-center">
+                  <div class="me-3">
+                    <i class="fas fa-video text-success fa-2x"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="mb-1" id="video-name"></h6>
+                    <div class="small text-muted">
+                      <span id="video-size"></span> • <span id="video-type"></span>
+                    </div>
+                    <div class="progress mt-2" style="height: 4px;" id="video-validation-progress">
+                      <div class="progress-bar bg-success" role="progressbar" style="width: 100%"></div>
+                    </div>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearVideoSelection()">
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       {{else}}
         <div class="mb-3">
           <label for="video" class="form-label">Self-Tape Video <span class="text-muted">(optional)</span> (Private Upload)</label>
           <input type="file" class="form-control" id="video" name="video" accept="video/*">
           <div class="invalid-feedback">If you wish, you may upload a video file.</div>
+          <div class="form-text text-muted">
+            <i class="fas fa-info-circle me-1"></i>
+            Maximum 500MB. Supported: MP4, AVI, MOV, WMV, FLV, WebM, MKV
+          </div>
+          <!-- Video preview and validation -->
+          <div id="video-preview" class="mt-2 d-none">
+            <div class="card border-success">
+              <div class="card-body p-3">
+                <div class="d-flex align-items-center">
+                  <div class="me-3">
+                    <i class="fas fa-video text-success fa-2x"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="mb-1" id="video-name"></h6>
+                    <div class="small text-muted">
+                      <span id="video-size"></span> • <span id="video-type"></span>
+                    </div>
+                    <div class="progress mt-2" style="height: 4px;" id="video-validation-progress">
+                      <div class="progress-bar bg-success" role="progressbar" style="width: 100%"></div>
+                    </div>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearVideoSelection()">
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       {{/if}}    {{else}}
     <div class="mb-3">
       <label for="video" class="form-label">Self-Tape Video <span class="text-muted">(optional)</span></label>
       <input type="file" class="form-control" id="video" name="video" accept="video/*">
       <div class="invalid-feedback">If you wish, you may upload a video file.</div>
+      <div class="form-text text-muted">
+        <i class="fas fa-info-circle me-1"></i>
+        Maximum 500MB. Supported: MP4, AVI, MOV, WMV, FLV, WebM, MKV
+      </div>
+      <!-- Video preview and validation -->
+      <div id="video-preview" class="mt-2 d-none">
+        <div class="card border-success">
+          <div class="card-body p-3">
+            <div class="d-flex align-items-center">
+              <div class="me-3">
+                <i class="fas fa-video text-success fa-2x"></i>
+              </div>
+              <div class="flex-grow-1">
+                <h6 class="mb-1" id="video-name"></h6>
+                <div class="small text-muted">
+                  <span id="video-size"></span> • <span id="video-type"></span>
+                </div>
+                <div class="progress mt-2" style="height: 4px;" id="video-validation-progress">
+                  <div class="progress-bar bg-success" role="progressbar" style="width: 100%"></div>
+                </div>
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearVideoSelection()">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
     {{/if}}
     <div class="mb-3">
@@ -123,9 +214,44 @@
         <i class="fas fa-cloud-upload-alt me-2"></i>
         Uploading Your Audition...
       </h4>
-      <p class="text-light">Please don't close this tab. Feel free to browse other tabs while we upload your audition.</p>
+      <p class="text-light">Please don't close this tab. Large video files may take several minutes to upload securely to our servers.</p>
+      
+      <!-- Enhanced progress information -->
+      <div class="mt-4">
+        <div class="card bg-dark border-secondary" style="max-width: 400px; margin: 0 auto;">
+          <div class="card-body p-3">
+            <h6 class="text-white mb-3">
+              <i class="fas fa-shield-alt me-2" style="color: var(--primary-red);"></i>
+              Secure Cloudflare Upload
+            </h6>
+            <div class="text-start">
+              <div class="d-flex justify-content-between mb-2">
+                <span class="small text-muted">Upload Method:</span>
+                <span class="small text-white">Private & Secure</span>
+              </div>
+              <div class="d-flex justify-content-between mb-2">
+                <span class="small text-muted">Processing:</span>
+                <span class="small text-white">Real-time</span>
+              </div>
+              <div class="d-flex justify-content-between">
+                <span class="small text-muted">Accessibility:</span>
+                <span class="small text-white">Casting Directors Only</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
       <div class="progress mx-auto mt-3" style="width: 300px; height: 8px;">
         <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="background-color: var(--primary-red); width: 100%"></div>
+      </div>
+      
+      <!-- Tips for large uploads -->
+      <div class="mt-3">
+        <small class="text-muted">
+          <i class="fas fa-lightbulb me-1"></i>
+          Tip: For best results, ensure stable internet connection during upload
+        </small>
       </div>
     </div>
   </div>
@@ -133,24 +259,267 @@
 
 {{> footer}}
 <script>
-// Bootstrap validation for client-side feedback
-(function () {
-  'use strict';
-  var forms = document.querySelectorAll('.needs-validation');
-  Array.prototype.slice.call(forms).forEach(function (form) {
-    form.addEventListener('submit', function (event) {
-      if (!form.checkValidity()) {
-        event.preventDefault();
-        event.stopPropagation();
-      } else {
-        // Show loading overlay and update button
-        document.getElementById('loading-overlay').classList.remove('d-none');
-        document.getElementById('submit-text').classList.add('d-none');
-        document.getElementById('submit-spinner').classList.remove('d-none');
-        document.getElementById('submit-btn').disabled = true;
-      }
-      form.classList.add('was-validated');
-    }, false);
+// File size constants (matching backend limits)
+const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
+const MAX_PROFILE_PICTURES = 10;
+
+// Supported file types
+const VIDEO_TYPES = [
+  'video/mp4', 'video/avi', 'video/mov', 'video/wmv', 
+  'video/flv', 'video/webm', 'video/mkv', 'video/quicktime'
+];
+const IMAGE_TYPES = [
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg'
+];
+
+// Utility functions
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function validateFileSize(file) {
+  return file.size <= MAX_FILE_SIZE;
+}
+
+function validateVideoType(file) {
+  return VIDEO_TYPES.includes(file.type);
+}
+
+function validateImageType(file) {
+  return IMAGE_TYPES.includes(file.type);
+}
+
+// Video file handling
+function handleVideoSelection(event) {
+  const file = event.target.files[0];
+  const preview = document.getElementById('video-preview');
+  
+  if (!file) {
+    preview.classList.add('d-none');
+    return;
+  }
+
+  // Validate file type
+  if (!validateVideoType(file)) {
+    showFileError('video', 'Please select a valid video file (MP4, MOV, AVI, WMV, FLV, WebM, MKV)');
+    event.target.value = '';
+    preview.classList.add('d-none');
+    return;
+  }
+
+  // Validate file size
+  if (!validateFileSize(file)) {
+    showFileError('video', `Video file is too large (${formatFileSize(file.size)}). Maximum size is 500MB.`);
+    event.target.value = '';
+    preview.classList.add('d-none');
+    return;
+  }
+
+  // Show preview
+  document.getElementById('video-name').textContent = file.name;
+  document.getElementById('video-size').textContent = formatFileSize(file.size);
+  document.getElementById('video-type').textContent = file.type;
+  preview.classList.remove('d-none');
+  
+  // Clear any previous errors
+  clearFileError('video');
+}
+
+// Profile pictures handling
+function handleProfilePicturesSelection(event) {
+  const files = Array.from(event.target.files);
+  const preview = document.getElementById('profile-pictures-preview');
+  const list = document.getElementById('profile-pictures-list');
+  
+  if (!files.length) {
+    preview.classList.add('d-none');
+    return;
+  }
+
+  // Validate file count
+  if (files.length > MAX_PROFILE_PICTURES) {
+    showFileError('profile_pictures', `Too many files selected. Maximum ${MAX_PROFILE_PICTURES} profile pictures allowed.`);
+    event.target.value = '';
+    preview.classList.add('d-none');
+    return;
+  }
+
+  // Validate each file
+  let hasErrors = false;
+  const validFiles = [];
+
+  files.forEach((file, index) => {
+    if (!validateImageType(file)) {
+      showFileError('profile_pictures', `File "${file.name}" is not a valid image type.`);
+      hasErrors = true;
+      return;
+    }
+
+    if (!validateFileSize(file)) {
+      showFileError('profile_pictures', `File "${file.name}" is too large (${formatFileSize(file.size)}). Maximum size is 500MB.`);
+      hasErrors = true;
+      return;
+    }
+
+    validFiles.push(file);
   });
-})();
+
+  if (hasErrors) {
+    event.target.value = '';
+    preview.classList.add('d-none');
+    return;
+  }
+
+  // Show preview
+  list.innerHTML = '';
+  validFiles.forEach((file, index) => {
+    const col = document.createElement('div');
+    col.className = 'col-6 col-md-4 col-lg-3';
+    
+    col.innerHTML = `
+      <div class="card border-success">
+        <div class="card-body p-2">
+          <div class="d-flex align-items-center">
+            <i class="fas fa-image text-success me-2"></i>
+            <div class="flex-grow-1">
+              <div class="small fw-bold text-truncate">${file.name}</div>
+              <div class="small text-muted">${formatFileSize(file.size)}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    list.appendChild(col);
+  });
+  
+  preview.classList.remove('d-none');
+  clearFileError('profile_pictures');
+}
+
+// Error handling
+function showFileError(fieldName, message) {
+  const field = document.getElementById(fieldName);
+  const existingError = field.parentNode.querySelector('.file-error');
+  
+  if (existingError) {
+    existingError.remove();
+  }
+  
+  const errorDiv = document.createElement('div');
+  errorDiv.className = 'file-error alert alert-danger mt-2 p-2';
+  errorDiv.innerHTML = `<i class="fas fa-exclamation-triangle me-1"></i> ${message}`;
+  
+  field.parentNode.appendChild(errorDiv);
+  field.classList.add('is-invalid');
+}
+
+function clearFileError(fieldName) {
+  const field = document.getElementById(fieldName);
+  const existingError = field.parentNode.querySelector('.file-error');
+  
+  if (existingError) {
+    existingError.remove();
+  }
+  
+  field.classList.remove('is-invalid');
+}
+
+// Clear video selection
+function clearVideoSelection() {
+  document.getElementById('video').value = '';
+  document.getElementById('video-preview').classList.add('d-none');
+  clearFileError('video');
+}
+
+// Enhanced form submission with upload progress
+function enhanceFormSubmission() {
+  const form = document.querySelector('.needs-validation');
+  const originalSubmit = form.onsubmit;
+  
+  form.addEventListener('submit', function(event) {
+    // Run original validation first
+    if (!form.checkValidity()) {
+      event.preventDefault();
+      event.stopPropagation();
+      form.classList.add('was-validated');
+      return;
+    }
+
+    // Check for file validation errors
+    const fileErrors = form.querySelectorAll('.file-error');
+    if (fileErrors.length > 0) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+
+    // Show enhanced loading overlay for large files
+    const videoFile = document.getElementById('video').files[0];
+    const profileFiles = document.getElementById('profile_pictures').files;
+    
+    let totalSize = 0;
+    if (videoFile) totalSize += videoFile.size;
+    if (profileFiles) {
+      Array.from(profileFiles).forEach(file => totalSize += file.size);
+    }
+
+    // Update loading message based on file sizes
+    if (totalSize > 100 * 1024 * 1024) { // > 100MB
+      updateLoadingMessage('Large files detected. This may take several minutes...', totalSize);
+    } else if (totalSize > 10 * 1024 * 1024) { // > 10MB
+      updateLoadingMessage('Uploading files. Please wait...', totalSize);
+    }
+
+    // Show loading overlay
+    document.getElementById('loading-overlay').classList.remove('d-none');
+    document.getElementById('submit-text').classList.add('d-none');
+    document.getElementById('submit-spinner').classList.remove('d-none');
+    document.getElementById('submit-btn').disabled = true;
+
+    // Prevent multiple submissions
+    form.querySelector('button[type="submit"]').style.pointerEvents = 'none';
+  });
+}
+
+function updateLoadingMessage(message, totalSize) {
+  const loadingText = document.querySelector('#loading-overlay p');
+  if (loadingText) {
+    loadingText.innerHTML = `${message}<br><small>Total upload size: ${formatFileSize(totalSize)}</small>`;
+  }
+}
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+  // Attach file handlers
+  const videoInput = document.getElementById('video');
+  const profileInput = document.getElementById('profile_pictures');
+  
+  if (videoInput) {
+    videoInput.addEventListener('change', handleVideoSelection);
+  }
+  
+  if (profileInput) {
+    profileInput.addEventListener('change', handleProfilePicturesSelection);
+  }
+
+  // Enhance form submission
+  enhanceFormSubmission();
+
+  // Bootstrap validation for client-side feedback
+  (function () {
+    'use strict';
+    var forms = document.querySelectorAll('.needs-validation');
+    Array.prototype.slice.call(forms).forEach(function (form) {
+      form.classList.add('was-validated');
+    });
+  })();
+});
+
+// Make clearVideoSelection global for onclick handler
+window.clearVideoSelection = clearVideoSelection;
 </script>

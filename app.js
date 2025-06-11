@@ -55,14 +55,48 @@ app.engine('handlebars', engine({
 app.set('view engine', 'handlebars');
 app.set('views', './views');
 
-// Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Middleware - Configure for large file uploads
+app.use(express.json({ 
+  limit: '10mb' // Increase JSON payload limit
+}));
+app.use(express.urlencoded({ 
+  extended: true, 
+  limit: '10mb' // Increase URL-encoded payload limit
+}));
 // Serve static files from the "public" directory
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Configure multer with comprehensive file size and type restrictions
+const multerConfig = {
+  dest: 'uploads/',
+  limits: {
+    fileSize: 500 * 1024 * 1024, // 500MB max file size
+    files: 12, // Max 12 files per request (1 video + 10 profile pics + buffer)
+    fieldSize: 10 * 1024 * 1024, // 10MB max field size
+    fields: 50 // Max number of non-file fields
+  },
+  fileFilter: (req, file, cb) => {
+    // Accept videos and images only
+    if (file.fieldname === 'video') {
+      if (file.mimetype.startsWith('video/')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only video files are allowed for video uploads'), false);
+      }
+    } else if (file.fieldname === 'profile_pictures') {
+      if (file.mimetype.startsWith('image/')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only image files are allowed for profile pictures'), false);
+      }
+    } else {
+      cb(new Error('Unexpected file field'), false);
+    }
+  }
+};
+
 // Define multer instance for the general /audition route (YouTube upload)
-const generalAuditionUpload = multer({ dest: 'uploads/' }); // ADDED
+const generalAuditionUpload = multer(multerConfig);
 
 // Routes
 app.use('/', portfolioRoutes);
@@ -363,8 +397,8 @@ app.get('/audition/:projectId', async (req, res) => {
   res.render('audition', { project });
 });
 
-// Update multer to handle multiple profile pictures and a video
-const auditionUpload = multer({ dest: 'uploads/' });
+// Update multer to handle multiple profile pictures and a video with enhanced configuration
+const auditionUpload = multer(multerConfig);
 
 // Updated POST route to handle project-specific audition form submission and upload
 app.post('/audition/:projectId', auditionUpload.fields([
@@ -729,6 +763,55 @@ app.get('/projects/:id/auditions', async (req, res) => {
 // Error handling
 app.use((req, res) => {
     res.status(404).render('error/404');
+});
+
+// Multer error handling middleware
+app.use((error, req, res, next) => {
+    if (error instanceof multer.MulterError) {
+        let message = 'File upload error: ';
+        
+        switch (error.code) {
+            case 'LIMIT_FILE_SIZE':
+                message += 'File too large. Maximum size allowed is 500MB.';
+                break;
+            case 'LIMIT_FILE_COUNT':
+                message += 'Too many files. Maximum 12 files allowed.';
+                break;
+            case 'LIMIT_FIELD_VALUE':
+                message += 'Field value too large.';
+                break;
+            case 'LIMIT_UNEXPECTED_FILE':
+                message += 'Unexpected file upload.';
+                break;
+            default:
+                message += error.message;
+        }
+        
+        console.error('Multer Error:', error);
+        return res.status(400).json({ 
+            error: 'Upload Error',
+            message: message,
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+    
+    // Handle file filter errors
+    if (error.message && error.message.includes('Only video files are allowed')) {
+        return res.status(400).json({
+            error: 'Invalid File Type',
+            message: 'Please upload only video files (MP4, MOV, AVI, etc.) for video submissions.'
+        });
+    }
+    
+    if (error.message && error.message.includes('Only image files are allowed')) {
+        return res.status(400).json({
+            error: 'Invalid File Type', 
+            message: 'Please upload only image files (JPG, PNG, GIF, etc.) for profile pictures.'
+        });
+    }
+    
+    // Pass other errors to the general error handler
+    next(error);
 });
 
 // Add at the end of middleware chain, before app.listen
