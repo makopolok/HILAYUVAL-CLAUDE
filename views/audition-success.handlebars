@@ -91,8 +91,7 @@
                 </small>
               </div>
                 <!-- Video player (hidden initially) -->
-              <div id="video-player" style="display: none;">
-                <div class="ratio ratio-16x9 mb-3">
+              <div id="video-player" style="display: none;">                <div class="ratio ratio-16x9 mb-3">
                   <iframe 
                     src="https://iframe.videodelivery.net/{{video_url}}" 
                     frameborder="0" 
@@ -392,7 +391,7 @@ class VideoMonitor {
     this.videoUid = videoUid;
     this.isVideoReady = false;
     this.checkCount = 0;
-    this.maxChecks = 30; // Reduced since videos are playable sooner
+    this.maxChecks = 40; // Increased to allow more time
     this.destroyed = false;
     
     console.log('VideoMonitor initialized for:', videoUid);
@@ -400,7 +399,7 @@ class VideoMonitor {
   
   start() {
     console.log('Starting video processing monitoring...');
-    // Start checking immediately since CF docs say videos in "ready" state are playable
+    // Start checking immediately
     this.checkVideoStatus();
   }
   
@@ -417,7 +416,7 @@ class VideoMonitor {
     
     this.updateProgress();
     
-    // Check API status
+    // Check API status first
     this.checkAPI()
       .then(apiResult => {
         if (this.destroyed) return;
@@ -426,7 +425,7 @@ class VideoMonitor {
           console.log('API confirmed video ready, showing player...');
           this.showVideo();
         } else {
-          console.log('API says not ready, scheduling next check...');
+          console.log(`API says not ready (state: ${apiResult.status}, pct: ${apiResult.pctComplete}%), scheduling next check...`);
           this.scheduleNextCheck();
         }
       })
@@ -434,10 +433,10 @@ class VideoMonitor {
         if (this.destroyed) return;
         
         console.warn('API check failed:', error);
-        // If we've tried several times and API is failing, try iframe test
-        if (this.checkCount >= 5) {
-          console.log('Multiple API failures, trying direct iframe test...');
-          this.testIframeDirectly();
+        // After several API failures, show video anyway - it might be playable
+        if (this.checkCount >= 10) {
+          console.log('Many API failures, showing video with warning...');
+          this.showVideoWithWarning();
         } else {
           this.scheduleNextCheck();
         }
@@ -462,73 +461,23 @@ class VideoMonitor {
       
       if (data.success) {
         // Based on CF docs: videos are playable when state is "ready"
-        if (data.status === 'ready' || data.readyToStream) {
-          return { ready: true, confidence: data.confidence || 'medium' };
-        }
+        // or when in "inprogress" with high enough pctComplete
+        const isReady = data.status === 'ready' || 
+                       (data.status === 'inprogress' && data.pctComplete >= 50) ||
+                       data.readyToStream === true;
+        
+        return { 
+          ready: isReady, 
+          status: data.status,
+          pctComplete: data.pctComplete || 0,
+          confidence: data.confidence || 'low' 
+        };
       }
       
-      return { ready: false };
+      return { ready: false, status: 'unknown', pctComplete: 0 };
     } catch (error) {
       console.error('API request failed:', error);
       throw error;
-    }
-  }
-  
-  testIframeDirectly() {
-    console.log('Testing video readiness with direct iframe...');
-    
-    // Create a small test iframe to see if video loads
-    const testContainer = document.createElement('div');
-    testContainer.style.position = 'absolute';
-    testContainer.style.left = '-10000px';
-    testContainer.style.width = '1px';
-    testContainer.style.height = '1px';
-    testContainer.style.overflow = 'hidden';
-    
-    const testIframe = document.createElement('iframe');
-    testIframe.style.width = '1px';
-    testIframe.style.height = '1px';
-    testIframe.src = `https://iframe.videodelivery.net/${this.videoUid}`;
-    
-    let testTimeout = setTimeout(() => {
-      console.log('Direct iframe test timeout');
-      this.cleanupTest(testContainer);
-      this.scheduleNextCheck();
-    }, 10000);
-    
-    let loadHandled = false;
-    
-    testIframe.onload = () => {
-      if (loadHandled) return;
-      loadHandled = true;
-      
-      console.log('Direct iframe test successful - video ready!');
-      clearTimeout(testTimeout);
-      this.cleanupTest(testContainer);
-      this.showVideo();
-    };
-    
-    testIframe.onerror = () => {
-      if (loadHandled) return;
-      loadHandled = true;
-      
-      console.log('Direct iframe test failed');
-      clearTimeout(testTimeout);
-      this.cleanupTest(testContainer);
-      this.scheduleNextCheck();
-    };
-    
-    testContainer.appendChild(testIframe);
-    document.body.appendChild(testContainer);
-  }
-  
-  cleanupTest(container) {
-    try {
-      if (container && container.parentNode) {
-        container.parentNode.removeChild(container);
-      }
-    } catch (e) {
-      console.warn('Error cleaning up test container:', e);
     }
   }
   
@@ -566,22 +515,19 @@ class VideoMonitor {
       statusElement.innerHTML = '<i class="fas fa-check me-1"></i>Almost ready for playback...';
     }
   }
-  
-  scheduleNextCheck() {
+    scheduleNextCheck() {
     if (this.checkCount >= this.maxChecks || this.destroyed) {
-      console.log('Max checks reached, showing video anyway');
+      console.log('Max checks reached or destroyed, showing video anyway');
       this.showVideoWithWarning();
       return;
     }
     
-    // Faster initial checks, then slower
+    // Simpler timing: check every 3 seconds initially, then every 5 seconds
     let delay;
-    if (this.checkCount <= 3) {
-      delay = 3000; // 3 seconds initially
-    } else if (this.checkCount <= 10) {
-      delay = 5000; // 5 seconds
+    if (this.checkCount <= 5) {
+      delay = 3000; // 3 seconds for first 5 checks
     } else {
-      delay = 8000; // 8 seconds for later checks
+      delay = 5000; // 5 seconds after that
     }
     
     console.log(`Scheduling next check in ${delay/1000} seconds...`);

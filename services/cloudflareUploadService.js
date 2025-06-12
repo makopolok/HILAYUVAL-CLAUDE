@@ -225,8 +225,7 @@ module.exports = {
         const hasPreview = !!result.preview;
         const hasDuration = result.duration && result.duration > 0;
         const pctComplete = result.pctComplete || 0;
-        
-        // Based on Cloudflare docs: Videos in "ready" status are playable
+          // Based on Cloudflare docs: Videos in "ready" status are playable
         // but may still be encoding quality levels until pctComplete reaches 100
         let isPlayable = false;
         let confidence = 'low';
@@ -242,10 +241,10 @@ module.exports = {
           } else {
             confidence = 'low'; // Basic quality available
           }
-        } else if (statusState === 'inprogress' && hasPreview && hasDuration) {
-          // Sometimes playable even before "ready" state
-          isPlayable = false; // Stay conservative for inprogress
-          confidence = 'none';
+        } else if (statusState === 'inprogress' && hasPreview && hasDuration && pctComplete >= 50) {
+          // Sometimes playable even before "ready" state if enough processing is done
+          isPlayable = true;
+          confidence = 'low';
         }
         
         console.log(`VIDEO_STATUS_CHECK: ${videoUid} - state:${statusState}, readyToStream:${readyToStream}, pctComplete:${pctComplete}%, playable:${isPlayable}, confidence:${confidence}`);
