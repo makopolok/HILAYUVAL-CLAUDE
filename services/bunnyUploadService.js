@@ -31,20 +31,13 @@ module.exports = {
         }
       });
       const videoId = createRes.data.guid;
-      // 2. Upload video file
-      console.log('Uploading video file:', {
-        path: videoFile.path,
-        mimetype: videoFile.mimetype,
-        originalname: videoFile.originalname,
-        filename: videoFile.filename
-      });
+      // 2. Upload video file (Bunny.net expects PUT with raw binary, not multipart/form-data)
       const uploadVideoUrl = `https://video.bunnycdn.com/library/${BUNNY_STREAM_LIBRARY_ID}/videos/${videoId}`;
-      const form = new FormData();
-      form.append('file', fs.createReadStream(videoFile.path));
-      await axios.post(uploadVideoUrl, form, {
+      const fileStream = fs.createReadStream(videoFile.path);
+      await axios.put(uploadVideoUrl, fileStream, {
         headers: {
-          ...form.getHeaders(),
           'AccessKey': BUNNY_VIDEO_API_KEY,
+          'Content-Type': videoFile.mimetype || 'application/octet-stream',
         },
         maxContentLength: Infinity,
         maxBodyLength: Infinity,
