@@ -32,6 +32,12 @@ module.exports = {
       });
       const videoId = createRes.data.guid;
       // 2. Upload video file
+      console.log('Uploading video file:', {
+        path: videoFile.path,
+        mimetype: videoFile.mimetype,
+        originalname: videoFile.originalname,
+        filename: videoFile.filename
+      });
       const uploadVideoUrl = `https://video.bunnycdn.com/library/${BUNNY_STREAM_LIBRARY_ID}/videos/${videoId}`;
       const form = new FormData();
       form.append('file', fs.createReadStream(videoFile.path));
