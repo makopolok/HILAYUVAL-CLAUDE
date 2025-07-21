@@ -463,19 +463,21 @@ app.post('/audition/:projectId', auditionUpload.fields([
     if(videoFile) console.log(`POST_AUDITION_VIDEO_FILE: ${videoFile.originalname}, Path: ${videoFile.path}`);
     console.log(`POST_AUDITION_PROFILE_PICTURE_FILES_COUNT: ${profilePictureFiles.length}`);
 
-    // For Cloudflare upload, use uploadImageToCloudflareImages for profile pictures
+    // For Bunny.net upload, use uploadImage for profile pictures
     let profilePictureUploadResults = [];
     if (profilePictureFiles && profilePictureFiles.length > 0) {
       profilePictureUploadResults = await Promise.all(profilePictureFiles.map(async (file) => {
         console.log(`POST_AUDITION_UPLOADING_PROFILE_PICTURE: ${file.originalname}`);
-        const result = await bunnyUploadService.uploadImageToCloudflareImages(file);
+        const result = await bunnyUploadService.uploadImage(file);
         // result will be an object like { id: '...', url: '...' }
         console.log(`POST_AUDITION_PROFILE_PICTURE_UPLOADED: ${file.originalname}, ID: ${result.id}, URL: ${result.url}`);
         return result; 
       }));
     } else {
       console.log('POST_AUDITION_NO_PROFILE_PICTURES_UPLOADED');
-    }    let videoUploadResult = null;
+    }
+
+    let videoUploadResult = null;
     let videoType = null;
     let finalVideoUrl = null; // Using a more descriptive name
 
