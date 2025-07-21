@@ -57,8 +57,8 @@
                       <!-- Video Player -->
                       {{#if video_url}}
                       <div class="video-container mb-3" data-video-url="{{video_url}}" data-video-type="{{video_type}}">
-                        {{#if (eq video_type "cloudflare_stream")}}
-                        <!-- Cloudflare Stream Video -->
+                        {{#if (eq video_type "bunny_stream")}}
+                        <!-- Bunny.net Stream Video -->
                         <div class="video-loading text-center p-3" style="background-color: #f8f9fa; border-radius: 8px;">
                           <div class="spinner-border spinner-border-sm text-danger mb-2" role="status">
                             <span class="visually-hidden">Loading...</span>
@@ -182,8 +182,8 @@ function loadVideo(container) {
   const player = container.querySelector('.video-player');
   const error = container.querySelector('.video-error');
   
-  // Only try to load Cloudflare Stream videos (YouTube and others load immediately)
-  if (videoType === 'cloudflare_stream') {
+  // Only try to load Bunny.net Stream videos (YouTube and others load immediately)
+  if (videoType === 'bunny_stream') {
     // Use iframe method to check if video is ready
     testIframeLoad(container);
   } else {
