@@ -11,7 +11,7 @@ const { engine } = require('express-handlebars');
 const customHelpers = require('./helpers/handlebarsHelpers'); // Import custom helpers
 const projectService = require('./services/projectService');
 const auditionService = require('./services/auditionService');
-const cloudflareUploadService = require('./services/cloudflareUploadService'); // MODIFIED - Correctly import the service
+const bunnyUploadService = require('./services/bunnyUploadService'); // MODIFIED - Correctly import the service
 const errorHandler = require('./middleware/errorHandler');
 const handlebarsHelpers = require('./helpers/handlebarsHelpers');
 const rateLimit = require('express-rate-limit');
@@ -468,7 +468,7 @@ app.post('/audition/:projectId', auditionUpload.fields([
     if (profilePictureFiles && profilePictureFiles.length > 0) {
       profilePictureUploadResults = await Promise.all(profilePictureFiles.map(async (file) => {
         console.log(`POST_AUDITION_UPLOADING_PROFILE_PICTURE: ${file.originalname}`);
-        const result = await cloudflareUploadService.uploadImageToCloudflareImages(file);
+        const result = await bunnyUploadService.uploadImageToCloudflareImages(file);
         // result will be an object like { id: '...', url: '...' }
         console.log(`POST_AUDITION_PROFILE_PICTURE_UPLOADED: ${file.originalname}, ID: ${result.id}, URL: ${result.url}`);
         return result; 
@@ -531,18 +531,17 @@ app.post('/audition/:projectId', auditionUpload.fields([
             fs.unlinkSync(videoFile.path);
           }
           throw ytError; // Re-throw to be caught by the main try-catch
-        }      } else { // Default to Cloudflare Stream (if uploadMethod is 'cloudflare' or anything else)
-        console.log(`POST_AUDITION_UPLOADING_TO_CLOUDFLARE_STREAM: ${videoFile.originalname}`);
-        try {          const cfStreamResult = await cloudflareUploadService.uploadVideo(videoFile); // uploadVideo already handles unlinking path
-          finalVideoUrl = cfStreamResult.uid; 
-          videoType = 'cloudflare_stream';
-          videoUploadResult = { id: cfStreamResult.uid }; 
-          console.log(`POST_AUDITION_VIDEO_UPLOADED_CLOUDFLARE: ${videoFile.originalname}, UID: ${cfStreamResult.uid}`);
-          console.log(`POST_AUDITION_VIDEO_PROCESSING: Client-side monitoring will handle video readiness checking for ${cfStreamResult.uid}`);
-        } catch (cfError) {
-          console.error('POST_AUDITION_CLOUDFLARE_UPLOAD_ERROR: Failed to upload video to Cloudflare Stream.', cfError);
-          // cloudflareUploadService.uploadVideo should handle unlinking its temp file on error
-          throw cfError; // Re-throw
+        }      } else { // Default to Bunny.net Stream (if uploadMethod is 'cloudflare' or anything else)
+        console.log(`POST_AUDITION_UPLOADING_TO_BUNNY_STREAM: ${videoFile.originalname}`);
+        try {
+          const bunnyResult = await bunnyUploadService.uploadVideo(videoFile);
+          finalVideoUrl = bunnyResult.id; // This is the Bunny.net video GUID
+          videoType = 'bunny_stream';
+          videoUploadResult = { id: bunnyResult.id };
+          console.log(`POST_AUDITION_VIDEO_UPLOADED_BUNNY: ${videoFile.originalname}, GUID: ${bunnyResult.id}`);
+        } catch (bunnyError) {
+          console.error('POST_AUDITION_BUNNY_UPLOAD_ERROR: Failed to upload video to Bunny.net Stream.', bunnyError);
+          throw bunnyError;
         }
       }
     } else {
@@ -578,7 +577,7 @@ app.post('/audition/:projectId', auditionUpload.fields([
       .join(' ') || 'Actor';
     
     const submissionData = {
-      project,
+      project: { ...project, stream_library_id: BUNNY_STREAM_LIBRARY_ID },
       role: body.role,
       actor_name: actorName,
       email: body.email,
@@ -611,7 +610,7 @@ app.get('/api/video-status/:videoUid', async (req, res) => {
     const videoUid = req.params.videoUid;
     console.log(`API_VIDEO_STATUS_CHECK: ${videoUid}`);
     
-    const status = await cloudflareUploadService.getVideoStatus(videoUid);
+    const status = await bunnyUploadService.getVideoStatus(videoUid);
     console.log(`API_VIDEO_STATUS_RESULT: ${videoUid}`, status);
     
     res.json({

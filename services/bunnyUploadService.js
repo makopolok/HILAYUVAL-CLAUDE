@@ -83,4 +83,40 @@ module.exports = {
       throw error;
     }
   },
+
+  // Check video processing status based on Bunny.net Stream documentation
+  async getVideoStatus(videoUid) {
+    if (!BUNNY_STREAM_LIBRARY_ID || !BUNNY_VIDEO_API_KEY) {
+      throw new Error('Bunny.net Stream credentials not configured.');
+    }
+    const statusUrl = `https://video.bunnycdn.com/library/${BUNNY_STREAM_LIBRARY_ID}/videos/${videoUid}`;
+    try {
+      const response = await axios.get(statusUrl, {
+        headers: {
+          'AccessKey': BUNNY_VIDEO_API_KEY
+        },
+        timeout: 15000 // 15 second timeout for API calls
+      });
+      if (response.data) {
+        const result = response.data;
+        const statusState = result.status || 'unknown';
+        const readyToStream = statusState === 'ready';
+        // Bunny.net does not provide pctComplete, but you can add more fields if needed
+        return {
+          status: statusState,
+          readyToStream: readyToStream,
+          uid: result.guid,
+          title: result.title,
+          duration: result.length,
+          thumbnail: result.thumbnail,
+          created: result.dateUploaded
+        };
+      } else {
+        throw new Error('Unable to get video status from Bunny.net Stream.');
+      }
+    } catch (error) {
+      console.error('Error checking video status:', error.message);
+      throw error;
+    }
+  },
 };

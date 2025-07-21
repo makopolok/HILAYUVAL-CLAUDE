@@ -62,38 +62,35 @@
             <i class="fas fa-video me-2"></i>
             Your Video Submission
           </h5>
-        </div>        <div class="card-body">
-          {{#if (eq video_type "cloudflare_stream")}}
-            <div id="video-container">              <!-- Processing indicator -->
+        </div>
+        <div class="card-body">
+          {{#if (eq video_type "bunny_stream")}}
+            <div id="video-container">
+              <!-- Processing indicator -->
               <div id="video-processing" class="text-center p-5" style="display: block;">
-                <!-- Large red spinner -->
                 <div class="d-flex justify-content-center mb-4">
                   <div class="spinner-border" role="status" style="color: var(--primary-red); width: 4rem; height: 4rem; border-width: 0.3em;">
                     <span class="visually-hidden">Loading...</span>
                   </div>
                 </div>
-                  <!-- Processing message -->
                 <h5 class="mb-3" style="color: var(--primary-red);">
                   <i class="fas fa-cog fa-spin me-2"></i>
                   Processing Your Video...
                 </h5>
                 <p class="text-muted mb-4">Your video has been successfully uploaded and is being optimized for playback. This usually takes 30 seconds to 2 minutes.</p>
-                
-                <!-- Progress bar -->
                 <div class="progress mb-3" style="height: 8px;">
                   <div class="progress-bar" role="progressbar" style="background-color: var(--primary-red); width: 0%" id="processing-progress"></div>
                 </div>
-                
-                <!-- Status text -->
                 <small class="text-muted">
                   <i class="fas fa-shield-alt me-1"></i>
                   Checking video readiness...
                 </small>
               </div>
-                <!-- Video player (hidden initially) -->
-              <div id="video-player" style="display: none;">                <div class="ratio ratio-16x9 mb-3">
+              <!-- Video player (hidden initially) -->
+              <div id="video-player" style="display: none;">
+                <div class="ratio ratio-16x9 mb-3">
                   <iframe 
-                    src="https://iframe.videodelivery.net/{{video_url}}" 
+                    src="https://iframe.mediadelivery.net/embed/{{project.stream_library_id}}/{{video_url}}" 
                     frameborder="0" 
                     allowfullscreen
                     allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
@@ -106,6 +103,50 @@
               <i class="fas fa-shield-alt me-2"></i>
               <strong>Secure Upload:</strong> Your video is privately hosted and only accessible to casting directors.
             </div>
+            <script src="/js/videoMonitor.js"></script>
+            <script>
+            document.addEventListener('DOMContentLoaded', function() {
+              const videoUid = '{{video_url}}';
+              const apiUrl = '/api/video-status/:videoUid';
+              const maxChecks = 20;
+              const readyCheck = data => data && data.success && data.readyToStream;
+              const monitor = new window.VideoMonitor({
+                videoUid,
+                apiUrl,
+                maxChecks,
+                readyCheck,
+                onReady: function() {
+                  if (monitor.isVideoReady) return;
+                  monitor.isVideoReady = true;
+                  const progressBar = document.getElementById('processing-progress');
+                  if (progressBar) progressBar.style.width = '100%';
+                  const processingDiv = document.getElementById('video-processing');
+                  if (processingDiv) {
+                    processingDiv.innerHTML = `<div class=\"alert alert-success\"><h6><i class=\"fas fa-check-circle me-2\"></i>Video Ready!</h6><p class=\"mb-0\">Your video is ready for viewing.</p></div>`;
+                    setTimeout(() => {
+                      processingDiv.style.display = 'none';
+                      const playerDiv = document.getElementById('video-player');
+                      if (playerDiv) playerDiv.style.display = 'block';
+                    }, 2000);
+                  }
+                },
+                onWarning: function() {
+                  if (monitor.isVideoReady) return;
+                  monitor.isVideoReady = true;
+                  const processingDiv = document.getElementById('video-processing');
+                  if (processingDiv) {
+                    processingDiv.innerHTML = `<div class=\"alert alert-info\"><h6><i class=\"fas fa-info-circle me-2\"></i>Video Processing Complete</h6><p class=\"mb-0\">Your video should be ready for viewing. If it doesn't load immediately, please wait a moment.</p></div>`;
+                    setTimeout(() => {
+                      const playerDiv = document.getElementById('video-player');
+                      if (playerDiv) playerDiv.style.display = 'block';
+                    }, 1500);
+                  }
+                }
+              });
+              monitor.start();
+              window.addEventListener('beforeunload', function() { monitor.destroy(); });
+            });
+            </script>
           {{else if (eq video_type "youtube")}}
             <div class="ratio ratio-16x9 mb-3">
               <iframe 
@@ -381,234 +422,3 @@
 </style>
 
 {{> footer}}
-
-<!-- Cloudflare Stream Video Status Checker -->
-{{#if (eq video_type "cloudflare_stream")}}
-<script>
-// Simplified video monitoring based on Cloudflare Stream documentation
-class VideoMonitor {
-  constructor(videoUid) {
-    this.videoUid = videoUid;
-    this.isVideoReady = false;
-    this.checkCount = 0;
-    this.maxChecks = 40; // Increased to allow more time
-    this.destroyed = false;
-    
-    console.log('VideoMonitor initialized for:', videoUid);
-  }
-  
-  start() {
-    console.log('Starting video processing monitoring...');
-    // Start checking immediately
-    this.checkVideoStatus();
-  }
-  
-  destroy() {
-    this.destroyed = true;
-    console.log('VideoMonitor destroyed');
-  }
-  
-  checkVideoStatus() {
-    if (this.destroyed || this.isVideoReady) return;
-    
-    this.checkCount++;
-    console.log(`Video status check #${this.checkCount}/${this.maxChecks} for ${this.videoUid}`);
-    
-    this.updateProgress();
-    
-    // Check API status first
-    this.checkAPI()
-      .then(apiResult => {
-        if (this.destroyed) return;
-        
-        if (apiResult.ready) {
-          console.log('API confirmed video ready, showing player...');
-          this.showVideo();
-        } else {
-          console.log(`API says not ready (state: ${apiResult.status}, pct: ${apiResult.pctComplete}%), scheduling next check...`);
-          this.scheduleNextCheck();
-        }
-      })
-      .catch(error => {
-        if (this.destroyed) return;
-        
-        console.warn('API check failed:', error);
-        // After several API failures, show video anyway - it might be playable
-        if (this.checkCount >= 10) {
-          console.log('Many API failures, showing video with warning...');
-          this.showVideoWithWarning();
-        } else {
-          this.scheduleNextCheck();
-        }
-      });
-  }
-  
-  async checkAPI() {
-    try {
-      const response = await fetch(`/api/video-status/${this.videoUid}`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      console.log('API Response:', data);
-      
-      if (data.success) {
-        // Based on CF docs: videos are playable when state is "ready"
-        // or when in "inprogress" with high enough pctComplete
-        const isReady = data.status === 'ready' || 
-                       (data.status === 'inprogress' && data.pctComplete >= 50) ||
-                       data.readyToStream === true;
-        
-        return { 
-          ready: isReady, 
-          status: data.status,
-          pctComplete: data.pctComplete || 0,
-          confidence: data.confidence || 'low' 
-        };
-      }
-      
-      return { ready: false, status: 'unknown', pctComplete: 0 };
-    } catch (error) {
-      console.error('API request failed:', error);
-      throw error;
-    }
-  }
-  
-  updateProgress() {
-    // More realistic progress based on typical processing times
-    let progress;
-    if (this.checkCount <= 2) {
-      progress = 15 + (this.checkCount * 20); // 15-55% for first 2 checks
-    } else if (this.checkCount <= 5) {
-      progress = 55 + ((this.checkCount - 2) * 10); // 55-85% next 3 checks
-    } else {
-      progress = 85 + Math.min((this.checkCount - 5) * 2, 15); // Slowly to 100%
-    }
-    
-    progress = Math.min(progress, 99);
-    
-    const progressBar = document.getElementById('processing-progress');
-    if (progressBar) {
-      progressBar.style.width = progress + '%';
-    }
-    
-    // Update status message
-    this.updateStatusMessage();
-  }
-  
-  updateStatusMessage() {
-    const statusElement = document.querySelector('#video-processing small');
-    if (!statusElement) return;
-    
-    if (this.checkCount <= 2) {
-      statusElement.innerHTML = '<i class="fas fa-upload me-1"></i>Processing video for streaming...';
-    } else if (this.checkCount <= 5) {
-      statusElement.innerHTML = '<i class="fas fa-cog me-1"></i>Optimizing video quality...';
-    } else {
-      statusElement.innerHTML = '<i class="fas fa-check me-1"></i>Almost ready for playback...';
-    }
-  }
-    scheduleNextCheck() {
-    if (this.checkCount >= this.maxChecks || this.destroyed) {
-      console.log('Max checks reached or destroyed, showing video anyway');
-      this.showVideoWithWarning();
-      return;
-    }
-    
-    // Simpler timing: check every 3 seconds initially, then every 5 seconds
-    let delay;
-    if (this.checkCount <= 5) {
-      delay = 3000; // 3 seconds for first 5 checks
-    } else {
-      delay = 5000; // 5 seconds after that
-    }
-    
-    console.log(`Scheduling next check in ${delay/1000} seconds...`);
-    setTimeout(() => {
-      if (!this.destroyed) {
-        this.checkVideoStatus();
-      }
-    }, delay);
-  }
-  
-  showVideo() {
-    if (this.isVideoReady) return;
-    
-    this.isVideoReady = true;
-    console.log('Showing video player...');
-    
-    // Complete progress
-    const progressBar = document.getElementById('processing-progress');
-    if (progressBar) {
-      progressBar.style.width = '100%';
-    }
-    
-    // Show success message briefly, then show player
-    const processingDiv = document.getElementById('video-processing');
-    if (processingDiv) {
-      processingDiv.innerHTML = `
-        <div class="alert alert-success">
-          <h6><i class="fas fa-check-circle me-2"></i>Video Ready!</h6>
-          <p class="mb-0">Your video is ready for viewing.</p>
-        </div>
-      `;
-      
-      // Show video player after brief success message
-      setTimeout(() => {
-        processingDiv.style.display = 'none';
-        const playerDiv = document.getElementById('video-player');
-        if (playerDiv) {
-          playerDiv.style.display = 'block';
-        }
-      }, 2000);
-    }
-  }
-  
-  showVideoWithWarning() {
-    if (this.isVideoReady) return;
-    
-    this.isVideoReady = true;
-    console.log('Showing video with info message...');
-    
-    const processingDiv = document.getElementById('video-processing');
-    if (processingDiv) {
-      processingDiv.innerHTML = `
-        <div class="alert alert-info">
-          <h6><i class="fas fa-info-circle me-2"></i>Video Processing Complete</h6>
-          <p class="mb-0">Your video should be ready for viewing. If it doesn't load immediately, please wait a moment.</p>
-        </div>
-      `;
-      
-      setTimeout(() => {
-        const playerDiv = document.getElementById('video-player');
-        if (playerDiv) {
-          playerDiv.style.display = 'block';
-        }
-      }, 1500);
-    }
-  }
-}
-
-// Initialize video monitoring when page loads
-document.addEventListener('DOMContentLoaded', function() {
-  const videoUid = '{{video_url}}';
-  console.log('Initializing video monitor for:', videoUid);
-  
-  // Create and start monitor
-  const monitor = new VideoMonitor(videoUid);
-  monitor.start();
-  
-  // Cleanup on page unload
-  window.addEventListener('beforeunload', function() {
-    monitor.destroy();
-  });
-});
-</script>
-{{/if}}
