@@ -579,7 +579,7 @@ app.post('/audition/:projectId', auditionUpload.fields([
       .join(' ') || 'Actor';
     
     const submissionData = {
-      project: { ...project, stream_library_id: BUNNY_STREAM_LIBRARY_ID },
+      project: { ...project, stream_library_id: process.env.BUNNY_STREAM_LIBRARY_ID },
       role: body.role,
       actor_name: actorName,
       email: body.email,
