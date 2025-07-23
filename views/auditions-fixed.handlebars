@@ -69,7 +69,7 @@
                           <div class="video-player" style="display: none;">
                             <div class="ratio ratio-16x9">
                               <iframe 
-                                src="https://iframe.mediadelivery.net/embed/{{../project.stream_library_id}}/{{video_url}}" 
+                                src="https://iframe.bunnyplayer.com/{{../project.stream_library_id}}/{{video_url}}" 
                                 frameborder="0" 
                                 allowfullscreen
                                 allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
@@ -160,83 +160,4 @@ function loadVideo(container) {
   const player = container.querySelector('.video-player');
   const error = container.querySelector('.video-error');
   
-  // Only try to load Bunny.net Stream videos (YouTube and others load immediately)
-  if (videoType === 'bunny_stream') {
-    // Use iframe method to check if video is ready
-    testIframeLoad(container);
-  } else {
-    // For YouTube and other types, show immediately
-    loading.style.display = 'none';
-    player.style.display = 'block';
-  }
-}
-
-function testIframeLoad(container) {
-  const videoUrl = container.dataset.videoUrl;
-  const loading = container.querySelector('.video-loading');
-  const player = container.querySelector('.video-player');
-  const error = container.querySelector('.video-error');
-  
-  // Create a test iframe to check if video is ready
-  const testIframe = document.createElement('iframe');
-  testIframe.style.display = 'none';
-  testIframe.style.position = 'absolute';
-  testIframe.style.left = '-9999px';
-  testIframe.src = `https://iframe.videodelivery.net/${videoUrl}`;
-  
-  let loadTimeout = setTimeout(() => {
-    // If iframe doesn't load within 10 seconds, show error
-    try {
-      document.body.removeChild(testIframe);
-    } catch(e) {
-      // Iframe already removed
-    }
-    
-    loading.style.display = 'none';
-    error.style.display = 'block';
-  }, 10000);
-  
-  testIframe.onload = function() {
-    clearTimeout(loadTimeout);
-    // Video appears to be ready
-    loading.style.display = 'none';
-    player.style.display = 'block';
-    
-    // Remove test iframe
-    try {
-      document.body.removeChild(testIframe);
-    } catch(e) {
-      // Iframe already removed
-    }
-  };
-  
-  testIframe.onerror = function() {
-    clearTimeout(loadTimeout);
-    // Video not ready yet
-    try {
-      document.body.removeChild(testIframe);
-    } catch(e) {
-      // Iframe already removed
-    }
-    
-    loading.style.display = 'none';
-    error.style.display = 'block';
-  };
-  
-  document.body.appendChild(testIframe);
-}
-
-// Load all videos when page loads
-document.addEventListener('DOMContentLoaded', function() {
-  const videoContainers = document.querySelectorAll('.video-container');
-  
-  videoContainers.forEach((container, index) => {
-    // Stagger the loading to avoid overwhelming the browser
-    setTimeout(() => {
-      loadVideo(container);
-    }, index * 1000); // 1 second delay between each video
-  });
-});
-</script>
-
-{{> footer}}
+  // Only try to load Bunny.net Stream videos (YouTube and other
