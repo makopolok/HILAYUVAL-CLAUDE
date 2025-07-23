@@ -72,9 +72,18 @@ module.exports = {
         const max = options.hash.max || Infinity;
         return str.length >= min && str.length <= max;
     },
-    and: function(...args) {
-        // The last argument is the options object, which we don't need here.
-        // We just check if all other arguments are truthy.
-        return args.slice(0, -1).every(Boolean);
+    and: function() {
+        // A more robust 'and' helper.
+        // It checks if all provided arguments (except the last one, which is the options object) are truthy.
+        const args = Array.prototype.slice.call(arguments);
+        const options = args.pop();
+        
+        for (let i = 0; i < args.length; i++) {
+            if (!args[i]) {
+                return false;
+            }
+        }
+        
+        return true;
     }
 };
