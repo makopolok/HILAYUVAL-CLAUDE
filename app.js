@@ -579,7 +579,8 @@ app.post('/audition/:projectId', auditionUpload.fields([
       .join(' ') || 'Actor';
     
     const submissionData = {
-      project: { ...project, stream_library_id: process.env.BUNNY_STREAM_LIBRARY_ID },
+      project: { ...project },
+      bunny_stream_library_id: process.env.BUNNY_STREAM_LIBRARY_ID, // Correctly access from process.env
       role: body.role,
       actor_name: actorName,
       email: body.email,
@@ -599,195 +600,47 @@ app.post('/audition/:projectId', auditionUpload.fields([
     };
     
     res.render('audition-success', submissionData);
-
-  } catch (error) {
-    console.error(`[App.js POST /audition/:${req.params.projectId}] Critical error in route:`, error.message, error.stack);
-    next(error); // Pass to the main error handler
-  }
-});
-
-// API endpoint to check video processing status with enhanced details
-app.get('/api/video-status/:videoUid', async (req, res) => {
-  try {
-    const videoUid = req.params.videoUid;
-    console.log(`API_VIDEO_STATUS_CHECK: ${videoUid}`);
     
-    const status = await bunnyUploadService.getVideoStatus(videoUid);
-    console.log(`API_VIDEO_STATUS_RESULT: ${videoUid}`, status);
-    
-    res.json({
-      success: true,
-      status: status.status,
-      readyToStream: status.readyToStream,
-      confidence: status.confidence,
-      uid: status.uid,
-      hasPreview: status.hasPreview,
-      duration: status.duration,
-      pctComplete: status.pctComplete,
-      originalReadyToStream: status.originalReadyToStream,
-      timestamp: new Date().toISOString()
-    });
   } catch (error) {
-    console.error(`API_VIDEO_STATUS_ERROR: ${req.params.videoUid}`, error.message);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-      timestamp: new Date().toISOString()
-    });
-  }
-});
-
-// Route to list all projects
-app.get('/projects', async (req, res) => {
-  const projects = await projectService.getAllProjects();
-  const { name, email, role } = req.query;
-  let filteredProjects = projects;
-  // If global search is used, filter projects to only those with matching auditions or role names
-  if ((name && name.trim()) || (email && email.trim()) || (role && role.trim())) {
-    filteredProjects = projects.map(project => {
-      // For each role, filter auditions and/or match role name
-      const roles = (project.roles || []).map(r => {
-        let auditions = r.auditions || [];
-        let roleMatch = false;
-        if (role && role.trim()) {
-          roleMatch = r.name && r.name.toLowerCase().includes(role.toLowerCase());
-        }
-        if (name && name.trim()) {
-          auditions = auditions.filter(a => a.name && a.name.toLowerCase().includes(name.toLowerCase()));
-        }
-        if (email && email.trim()) {
-          auditions = auditions.filter(a => a.email && a.email.toLowerCase().includes(email.toLowerCase()));
-        }
-        // If role name matches, show all auditions for that role
-        if (roleMatch && !name && !email) {
-          return { ...r };
-        }
-        // Otherwise, only show roles with matching auditions
-        return { ...r, auditions };
-      }).filter(r => (role && role.trim()) ? (r.name && r.name.toLowerCase().includes(role.toLowerCase())) || (r.auditions && r.auditions.length > 0) : (r.auditions && r.auditions.length > 0));
-      return { ...project, roles };
-    }).filter(project => project.roles.length > 0);
-  }
-  res.render('projects', { projects: filteredProjects, query: req.query });
-});
-
-// Route to render the edit project form
-app.get('/projects/:id/edit', async (req, res) => {
-  const project = await projectService.getProjectById(req.params.id);
-  if (!project) {
-    return res.status(404).send('Project not found.');
-  }
-  res.render('editProject', { project });
-});
-
-// Route to handle adding a new role to a project
-app.post('/projects/:id/add-role', async (req, res) => {
-  const project = projectService.getProjectById(req.params.id);
-  if (!project) {
-    return res.status(404).send('Project not found.');
-  }
-  const { newRole } = req.body;
-  if (!newRole || !newRole.trim()) {
-    return res.status(400).send('Role name is required.');
-  }
-  // Check if role already exists
-  if (project.roles.some(r => r.name.toLowerCase() === newRole.trim().toLowerCase())) {
-    return res.status(400).send('Role already exists in this project.');
-  }
-  // Exponential backoff for YouTube playlist creation (handles 429 rate limit)
-  let retries = 0;
-  const maxRetries = 5;
-  let delay = 1000; // Start with 1 second
-  let playlistRes = null;
-  let usedDefault = false;
-  while (retries < maxRetries) {
-    try {
-      oauth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
-      const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
-      playlistRes = await youtube.playlists.insert({
-        part: ['snippet', 'status'],
-        requestBody: {
-          snippet: {
-            title: `${project.name} - ${newRole} Auditions`,
-            description: `Auditions for the role of ${newRole} in project ${project.name}.`,
-          },
-          status: {
-            privacyStatus: 'unlisted',
-          },
-        },
-      });
-      break; // Success, exit loop
-    } catch (err) {
-      if (err && err.response && err.response.status === 429) {
-        // Exponential backoff: wait, then retry
-        if (retries === maxRetries - 1) {
-          // Use default playlist if quota is exceeded after all retries
-          usedDefault = true;
-          break;
-        }
-        await new Promise(resolve => setTimeout(resolve, delay));
-        delay *= 2; // Double the delay for next retry
-        retries++;
-        continue;
-      } else {
-        // Other errors: show details
-        console.error(`Error creating playlist for new role ${newRole}:`, err);
-        let errorDetails = err && err.response && err.response.data ? JSON.stringify(err.response.data, null, 2) : err.stack || err.toString();
-        return res.status(500).send(`Error creating playlist for new role ${newRole}:<br><pre>${errorDetails}</pre>`);
+    // Enhanced error logging
+    console.error(`[App.js POST /audition/:${req.params.projectId}] Critical error in route: ${error.message}`, error);
+    res.status(500).render('error/500', { 
+      error: {
+        message: `An unexpected error occurred during submission. Please try again. If the problem persists, contact support. Error: ${error.message}`
       }
-    }
+    });
   }
-  // If playlist creation succeeded, add the new role; otherwise use default playlist
-  const defaultPlaylistId = 'PLjbMUg1d7vaXP1qiq_5z1nB3Uj4P2f1gj';
-  const playlistId = usedDefault ? defaultPlaylistId : playlistRes.data.id;
-  const newRoleObj = { name: newRole, playlistId };
-  await projectService.addRoleToProject(project.id, newRoleObj);
-  // Optionally, show a message if default playlist was used
-  if (usedDefault) {
-    return res.send(`<h2>Role added with default playlist due to YouTube quota limits.</h2><p>The new role <b>${newRole}</b> was assigned to the default playlist. Please check your YouTube quota or try again later for dedicated playlists.</p><a href="/projects/${project.id}/edit">Back to Edit Project</a>`);
-  }
-  res.redirect(`/projects/${project.id}/edit`);
 });
 
-// Route to display all auditions for a project (Cloudflare Stream playlist equivalent)
-app.get('/projects/:id/auditions', async (req, res) => {
-  const project = await projectService.getProjectById(req.params.id);
-  if (!project) {
-    return res.status(404).send('Project not found.');
-  }
-  // Fetch all auditions for this project from Postgres
-  const { name, email, role } = req.query;
-  let query = 'SELECT * FROM auditions WHERE project_id = $1';
-  const params = [project.id];
-  let paramIdx = 2;
-  if (role && role.trim()) {
-    query += ` AND role = $${paramIdx++}`;
-    params.push(role);
-  }
-  if (name && name.trim()) {
-    query += ` AND (LOWER(first_name_he) LIKE $${paramIdx} OR LOWER(last_name_he) LIKE $${paramIdx} OR LOWER(first_name_en) LIKE $${paramIdx} OR LOWER(last_name_en) LIKE $${paramIdx})`;
-    params.push(`%${name.toLowerCase()}%`);
-    paramIdx++;
-  }
-  if (email && email.trim()) {
-    query += ` AND LOWER(email) LIKE $${paramIdx}`;
-    params.push(`%${email.toLowerCase()}%`);
-    paramIdx++;
-  }
-  query += ' ORDER BY created_at DESC';
-  let auditions = [];
+
+// Route to view all auditions for a specific project
+app.get('/projects/:projectId/auditions', async (req, res) => {
   try {
-    const { rows } = await auditionService.pool.query(query, params);
-    auditions = rows;
-  } catch (err) {
-    return res.status(500).send('Failed to fetch auditions: ' + err.message);
+    const projectId = req.params.projectId;
+    const project = await projectService.getProjectById(projectId);
+    if (!project) {
+      return res.status(404).render('error/404', { message: 'Project not found.' });
+    }
+
+    const auditions = await auditionService.getAuditionsByProjectId(projectId, req.query);
+    
+    // Group auditions by role for structured display
+    const rolesWithAuditions = project.roles.map(role => {
+      return {
+        ...role,
+        auditions: auditions.filter(a => a.role === role.name)
+      };
+    });
+
+    res.render('auditions', { 
+      project: { ...project, roles: rolesWithAuditions },
+      query: req.query,
+      bunny_stream_library_id: process.env.BUNNY_STREAM_LIBRARY_ID // Pass library ID to the template
+    });
+  } catch (error) {
+    console.error(`[App.js GET /projects/:projectId/auditions] Error fetching auditions:`, error);
+    res.status(500).render('error/500', { message: 'Error fetching auditions.' });
   }
-  // Group auditions by role for the view
-  const roles = (project.roles || []).map(r => ({
-    name: r.name,
-    auditions: auditions.filter(a => a.role === r.name)
-  }));
-  res.render('auditions', { project: { ...project, roles }, query: req.query });
 });
 
 // Error handling
