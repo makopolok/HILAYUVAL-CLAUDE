@@ -64,6 +64,12 @@ module.exports = {
     eq: function(a, b) {
         return a === b;
     },
-    // You can add more helpers here, e.g.:
-    // anotherHelper: function(options) { ... }
+    isLength: function(str, options) {
+        if (typeof str !== 'string') {
+            return false;
+        }
+        const min = options.hash.min || 0;
+        const max = options.hash.max || Infinity;
+        return str.length >= min && str.length <= max;
+    }
 };
