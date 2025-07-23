@@ -10,4 +10,12 @@ router.get('/', async (req, res) => {
     });
 });
 
+router.get('/projects', async (req, res) => {
+    const projects = await portfolioService.getAllProjects();
+    res.render('projects', { 
+        title: 'Projects - Hila Yuval Casting',
+        projects 
+    });
+});
+
 module.exports = router;
