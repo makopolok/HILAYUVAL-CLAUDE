@@ -71,5 +71,10 @@ module.exports = {
         const min = options.hash.min || 0;
         const max = options.hash.max || Infinity;
         return str.length >= min && str.length <= max;
+    },
+    and: function(...args) {
+        // The last argument is the options object, which we don't need here.
+        // We just check if all other arguments are truthy.
+        return args.slice(0, -1).every(Boolean);
     }
 };
