@@ -643,6 +643,31 @@ app.get('/projects/:projectId/auditions', async (req, res) => {
   }
 });
 
+// API route to check Bunny.net video status
+app.get('/api/video-status/:videoGuid', async (req, res, next) => {
+  try {
+    const { videoGuid } = req.params;
+    if (!videoGuid) {
+      return res.status(400).json({ error: 'Video GUID is required.' });
+    }
+    
+    console.log(`API_VIDEO_STATUS_CHECK: Checking status for GUID: ${videoGuid}`);
+    
+    const status = await bunnyUploadService.getVideoStatus(videoGuid);
+    
+    console.log(`API_VIDEO_STATUS_SUCCESS: Status for GUID ${videoGuid}:`, status);
+    res.json(status);
+  } catch (error) {
+    console.error(`API_VIDEO_STATUS_ERROR: Error checking status for GUID ${req.params.videoGuid}:`, error);
+    // Pass a structured error to the client
+    res.status(error.response?.status || 500).json({ 
+      error: 'Failed to get video status', 
+      message: error.message 
+    });
+  }
+});
+
+
 // Error handling
 app.use((req, res) => {
     res.status(404).render('error/404');
