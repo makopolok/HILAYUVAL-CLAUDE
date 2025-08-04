@@ -12,6 +12,7 @@ router.get('/', async (req, res) => {
 
 router.get('/projects', async (req, res) => {
     const projects = await portfolioService.getAllProjects();
+    console.log('PROJECTS_ROUTE_DATA:', projects);
     res.render('projects', { 
         title: 'Projects - Hila Yuval Casting',
         projects 

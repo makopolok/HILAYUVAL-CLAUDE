@@ -32,14 +32,14 @@ async function addProject(project) {
   }
 }
 
-// Get all projects with their roles
 async function getAllProjects() {
-  const projectsRes = await pool.query('SELECT * FROM projects ORDER BY created_at DESC');
-  const rolesRes = await pool.query('SELECT * FROM roles');
-  return projectsRes.rows.map(project => ({
-    ...project,
-    roles: rolesRes.rows.filter(role => role.project_id === project.id)
-  }));
+    const projectsRes = await pool.query('SELECT * FROM projects ORDER BY created_at DESC');
+    const rolesRes = await pool.query('SELECT * FROM roles');
+    console.log('PROJECT_SERVICE_GET_ALL_PROJECTS:', { projects: projectsRes.rows, roles: rolesRes.rows });
+    return projectsRes.rows.map(project => ({
+        ...project,
+        roles: rolesRes.rows.filter(role => role.project_id === project.id)
+    }));
 }
 
 // Get a project by ID
