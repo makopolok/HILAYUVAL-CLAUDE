@@ -55,9 +55,9 @@ async function runMigrations() {
 
   } catch (error) {
     console.error('❌ Migration failed:', error.message);
+ console.error(error.stack); // Log the full error stack
   } finally {
     await pool.end();
   }
 }
-
 runMigrations();

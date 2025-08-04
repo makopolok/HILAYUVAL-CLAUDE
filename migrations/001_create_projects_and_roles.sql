@@ -1,17 +1,18 @@
--- SQL migration for projects and roles
-CREATE TABLE IF NOT EXISTS projects (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  description TEXT,
-  upload_method TEXT,
-  created_at TIMESTAMP,
-  director TEXT,
-  production_company TEXT
+-- Create the projects table
+CREATE TABLE projects (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    upload_method VARCHAR(50),
+    created_at TIMESTAMP DEFAULT NOW(),
+    director VARCHAR(255),
+    production_company VARCHAR(255)
 );
 
-CREATE TABLE IF NOT EXISTS roles (
-  id SERIAL PRIMARY KEY,
-  project_id TEXT REFERENCES projects(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  playlist_id TEXT
-);
+-- Create the roles table
+CREATE TABLE roles (
+    id SERIAL PRIMARY KEY,
+    project_id INT REFERENCES projects(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    playlist_id VARCHAR(255)
+);S
