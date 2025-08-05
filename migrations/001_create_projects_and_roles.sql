@@ -15,4 +15,4 @@ CREATE TABLE roles (
     project_id INT REFERENCES projects(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     playlist_id VARCHAR(255)
-);S
+);
