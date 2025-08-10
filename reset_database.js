@@ -24,11 +24,11 @@ async function resetDatabase() {
     await pool.query('DROP TABLE IF EXISTS projects CASCADE;');
     console.log('✅ All tables dropped');
 
-    // Create projects table
+  // Create projects table (integer ID now to match live schema)
     console.log('\n📋 Creating projects table...');
     await pool.query(`
       CREATE TABLE projects (
-        id TEXT PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         name TEXT NOT NULL,
         description TEXT,
         upload_method TEXT,
@@ -44,7 +44,7 @@ async function resetDatabase() {
     await pool.query(`
       CREATE TABLE roles (
         id SERIAL PRIMARY KEY,
-        project_id TEXT REFERENCES projects(id) ON DELETE CASCADE,
+        project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
         name TEXT NOT NULL,
         playlist_id TEXT
       );
@@ -56,7 +56,7 @@ async function resetDatabase() {
     await pool.query(`
       CREATE TABLE auditions (
         id SERIAL PRIMARY KEY,
-        project_id TEXT REFERENCES projects(id) ON DELETE CASCADE,
+        project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
         role TEXT NOT NULL,
         first_name_he TEXT,
         last_name_he TEXT,
