@@ -21,7 +21,7 @@ class VideoMonitor {
     try {
       const res = await fetch(this.apiUrl.replace(':videoUid', this.videoUid));
       const data = await res.json();
-      if (this.readyCheck(data)) {
+  if (this.readyCheck(data)) {
         this.onReady();
         return;
       }

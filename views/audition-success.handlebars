@@ -90,7 +90,7 @@
               <div id="video-player" style="display: none;">
                 <div class="ratio ratio-16x9 mb-3">
                   <iframe 
-                    src="https://iframe.mediadelivery.net/{{bunny_stream_library_id}}/{{video_url}}" 
+                    src="https://iframe.mediadelivery.net/embed/{{bunny_stream_library_id}}/{{video_url}}" 
                     frameborder="0" 
                     allowfullscreen
                     allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
@@ -108,8 +108,9 @@
             document.addEventListener('DOMContentLoaded', function() {
               const videoUid = '{{video_url}}';
               const apiUrl = '/api/video-status/:videoUid';
-              const maxChecks = 20;
-              const readyCheck = data => data && data.success && data.readyToStream;
+              const maxChecks = 24; // ~2 minutes (first 5 @3s then 19 @5s)
+              // Treat Bunny ready if readyToStream true OR status === 'ready'
+              const readyCheck = data => data && (data.readyToStream || data.status === 'ready');
               const monitor = new window.VideoMonitor({
                 videoUid,
                 apiUrl,
