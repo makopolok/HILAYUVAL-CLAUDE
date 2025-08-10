@@ -614,17 +614,18 @@ app.post('/audition/:projectId', auditionUpload.fields([
     };
 
     // Build optional signed Bunny Stream embed URL if signing key provided
-    if (videoType === 'bunny_stream' && finalVideoUrl && process.env.BUNNY_STREAM_LIBRARY_ID) {
+  if (videoType === 'bunny_stream' && finalVideoUrl && process.env.BUNNY_STREAM_LIBRARY_ID) {
       try {
         const libId = process.env.BUNNY_STREAM_LIBRARY_ID;
-        let embedBase = `https://iframe.mediadelivery.net/embed/${libId}/${finalVideoUrl}`;
+    let embedBase = `https://iframe.mediadelivery.net/embed/${libId}/${finalVideoUrl}`;
         if (process.env.BUNNY_STREAM_SIGNING_KEY) {
             const crypto = require('crypto');
-            const expires = Math.floor(Date.now()/1000) + 3600; // 1h validity
+      const ttl = Math.min(Math.max(parseInt(process.env.BUNNY_STREAM_TOKEN_TTL || '3600', 10) || 3600, 60), 86400); // clamp 1m - 24h
+      const expires = Math.floor(Date.now()/1000) + ttl; // validity
             const pathForToken = `/embed/${libId}/${finalVideoUrl}`; // path portion per Bunny token algorithm
             const token = crypto.createHash('md5').update(process.env.BUNNY_STREAM_SIGNING_KEY + pathForToken + expires).digest('hex');
-            embedBase += `?token=${token}&expires=${expires}`;
-            console.log(`BUNNY_EMBED_SIGNED_URL_GENERATED: ${embedBase}`);
+      embedBase += `?token=${token}&expires=${expires}`;
+      console.log(`BUNNY_EMBED_SIGNED_URL_GENERATED ttl=${ttl}s guid=${finalVideoUrl}`);
         } else {
             console.log(`BUNNY_EMBED_UNSIGNED_URL: ${embedBase}`);
         }
