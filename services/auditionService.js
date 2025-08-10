@@ -2,9 +2,37 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
+// Create a singleton Pool. Provide clear logging to help diagnose connection issues.
+if (!process.env.DATABASE_URL) {
+  console.error('ERROR: DATABASE_URL environment variable is not set. Database operations will fail until it is provided.');
+}
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  // Heroku & many managed Postgres providers require SSL; for local dev you can disable by omitting ssl.
+  // We keep rejectUnauthorized false to avoid issues with self-signed certs in managed environments.
+  ssl: process.env.DATABASE_URL && process.env.DATABASE_URL.includes('localhost') ? false : { rejectUnauthorized: false },
+});
+
+// Optional: basic connectivity check helper (used by app.js /health route)
+async function checkDbConnection() {
+  const start = Date.now();
+  try {
+    const res = await pool.query('SELECT 1 as ok');
+    return { ok: true, result: res.rows[0], latency_ms: Date.now() - start };
+  } catch (err) {
+    return { ok: false, error: err.message, code: err.code, latency_ms: Date.now() - start };
+  }
+}
+
+// Capture pool error events (e.g., sudden disconnects) and log visibly
+pool.on('error', (err) => {
+  console.error('FATAL: Unexpected PG pool error (likely idle client error).', {
+    message: err.message,
+    code: err.code,
+    stack: err.stack,
+    time: new Date().toISOString()
+  });
 });
 
 async function insertAudition(audition) {
@@ -40,4 +68,5 @@ async function insertAudition(audition) {
 module.exports = {
   insertAudition,
   pool,
+  checkDbConnection,
 };

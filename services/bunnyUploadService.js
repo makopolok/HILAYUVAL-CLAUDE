@@ -11,6 +11,8 @@ const BUNNY_API_KEY = process.env.BUNNY_API_KEY;
 const BUNNY_STORAGE_ZONE = process.env.BUNNY_STORAGE_ZONE;
 const BUNNY_VIDEO_API_KEY = process.env.BUNNY_VIDEO_API_KEY;
 const BUNNY_STREAM_LIBRARY_ID = process.env.BUNNY_STREAM_LIBRARY_ID;
+// Optional public CDN base (e.g. https://yourpullzone.b-cdn.net)
+const BUNNY_CDN_BASE_URL = process.env.BUNNY_CDN_BASE_URL?.replace(/\/$/, '');
 
 module.exports = {
   // Upload video to Bunny.net Stream
@@ -69,11 +71,13 @@ module.exports = {
       });
       fs.unlinkSync(imageFile.path);
       if (res.status === 201 || res.status === 200) {
-        // Public URL: https://{pullzone}.b-cdn.net/images/{filename}
-        return {
-          url: `/images/${path.basename(uploadUrl)}`,
-          id: path.basename(uploadUrl)
-        };
+          const fileName = path.basename(uploadUrl);
+          // If a CDN base is configured, build absolute URL; otherwise return relative path
+          const publicUrl = BUNNY_CDN_BASE_URL ? `${BUNNY_CDN_BASE_URL}/images/${fileName}` : `/images/${fileName}`;
+          return {
+            url: publicUrl,
+            id: fileName
+          };
       } else {
         throw new Error('Bunny.net image upload failed.');
       }

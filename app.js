@@ -16,6 +16,8 @@ const errorHandler = require('./middleware/errorHandler');
 const handlebarsHelpers = require('./helpers/handlebarsHelpers');
 const rateLimit = require('express-rate-limit');
 const portfolioRoutes = require('./routes/portfolio'); // Define portfolioRoutes
+// Import DB health check
+const { checkDbConnection } = require('./services/auditionService');
 
 // Add a version log at the top for deployment verification
 console.log('INFO: app.js version 2025-06-08_2100_DEBUG running');
@@ -100,6 +102,19 @@ const generalAuditionUpload = multer(multerConfig);
 
 // Routes
 app.use('/', portfolioRoutes);
+
+// Basic DB health route (lightweight) for debugging connectivity
+app.get('/health/db', async (req, res) => {
+  const status = await checkDbConnection();
+  const envHasUrl = !!process.env.DATABASE_URL;
+  res.status(status.ok ? 200 : 500).json({
+    service: 'database',
+    hasConnectionString: envHasUrl,
+    status: status.ok ? 'up' : 'down',
+    details: status,
+    timestamp: new Date().toISOString()
+  });
+});
 
 // Route to render audition submission form
 app.get('/audition', (req, res) => {
