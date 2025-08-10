@@ -88,14 +88,25 @@
               </div>
               <!-- Video player (hidden initially) -->
               <div id="video-player" style="display: none;">
-                <div class="ratio ratio-16x9 mb-3">
+                <div class="ratio ratio-16x9 mb-3 position-relative">
                   <iframe 
-                    src="https://iframe.mediadelivery.net/embed/{{bunny_stream_library_id}}/{{video_url}}" 
+                    src="{{#if embed_url}}{{embed_url}}{{else}}https://iframe.mediadelivery.net/embed/{{bunny_stream_library_id}}/{{video_url}}{{/if}}" 
                     frameborder="0" 
                     allowfullscreen
                     allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
-                    class="rounded w-100 h-100">
+                    class="rounded w-100 h-100" id="bunny-iframe">
                   </iframe>
+                  <div id="bunny-iframe-overlay" style="display:none; position:absolute; inset:0; background:rgba(0,0,0,.75); color:#fff; padding:1rem; font-size:.9rem; overflow:auto;">
+                    <h6>Video Access Issue (403)</h6>
+                    <p>The embed responded with 403 (forbidden).</p>
+                    <ol>
+                      <li>Confirm Stream Library ID matches the one in Bunny dashboard.</li>
+                      <li>Check if the video is marked private with hotlink protection requiring a signed token. {{#if bunny_embed_signed}}(Token used){{else}}(No token present){{/if}}</li>
+                      <li>If token required, set BUNNY_STREAM_SIGNING_KEY in Heroku and re-upload.</li>
+                      <li>Confirm the GUID {{video_url}} exists in the library and processing completed.</li>
+                    </ol>
+                    <p class="mb-0"><code id="embed-src-display"></code></p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -162,6 +173,35 @@
               });
               monitor.start();
               window.addEventListener('beforeunload', function() { monitor.destroy(); });
+
+              // Attempt to detect iframe load errors by polling its contentWindow (limited by cross-origin; fallback timer)
+              const iframe = document.getElementById('bunny-iframe');
+              const overlay = document.getElementById('bunny-iframe-overlay');
+              const embedSrcDisplay = document.getElementById('embed-src-display');
+              if (iframe && embedSrcDisplay) embedSrcDisplay.textContent = iframe.src;
+              // If after 15s of video ready state the iframe still shows blank (common for 403), show overlay
+              let readyShownAt = null;
+              const observer = new MutationObserver(()=>{}); // placeholder if later we need to observe
+              const check403 = () => {
+                if (!iframe || !overlay) return;
+                if (monitor.isVideoReady && !readyShownAt) readyShownAt = Date.now();
+                if (readyShownAt && Date.now() - readyShownAt > 15000 && overlay.style.display === 'none') {
+                  // Show overlay guidance
+                  overlay.style.display = 'block';
+                }
+              };
+              setInterval(check403, 3000);
+              // Provide quick debug link toggle
+              if (!params.get('debugVideo')) {
+                const dbgLink = document.createElement('a');
+                dbgLink.href = window.location.pathname + window.location.search + (window.location.search ? '&' : '?') + 'debugVideo=1';
+                dbgLink.textContent = 'Enable video debug';
+                dbgLink.style.fontSize = '11px';
+                dbgLink.style.display = 'inline-block';
+                dbgLink.style.marginTop = '6px';
+                const container = document.getElementById('video-container');
+                if (container) container.appendChild(dbgLink);
+              }
             });
             </script>
           {{else if (eq video_type "youtube")}}

@@ -612,6 +612,30 @@ app.post('/audition/:projectId', auditionUpload.fields([
         minute: '2-digit'
       })
     };
+
+    // Build optional signed Bunny Stream embed URL if signing key provided
+    if (videoType === 'bunny_stream' && finalVideoUrl && process.env.BUNNY_STREAM_LIBRARY_ID) {
+      try {
+        const libId = process.env.BUNNY_STREAM_LIBRARY_ID;
+        let embedBase = `https://iframe.mediadelivery.net/embed/${libId}/${finalVideoUrl}`;
+        if (process.env.BUNNY_STREAM_SIGNING_KEY) {
+            const crypto = require('crypto');
+            const expires = Math.floor(Date.now()/1000) + 3600; // 1h validity
+            const pathForToken = `/embed/${libId}/${finalVideoUrl}`; // path portion per Bunny token algorithm
+            const token = crypto.createHash('md5').update(process.env.BUNNY_STREAM_SIGNING_KEY + pathForToken + expires).digest('hex');
+            embedBase += `?token=${token}&expires=${expires}`;
+            console.log(`BUNNY_EMBED_SIGNED_URL_GENERATED: ${embedBase}`);
+        } else {
+            console.log(`BUNNY_EMBED_UNSIGNED_URL: ${embedBase}`);
+        }
+        submissionData.embed_url = embedBase;
+        submissionData.bunny_embed_signed = !!process.env.BUNNY_STREAM_SIGNING_KEY;
+      } catch (e) {
+        console.warn('BUNNY_EMBED_URL_BUILD_ERROR:', e.message);
+      }
+    } else if (videoType === 'bunny_stream') {
+      console.log('BUNNY_EMBED_MISSING_ENV: Cannot build embed URL - missing video GUID or library ID');
+    }
     
     res.render('audition-success', submissionData);
     
