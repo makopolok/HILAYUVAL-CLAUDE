@@ -17,16 +17,16 @@ async function createTestProject(projectData) {
 
     // Attempt to extract project ID from the HTML response (this is fragile)
     if (response.data && typeof response.data === 'string') {
-      const match = response.data.match(/"id":\s*"(proj_\d+)"/);
-      if (match && match[1]) {
-        console.log(`Extracted Project ID: ${match[1]}`);
-        return match[1];
+      // Try to find numeric id patterns in rendered JSON/HTML (e.g. "id":123 or data-project-id="123")
+      const numericIdMatch = response.data.match(/"id"\s*:?\s*"?(\d+)"?/);
+      if (numericIdMatch && numericIdMatch[1]) {
+        console.log(`Extracted Project ID: ${numericIdMatch[1]}`);
+        return numericIdMatch[1];
       }
-      // Fallback for a simpler ID reference if the above regex fails (e.g. if project ID is directly in a simple string)
-      const simpleMatch = response.data.match(/proj_\d+/);
-      if (simpleMatch && simpleMatch[0]) {
-        console.log(`Extracted Project ID (simple match): ${simpleMatch[0]}`);
-        return simpleMatch[0];
+      const dataAttrMatch = response.data.match(/data-project-id="(\d+)"/);
+      if (dataAttrMatch && dataAttrMatch[1]) {
+        console.log(`Extracted Project ID (data-attr): ${dataAttrMatch[1]}`);
+        return dataAttrMatch[1];
       }
     }
     console.warn('Could not extract project ID from response.');

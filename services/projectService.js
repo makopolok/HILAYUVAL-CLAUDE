@@ -11,19 +11,23 @@ async function addProject(project) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    await client.query(
-      `INSERT INTO projects (id, name, description, upload_method, created_at, director, production_company)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [project.id, project.name, project.description, project.uploadMethod, project.createdAt, project.director, project.production_company]
+    // Let DB generate primary key (SERIAL/BIGSERIAL). Return id.
+    const insertRes = await client.query(
+      `INSERT INTO projects (name, description, upload_method, created_at, director, production_company)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+      [project.name, project.description, project.uploadMethod, project.createdAt, project.director, project.production_company]
     );
+    const newProjectId = insertRes.rows[0].id;
+    // Insert roles referencing generated id
     for (const role of project.roles) {
       await client.query(
         `INSERT INTO roles (project_id, name, playlist_id)
          VALUES ($1, $2, $3)`,
-        [project.id, role.name, role.playlistId]
+        [newProjectId, role.name, role.playlistId]
       );
     }
     await client.query('COMMIT');
+    return newProjectId;
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;

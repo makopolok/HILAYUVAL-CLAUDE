@@ -348,7 +348,6 @@ app.post('/projects/create', async (req, res, next) => { // Added next
     }
 
     const project = {
-      id: `proj_${Date.now()}`,
       name,
       description,
       uploadMethod: effectiveUploadMethod,
@@ -357,8 +356,8 @@ app.post('/projects/create', async (req, res, next) => { // Added next
       director: req.body.director,
       production_company: req.body.production_company
     };
-    await projectService.addProject(project);
-    const auditionUrl = `${req.protocol}://${req.get('host')}/audition/${project.id}`;
+    const newProjectId = await projectService.addProject(project);
+    const auditionUrl = `${req.protocol}://${req.get('host')}/audition/${newProjectId}`;
     if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
       const transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST,
@@ -384,7 +383,7 @@ app.post('/projects/create', async (req, res, next) => { // Added next
     const auditionBaseUrl = `${req.protocol}://${req.get('host')}/audition`;
     
     const projectData = {
-      project,
+      project: { id: newProjectId, ...project, roles: finalProjectRoles },
       audition_base_url: auditionBaseUrl,
       used_default_playlist: usedDefault,
       submitted_time: new Date().toLocaleString('en-US', {
