@@ -111,6 +111,22 @@
               const maxChecks = 24; // ~2 minutes (first 5 @3s then 19 @5s)
               // Treat Bunny ready if readyToStream true OR status === 'ready'
               const readyCheck = data => data && (data.readyToStream || data.status === 'ready');
+              // Debug support: if URL has ?debugVideo=1 show live polling output
+              const params = new URLSearchParams(window.location.search);
+              if (params.get('debugVideo') === '1') {
+                window.VIDEO_DEBUG = true;
+                let dbg = document.getElementById('video-debug');
+                if (!dbg) {
+                  const container = document.getElementById('video-container');
+                  if (container) {
+                    const panel = document.createElement('div');
+                    panel.id = 'video-debug';
+                    panel.style.cssText = 'display:none; max-height:180px; overflow:auto; font-size:11px; background:#111; color:#0f0; padding:6px; margin-top:10px; border:1px solid #333;';
+                    panel.innerHTML = '<strong>Video Debug Log</strong>';
+                    container.appendChild(panel);
+                  }
+                }
+              }
               const monitor = new window.VideoMonitor({
                 videoUid,
                 apiUrl,
