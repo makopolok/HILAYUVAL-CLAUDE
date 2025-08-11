@@ -411,6 +411,40 @@ app.get('/audition/:projectId', async (req, res) => {
   res.render('audition', { project });
 });
 
+// Debug route to inspect Bunny Stream token computation (does NOT reveal signing key)
+app.get('/debug/video/:guid', async (req, res) => {
+  const guid = req.params.guid;
+  const libId = process.env.BUNNY_STREAM_LIBRARY_ID;
+  if (!guid || !libId) return res.status(400).json({ error: 'Missing guid or library id' });
+  const ttl = Math.min(Math.max(parseInt(process.env.BUNNY_STREAM_TOKEN_TTL || '3600', 10) || 3600, 60), 86400);
+  const expires = Math.floor(Date.now()/1000) + ttl;
+  const pathForToken = `/embed/${libId}/${guid}`;
+  let token = null;
+  if (process.env.BUNNY_STREAM_SIGNING_KEY) {
+    const crypto = require('crypto');
+    token = crypto.createHash('md5').update(process.env.BUNNY_STREAM_SIGNING_KEY + pathForToken + expires).digest('hex');
+  }
+  // Get status via service
+  let status = null;
+  try {
+    status = await bunnyUploadService.getVideoStatus(guid);
+  } catch (e) {
+    status = { error: e.message };
+  }
+  res.json({
+    guid,
+    library: libId,
+    tokenPresent: !!token,
+    suggestedEmbed: token ? `https://iframe.mediadelivery.net/embed/${libId}/${guid}?token=${token}&expires=${expires}` : `https://iframe.mediadelivery.net/embed/${libId}/${guid}`,
+    tokenMeta: token ? { expires, ttl, path: pathForToken } : null,
+    env: {
+      hasSigningKey: !!process.env.BUNNY_STREAM_SIGNING_KEY,
+      hasVideoApiKey: !!process.env.BUNNY_VIDEO_API_KEY
+    },
+    status
+  });
+});
+
 // Update multer to handle multiple profile pictures and a video with enhanced configuration
 const auditionUpload = multer(multerConfig);
 
