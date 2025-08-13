@@ -575,14 +575,17 @@ app.get('/debug/stream/:guid', async (req, res) => {
   ];
   const axios = require('axios');
   const results = [];
+  // Optional referer injection for hotlink diagnostics (?ref=https://iframe.mediadelivery.net)
+  const injectedRef = req.query.ref;
+  const headersBase = injectedRef ? { Referer: injectedRef } : {};
   for (const p of playlistPaths) {
     const url = `https://${host}${p}`;
     let headStatus = null, getStatus = null, length = null, contentType = null, error = null;
     try {
-      const h = await axios.head(url, { timeout: 8000, validateStatus: () => true });
+      const h = await axios.head(url, { timeout: 8000, validateStatus: () => true, headers: headersBase });
       headStatus = h.status;
       if (headStatus === 200) {
-        const g = await axios.get(url, { timeout: 8000, validateStatus: () => true });
+        const g = await axios.get(url, { timeout: 8000, validateStatus: () => true, headers: headersBase });
         getStatus = g.status;
         length = (g.data && typeof g.data === 'string') ? g.data.split('\n').length : null;
         contentType = g.headers['content-type'];
@@ -598,13 +601,13 @@ app.get('/debug/stream/:guid', async (req, res) => {
   if (success) {
     const segUrl = success.url.replace(/\/[^/]+$/, '/chunk_0.ts');
     try {
-      const segResp = await axios.head(segUrl, { timeout: 8000, validateStatus: () => true });
+      const segResp = await axios.head(segUrl, { timeout: 8000, validateStatus: () => true, headers: headersBase });
       segmentProbe = { url: segUrl, status: segResp.status, length: segResp.headers['content-length'] };
     } catch (e) {
       segmentProbe = { url: segUrl, error: e.message };
     }
   }
-  res.json({ guid, library: libId, host, playlists: results, segmentProbe });
+  res.json({ guid, library: libId, host, injectedRef: injectedRef || null, playlists: results, segmentProbe });
 });
 
 // Simple index to list available debug endpoints (helps avoid copy/paste URL concatenation mistakes)
