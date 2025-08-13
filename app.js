@@ -445,6 +445,64 @@ app.get('/debug/video/:guid', async (req, res) => {
   });
 });
 
+// Debug: probe iframe embed URL directly from server to see raw status/headers
+app.get('/debug/embed/:guid', async (req, res) => {
+  const guid = req.params.guid;
+  const libId = process.env.BUNNY_STREAM_LIBRARY_ID;
+  if (!guid || !libId) return res.status(400).json({ error: 'Missing guid or library id' });
+  // Reconstruct signed URL using same logic
+  let base = `https://iframe.mediadelivery.net/embed/${libId}/${guid}`;
+  let usedPath = `/embed/${libId}/${guid}`;
+  let expires = null; let token = null; let ttl = null; let altTried = false;
+  if (process.env.BUNNY_STREAM_SIGNING_KEY) {
+    const crypto = require('crypto');
+    ttl = Math.min(Math.max(parseInt(process.env.BUNNY_STREAM_TOKEN_TTL || '3600', 10) || 3600, 60), 86400);
+    expires = Math.floor(Date.now()/1000) + ttl;
+    token = crypto.createHash('md5').update(process.env.BUNNY_STREAM_SIGNING_KEY + usedPath + expires).digest('hex');
+    base += `?token=${token}&expires=${expires}`;
+  }
+  const axios = require('axios');
+  let resultPrimary = null; let resultAlt = null; let errorPrimary = null; let errorAlt = null;
+  try {
+    resultPrimary = await axios.get(base, { validateStatus: () => true });
+  } catch (e) { errorPrimary = e.message; }
+  if (process.env.BUNNY_STREAM_ALT_PATH === '1' && process.env.BUNNY_STREAM_SIGNING_KEY) {
+    altTried = true;
+    const crypto = require('crypto');
+    const altPath = `/iframe/${libId}/${guid}`;
+    const altToken = crypto.createHash('md5').update(process.env.BUNNY_STREAM_SIGNING_KEY + altPath + expires).digest('hex');
+    const altUrl = `https://iframe.mediadelivery.net/embed/${libId}/${guid}?token=${altToken}&expires=${expires}`;
+    try { resultAlt = await axios.get(altUrl, { validateStatus: () => true }); } catch (e) { errorAlt = e.message; }
+    return res.json({
+      guid,
+      primary: {
+        url: base,
+        status: resultPrimary && resultPrimary.status,
+        headers: resultPrimary && resultPrimary.headers,
+        error: errorPrimary || null
+      },
+      alt: {
+        tried: true,
+        url: altUrl,
+        status: resultAlt && resultAlt.status,
+        headers: resultAlt && resultAlt.headers,
+        error: errorAlt || null
+      },
+      signing: { ttl, expires, usedPath, altPathTried: true }
+    });
+  }
+  return res.json({
+    guid,
+    primary: {
+      url: base,
+      status: resultPrimary && resultPrimary.status,
+      headers: resultPrimary && resultPrimary.headers,
+      error: errorPrimary || null
+    },
+    signing: { ttl, expires, usedPath, altPathTried: altTried }
+  });
+});
+
 // Update multer to handle multiple profile pictures and a video with enhanced configuration
 const auditionUpload = multer(multerConfig);
 
