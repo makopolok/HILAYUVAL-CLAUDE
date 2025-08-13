@@ -503,6 +503,22 @@ app.get('/debug/embed/:guid', async (req, res) => {
   });
 });
 
+// Simple index to list available debug endpoints (helps avoid copy/paste URL concatenation mistakes)
+app.get('/debug', (req, res) => {
+  res.json({
+    message: 'Debug utilities',
+    note: 'Use endpoints below separately. Do NOT concatenate them.',
+    endpoints: [
+      '/debug/video/:guid',
+      '/debug/embed/:guid'
+    ],
+    example: {
+      video: `/debug/video/your-video-guid-here`,
+      embed: `/debug/embed/your-video-guid-here`
+    }
+  });
+});
+
 // Update multer to handle multiple profile pictures and a video with enhanced configuration
 const auditionUpload = multer(multerConfig);
 
