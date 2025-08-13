@@ -560,6 +560,53 @@ app.get('/debug/embed-matrix/:guid', async (req, res) => {
   res.json({ guid, library: libId, expires, ttl, results });
 });
 
+// Probe underlying HLS/DASH playlist & segment URLs to diagnose 403 origins
+app.get('/debug/stream/:guid', async (req, res) => {
+  const guid = req.params.guid;
+  const libId = process.env.BUNNY_STREAM_LIBRARY_ID;
+  if (!guid || !libId) return res.status(400).json({ error: 'Missing guid or library id' });
+  // Bunny typical CDN hostname pattern: vz-<libraryId>-<guid>.b-cdn.net
+  const host = `vz-${libId}-${guid}.b-cdn.net`;
+  // Candidate playlist paths
+  const playlistPaths = [
+    '/playlist.m3u8',
+    '/manifest/video.m3u8',
+    '/video.m3u8'
+  ];
+  const axios = require('axios');
+  const results = [];
+  for (const p of playlistPaths) {
+    const url = `https://${host}${p}`;
+    let headStatus = null, getStatus = null, length = null, contentType = null, error = null;
+    try {
+      const h = await axios.head(url, { timeout: 8000, validateStatus: () => true });
+      headStatus = h.status;
+      if (headStatus === 200) {
+        const g = await axios.get(url, { timeout: 8000, validateStatus: () => true });
+        getStatus = g.status;
+        length = (g.data && typeof g.data === 'string') ? g.data.split('\n').length : null;
+        contentType = g.headers['content-type'];
+      }
+    } catch (e) {
+      error = e.message;
+    }
+    results.push({ path: p, url, headStatus, getStatus, lines: length, contentType, error });
+  }
+  // Try a first segment guess if any playlist succeeded (common pattern: chunk_0.ts)
+  let segmentProbe = null;
+  const success = results.find(r => r.getStatus === 200);
+  if (success) {
+    const segUrl = success.url.replace(/\/[^/]+$/, '/chunk_0.ts');
+    try {
+      const segResp = await axios.head(segUrl, { timeout: 8000, validateStatus: () => true });
+      segmentProbe = { url: segUrl, status: segResp.status, length: segResp.headers['content-length'] };
+    } catch (e) {
+      segmentProbe = { url: segUrl, error: e.message };
+    }
+  }
+  res.json({ guid, library: libId, host, playlists: results, segmentProbe });
+});
+
 // Simple index to list available debug endpoints (helps avoid copy/paste URL concatenation mistakes)
 app.get('/debug', (req, res) => {
   res.json({
