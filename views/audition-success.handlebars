@@ -97,15 +97,18 @@
                     class="rounded w-100 h-100" id="bunny-iframe">
                   </iframe>
                   <div id="bunny-iframe-overlay" style="display:none; position:absolute; inset:0; background:rgba(0,0,0,.75); color:#fff; padding:1rem; font-size:.9rem; overflow:auto;">
-                    <h6>Video Access Issue (403)</h6>
-                    <p>The embed responded with 403 (forbidden).</p>
+                    <h6>Video Playback Issue</h6>
+                    <p>We detected a possible access restriction from the video host. Try the checks below.</p>
                     <ol>
                       <li>Confirm Stream Library ID matches the one in Bunny dashboard.</li>
-                      <li>Check if the video is marked private with hotlink protection requiring a signed token. {{#if bunny_embed_signed}}(Token used){{else}}(No token present){{/if}}</li>
-                      <li>If token required, set BUNNY_STREAM_SIGNING_KEY in Heroku and re-upload.</li>
-                      <li>Confirm the GUID {{video_url}} exists in the library and processing completed.</li>
+                      <li>Hotlink protection: make sure hilayuval.com and www.hilayuval.com are allowed in the Stream library.</li>
+                      <li>Signed tokens: {{#if bunny_embed_signed}}token is being used{{else}}no token configured{{/if}}.</li>
+                      <li>Confirm the GUID {{video_url}} exists and is ready.</li>
                     </ol>
-                    <p class="mb-0"><code id="embed-src-display"></code></p>
+                    <div class="mt-2">
+                      <button id="run-stream-probe" class="btn btn-sm btn-light me-2">Run connectivity check</button>
+                      <small class="text-muted">Embed: <code id="embed-src-display"></code></small>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -179,18 +182,47 @@
               const overlay = document.getElementById('bunny-iframe-overlay');
               const embedSrcDisplay = document.getElementById('embed-src-display');
               if (iframe && embedSrcDisplay) embedSrcDisplay.textContent = iframe.src;
+              // Make overlay debug-only by default
+              if (!window.VIDEO_DEBUG && overlay) overlay.style.display = 'none';
               // If after 15s of video ready state the iframe still shows blank (common for 403), show overlay
               let readyShownAt = null;
               const observer = new MutationObserver(()=>{}); // placeholder if later we need to observe
-              const check403 = () => {
-                if (!iframe || !overlay) return;
-                if (monitor.isVideoReady && !readyShownAt) readyShownAt = Date.now();
-                if (readyShownAt && Date.now() - readyShownAt > 15000 && overlay.style.display === 'none') {
-                  // Show overlay guidance
-                  overlay.style.display = 'block';
+              // Mark iframe loaded to avoid false 403 overlay
+              if (iframe) {
+                iframe.addEventListener('load', () => {
+                  // Iframe HTML loaded; hide any overlay if visible
+                  if (overlay) overlay.style.display = 'none';
+                });
+              }
+
+              // Manual probe to detect real playlist/segment blocking
+        async function runStreamProbe() {
+                try {
+                  const ref = window.location.origin;
+                  const resp = await fetch(`/debug/stream/${videoUid}?ref=${encodeURIComponent(ref)}`);
+                  const json = await resp.json();
+                  const blocked = Array.isArray(json.playlists) && json.playlists.some(p => p && (p.headStatus === 403 || p.getStatus === 403));
+          // Only show overlay when explicitly debugging
+          if (window.VIDEO_DEBUG && overlay) overlay.style.display = blocked ? 'block' : 'none';
+                  if (window.VIDEO_DEBUG && window.document.getElementById('video-debug')) {
+                    const dbg = window.document.getElementById('video-debug');
+                    const pre = document.createElement('pre');
+                    pre.textContent = `Stream probe (${new Date().toLocaleTimeString()}):\n` + JSON.stringify(json, null, 2);
+                    dbg.appendChild(pre);
+                    dbg.style.display = 'block';
+                  }
+                } catch (e) {
+                  if (window.VIDEO_DEBUG && window.document.getElementById('video-debug')) {
+                    const dbg = window.document.getElementById('video-debug');
+                    const div = document.createElement('div');
+                    div.textContent = `Stream probe failed: ${e.message}`;
+                    dbg.appendChild(div);
+                    dbg.style.display = 'block';
+                  }
                 }
-              };
-              setInterval(check403, 3000);
+              }
+              const probeBtn = document.getElementById('run-stream-probe');
+              if (probeBtn) probeBtn.addEventListener('click', runStreamProbe);
               // Provide quick debug link toggle
               if (!params.get('debugVideo')) {
                 const dbgLink = document.createElement('a');
