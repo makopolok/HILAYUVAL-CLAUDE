@@ -102,7 +102,15 @@ module.exports = {
       });
       if (response.data) {
         const result = response.data;
-        const statusState = result.status || 'unknown';
+        const rawStatus = result.status; // Bunny may return numeric codes
+        // Normalize status: if numeric map to human label; if string keep
+        let statusState = rawStatus;
+        if (typeof rawStatus === 'number') {
+          // Heuristic mapping based on Bunny docs (approx):
+          // 0=queued,1=processing,2=encoding,3=ready,4=ready (observed),5=failed
+            const map = { 0: 'queued', 1: 'processing', 2: 'encoding', 3: 'ready', 4: 'ready', 5: 'failed' };
+            statusState = map[rawStatus] || `code_${rawStatus}`;
+        }
         const readyToStream = statusState === 'ready';
         // Bunny.net does not provide pctComplete, but you can add more fields if needed
         return {
