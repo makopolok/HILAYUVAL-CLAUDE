@@ -526,6 +526,40 @@ app.get('/debug/embed/:guid', async (req, res) => {
   });
 });
 
+// Advanced: test multiple possible token path variants to pinpoint which path Bunny expects
+app.get('/debug/embed-matrix/:guid', async (req, res) => {
+  const guid = req.params.guid;
+  const libId = process.env.BUNNY_STREAM_LIBRARY_ID;
+  if (!guid || !libId) return res.status(400).json({ error: 'Missing guid or library id' });
+  if (!process.env.BUNNY_STREAM_SIGNING_KEY) {
+    return res.status(400).json({ error: 'BUNNY_STREAM_SIGNING_KEY not set' });
+  }
+  const crypto = require('crypto');
+  const axios = require('axios');
+  const ttl = Math.min(Math.max(parseInt(process.env.BUNNY_STREAM_TOKEN_TTL || '3600', 10) || 3600, 60), 86400);
+  const expires = Math.floor(Date.now()/1000) + ttl;
+  // Candidate path variants (leading slash required). Order matters.
+  const variants = [
+    { name: 'embed', path: `/embed/${libId}/${guid}`, url: `https://iframe.mediadelivery.net/embed/${libId}/${guid}` },
+    { name: 'no-embed', path: `/${libId}/${guid}`, url: `https://iframe.mediadelivery.net/embed/${libId}/${guid}` },
+    { name: 'iframe', path: `/iframe/${libId}/${guid}`, url: `https://iframe.mediadelivery.net/embed/${libId}/${guid}` }
+  ];
+  const results = [];
+  for (const v of variants) {
+    const token = crypto.createHash('md5').update(process.env.BUNNY_STREAM_SIGNING_KEY + v.path + expires).digest('hex');
+    const testUrl = `${v.url}?token=${token}&expires=${expires}`;
+    let status = null; let headers = null; let error = null;
+    try {
+      const r = await axios.get(testUrl, { validateStatus: () => true });
+      status = r.status; headers = r.headers;
+    } catch (e) {
+      error = e.message;
+    }
+    results.push({ variant: v.name, tokenPath: v.path, testUrl, status, error });
+  }
+  res.json({ guid, library: libId, expires, ttl, results });
+});
+
 // Simple index to list available debug endpoints (helps avoid copy/paste URL concatenation mistakes)
 app.get('/debug', (req, res) => {
   res.json({
