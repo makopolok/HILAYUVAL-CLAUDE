@@ -25,6 +25,27 @@ console.log('INFO: app.js version 2025-06-08_2100_DEBUG running');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Canonical domain enforcement (optional). Set APP_PRIMARY_DOMAIN=hilayuval.com in env to enable.
+if (process.env.APP_PRIMARY_DOMAIN) {
+  const primary = process.env.APP_PRIMARY_DOMAIN.toLowerCase();
+  app.use((req, res, next) => {
+    const host = (req.headers.host || '').toLowerCase();
+    // Allow localhost & primary & www.primary; redirect everything else to primary.
+    const isLocal = host.startsWith('localhost') || host.startsWith('127.0.0.1');
+    const isPrimary = host === primary;
+    const isWwwPrimary = host === 'www.' + primary;
+    if (!isLocal && !isPrimary && !isWwwPrimary) {
+      const target = `https://${primary}${req.originalUrl}`;
+      return res.redirect(301, target);
+    }
+    // Optionally collapse www to root
+    if (isWwwPrimary) {
+      return res.redirect(301, `https://${primary}${req.originalUrl}`);
+    }
+    return next();
+  });
+}
+
 // Google OAuth2 setup
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
@@ -357,7 +378,9 @@ app.post('/projects/create', async (req, res, next) => { // Added next
       production_company: req.body.production_company
     };
     const newProjectId = await projectService.addProject(project);
-    const auditionUrl = `${req.protocol}://${req.get('host')}/audition/${newProjectId}`;
+  // Build audition link using canonical domain if configured
+  const baseDomain = process.env.APP_PRIMARY_DOMAIN ? `https://${process.env.APP_PRIMARY_DOMAIN}` : `${req.protocol}://${req.get('host')}`;
+  const auditionUrl = `${baseDomain}/audition/${newProjectId}`;
     if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
       const transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST,
@@ -380,7 +403,7 @@ app.post('/projects/create', async (req, res, next) => { // Added next
         console.error('Failed to send email:', err); // Log email error but don't fail the request
       }
     }  // Show all roles and their audition form URLs
-    const auditionBaseUrl = `${req.protocol}://${req.get('host')}/audition`;
+  const auditionBaseUrl = `${baseDomain}/audition`;
     
     const projectData = {
       project: { id: newProjectId, ...project, roles: finalProjectRoles },
