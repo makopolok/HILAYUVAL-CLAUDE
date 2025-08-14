@@ -65,8 +65,36 @@ async function insertAudition(audition) {
   return result.rows[0];
 }
 
+// Fetch auditions for a given project with optional filters
+async function getAuditionsByProjectId(projectId, query = {}) {
+  const where = ['project_id = $1'];
+  const params = [projectId];
+
+  if (query.role) {
+    params.push(query.role);
+    where.push(`role = $${params.length}`);
+  }
+
+  if (query.email) {
+    params.push(`%${query.email}%`);
+    where.push(`email ILIKE $${params.length}`);
+  }
+
+  if (query.name) {
+    params.push(`%${query.name}%`);
+    // Match either Hebrew full name or English full name
+    where.push(`( (COALESCE(first_name_he,'') || ' ' || COALESCE(last_name_he,'')) ILIKE $${params.length}
+                 OR (COALESCE(first_name_en,'') || ' ' || COALESCE(last_name_en,'')) ILIKE $${params.length} )`);
+  }
+
+  const sql = `SELECT * FROM auditions WHERE ${where.join(' AND ')} ORDER BY created_at DESC`;
+  const { rows } = await pool.query(sql, params);
+  return rows;
+}
+
 module.exports = {
   insertAudition,
   pool,
   checkDbConnection,
+  getAuditionsByProjectId,
 };
