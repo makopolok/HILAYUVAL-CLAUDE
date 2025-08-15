@@ -889,6 +889,28 @@ app.get('/projects/:projectId/auditions', async (req, res) => {
     }
 
     const auditions = await auditionService.getAuditionsByProjectId(projectId, req.query);
+    // If Bunny Stream is used, pre-compute signed embed URLs for each audition video
+    const libId = process.env.BUNNY_STREAM_LIBRARY_ID;
+    const signingKey = process.env.BUNNY_STREAM_SIGNING_KEY;
+    let ttl = null, expires = null;
+    if (signingKey && libId) {
+      ttl = Math.min(Math.max(parseInt(process.env.BUNNY_STREAM_TOKEN_TTL || '3600', 10) || 3600, 60), 86400);
+      expires = Math.floor(Date.now()/1000) + ttl;
+      const crypto = require('crypto');
+      for (const a of auditions) {
+        if (a && a.video_type === 'bunny_stream' && a.video_url && a.video_url.length > 10) {
+          const pathForToken = `/embed/${libId}/${a.video_url}`;
+          const token = crypto.createHash('md5').update(signingKey + pathForToken + expires).digest('hex');
+          a.embed_url = `https://iframe.mediadelivery.net/embed/${libId}/${a.video_url}?token=${token}&expires=${expires}`;
+        }
+      }
+    } else if (libId) {
+      for (const a of auditions) {
+        if (a && a.video_type === 'bunny_stream' && a.video_url && a.video_url.length > 10) {
+          a.embed_url = `https://iframe.mediadelivery.net/embed/${libId}/${a.video_url}`;
+        }
+      }
+    }
     
     // Group auditions by role for structured display
     const rolesWithAuditions = project.roles.map(role => {

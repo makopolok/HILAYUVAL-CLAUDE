@@ -68,7 +68,7 @@
                           <div class="video-player" style="display: none;">
                             <div class="ratio ratio-16x9">
                               <iframe 
-                                src="https://iframe.mediadelivery.net/{{../../bunny_stream_library_id}}/{{video_url}}" 
+                                src="{{#if embed_url}}{{embed_url}}{{else}}https://iframe.mediadelivery.net/embed/{{../../bunny_stream_library_id}}/{{video_url}}{{/if}}" 
                                 frameborder="0" 
                                 allowfullscreen
                                 allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
@@ -182,7 +182,7 @@ function testIframeLoad(container) {
   testIframe.style.display = 'none';
   testIframe.style.position = 'absolute';
   testIframe.style.left = '-9999px';
-  testIframe.src = `https://iframe.mediadelivery.net/${libraryId}/${videoUrl}`;
+  testIframe.src = `https://iframe.mediadelivery.net/embed/${libraryId}/${videoUrl}`;
   
   let loadTimeout = setTimeout(() => {
     // If iframe doesn't load within 10 seconds, show error
