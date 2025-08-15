@@ -610,6 +610,45 @@ app.get('/debug/stream/:guid', async (req, res) => {
   res.json({ guid, library: libId, host, injectedRef: injectedRef || null, playlists: results, segmentProbe });
 });
 
+// Probe HLS playlists with a SIGNED token (uses server-side signing key)
+app.get('/debug/stream-signed/:guid', async (req, res) => {
+  const guid = req.params.guid;
+  const libId = process.env.BUNNY_STREAM_LIBRARY_ID;
+  const key = process.env.BUNNY_STREAM_SIGNING_KEY;
+  if (!guid || !libId) return res.status(400).json({ error: 'Missing guid or library id' });
+  if (!key) return res.status(400).json({ error: 'BUNNY_STREAM_SIGNING_KEY not set' });
+  const host = `vz-${libId}-${guid}.b-cdn.net`;
+  const playlistPaths = [
+    '/playlist.m3u8',
+    '/manifest/video.m3u8',
+    '/video.m3u8'
+  ];
+  const crypto = require('crypto');
+  const axios = require('axios');
+  const ttl = Math.min(Math.max(parseInt(process.env.BUNNY_STREAM_TOKEN_TTL || '3600', 10) || 3600, 60), 86400);
+  const expires = Math.floor(Date.now()/1000) + ttl;
+  const injectedRef = req.query.ref; // optional Referer
+  const headersBase = injectedRef ? { Referer: injectedRef } : {};
+  const results = [];
+  for (const p of playlistPaths) {
+    const token = crypto.createHash('md5').update(key + p + expires).digest('hex');
+    const url = `https://${host}${p}?token=${token}&expires=${expires}`;
+    let headStatus = null, getStatus = null, length = null, contentType = null, error = null;
+    try {
+      const h = await axios.head(url, { timeout: 8000, validateStatus: () => true, headers: headersBase });
+      headStatus = h.status;
+      if (headStatus === 200) {
+        const g = await axios.get(url, { timeout: 8000, validateStatus: () => true, headers: headersBase });
+        getStatus = g.status;
+        length = (g.data && typeof g.data === 'string') ? g.data.split('\n').length : null;
+        contentType = g.headers['content-type'];
+      }
+    } catch (e) { error = e.message; }
+    results.push({ path: p, url, headStatus, getStatus, lines: length, contentType, error });
+  }
+  res.json({ guid, library: libId, host, ttl, expires, injectedRef: injectedRef || null, results });
+});
+
 // Simple index to list available debug endpoints (helps avoid copy/paste URL concatenation mistakes)
 app.get('/debug', (req, res) => {
   res.json({
