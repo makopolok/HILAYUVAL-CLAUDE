@@ -668,6 +668,7 @@ app.get('/debug', (req, res) => {
     endpoints: [
       '/debug/video/:guid',
       '/debug/embed/:guid',
+  '/debug/embed-snoop/:guid',
       '/debug/stream/:guid',
       '/debug/stream-signed/:guid',
   '/debug/stream-matrix/:guid',
@@ -679,6 +680,7 @@ app.get('/debug', (req, res) => {
     example: {
       video: `/debug/video/your-video-guid-here`,
       embed: `/debug/embed/your-video-guid-here`,
+  embedSnoop: `/debug/embed-snoop/your-video-guid-here`,
       stream: `/debug/stream/your-video-guid-here?ref=https://iframe.mediadelivery.net`,
       streamSigned: `/debug/stream-signed/your-video-guid-here?ref=https://iframe.mediadelivery.net`,
   matrix: `/debug/stream-matrix/your-video-guid-here?ref=https://iframe.mediadelivery.net`,
@@ -901,6 +903,45 @@ app.get('/debug/stream-path/:guid', async (req, res) => {
     }
   }
   return res.json({ guid, library: libId, host, ttl, expires, injectedRef: injectedRef || null, includeIp, results });
+});
+
+// Fetch the embed HTML and extract any HLS URL patterns the iframe references (best-effort static parse)
+app.get('/debug/embed-snoop/:guid', async (req, res) => {
+  const guid = req.params.guid;
+  const libId = process.env.BUNNY_STREAM_LIBRARY_ID;
+  if (!guid || !libId) return res.status(400).json({ error: 'Missing guid or library id' });
+  const axios = require('axios');
+  const crypto = require('crypto');
+  const ttl = Math.min(Math.max(parseInt(process.env.BUNNY_STREAM_TOKEN_TTL || '3600', 10) || 3600, 60), 86400);
+  const expires = Math.floor(Date.now()/1000) + ttl;
+  let url = `https://iframe.mediadelivery.net/embed/${libId}/${guid}`;
+  let signed = false;
+  if (process.env.BUNNY_STREAM_SIGNING_KEY) {
+    const path = `/embed/${libId}/${guid}`;
+    const token = crypto.createHash('md5').update(process.env.BUNNY_STREAM_SIGNING_KEY + path + expires).digest('hex');
+    url += `?token=${token}&expires=${expires}`;
+    signed = true;
+  }
+  let html = null; let status = null; let error = null;
+  try {
+    const r = await axios.get(url, { validateStatus: () => true });
+    status = r.status; html = r.data;
+  } catch (e) { error = e.message; }
+  if (!html || typeof html !== 'string') return res.json({ url, signed, status, error, found: [] });
+  // Extract potential HLS/m3u8 URLs and token hints
+  const found = [];
+  const regexes = [
+    /(https?:\/\/[^"'\s]+m3u8[^"'\s]*)/gi,
+    /(vz-[^"'\s]+\.b-cdn\.net[^"'\s]+)/gi,
+    /(bcdn_token=[^&'\"]+)/gi,
+    /(token_path=[^&'\"]+)/gi,
+    /(token=[^&'\"]+)/gi
+  ];
+  for (const rx of regexes) {
+    let m; let i = 0;
+    while ((m = rx.exec(html)) && i < 100) { found.push(m[0]); i++; }
+  }
+  res.json({ url, signed, status, sample: html.slice(0, 1500), found });
 });
 
 // Advanced SHA256 path-based tokens
