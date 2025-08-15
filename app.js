@@ -633,10 +633,11 @@ app.get('/debug/stream-signed/:guid', async (req, res) => {
   const includeIp = process.env.BUNNY_STREAM_TOKEN_INCLUDE_IP === '1';
   const results = [];
   for (const p of playlistPaths) {
-    // NOTE: If "Include client IP" is enabled in Bunny, the token must be md5(key + path + expires + clientIp)
-    // Since this request originates from the server, using client browser IP is not possible here.
+    // NOTE: Basic CDN token format uses Base64 URL-safe of MD5 RAW bytes
+    // token = base64url(md5_raw(key + path + expires [+ ip]))
     const tokenBase = includeIp ? `${cdnKey}${p}${expires}${req.ip || ''}` : `${cdnKey}${p}${expires}`;
-    const token = crypto.createHash('md5').update(tokenBase).digest('hex');
+    const md5Raw = crypto.createHash('md5').update(tokenBase).digest();
+    const token = md5Raw.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/,'');
     const url = `https://${host}${p}?token=${token}&expires=${expires}`;
     let headStatus = null, getStatus = null, length = null, contentType = null, error = null, headHeaders = null;
     try {
@@ -707,7 +708,8 @@ app.get('/debug/stream-matrix/:guid', async (req, res) => {
     const perCombo = { combo: combo.name, includeIp: combo.includeIp, results: [] };
     for (const p of playlistPaths) {
       const base = combo.includeIp ? `${combo.key}${p}${expires}${req.ip || ''}` : `${combo.key}${p}${expires}`;
-      const token = crypto.createHash('md5').update(base).digest('hex');
+      const md5Raw = crypto.createHash('md5').update(base).digest();
+      const token = md5Raw.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/,'');
       const url = `https://${host}${p}?token=${token}&expires=${expires}`;
       let headStatus = null, getStatus = null, length = null, contentType = null, error = null;
       try {
