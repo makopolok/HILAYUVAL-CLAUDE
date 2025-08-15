@@ -670,6 +670,7 @@ app.get('/debug', (req, res) => {
       '/debug/embed/:guid',
   '/debug/embed-snoop/:guid',
   '/debug/embed-assets/:guid',
+  '/debug/stream-from-embed/:guid',
       '/debug/stream/:guid',
       '/debug/stream-signed/:guid',
   '/debug/stream-matrix/:guid',
@@ -683,6 +684,7 @@ app.get('/debug', (req, res) => {
       embed: `/debug/embed/your-video-guid-here`,
   embedSnoop: `/debug/embed-snoop/your-video-guid-here`,
   embedAssets: `/debug/embed-assets/your-video-guid-here`,
+  streamFromEmbed: `/debug/stream-from-embed/your-video-guid-here?ref=https://iframe.mediadelivery.net&forceGet=1`,
       stream: `/debug/stream/your-video-guid-here?ref=https://iframe.mediadelivery.net`,
       streamSigned: `/debug/stream-signed/your-video-guid-here?ref=https://iframe.mediadelivery.net`,
   matrix: `/debug/stream-matrix/your-video-guid-here?ref=https://iframe.mediadelivery.net`,
@@ -943,6 +945,80 @@ app.get('/debug/embed-snoop/:guid', async (req, res) => {
     while ((m = rx.exec(html)) && i < 100) { found.push(m[0]); i++; }
   }
   res.json({ url, signed, status, sample: html.slice(0, 1500), found });
+});
+
+// Use the embed HTML to derive the exact HLS base and then probe it like /debug/stream
+app.get('/debug/stream-from-embed/:guid', async (req, res) => {
+  const guid = req.params.guid;
+  const libId = process.env.BUNNY_STREAM_LIBRARY_ID;
+  if (!guid || !libId) return res.status(400).json({ error: 'Missing guid or library id' });
+  const axios = require('axios');
+  const crypto = require('crypto');
+  const ttl = Math.min(Math.max(parseInt(process.env.BUNNY_STREAM_TOKEN_TTL || '3600', 10) || 3600, 60), 86400);
+  const expires = Math.floor(Date.now()/1000) + ttl;
+  // 1) Fetch embed HTML (signed with SHA256 video_id scheme)
+  let embedUrl = `https://iframe.mediadelivery.net/embed/${libId}/${guid}`;
+  if (process.env.BUNNY_STREAM_SIGNING_KEY) {
+    const token = crypto.createHash('sha256').update(process.env.BUNNY_STREAM_SIGNING_KEY + guid + expires).digest('hex');
+    embedUrl += `?token=${token}&expires=${expires}`;
+  }
+  let html = null; let status = null; let error = null;
+  try {
+    const r = await axios.get(embedUrl, { validateStatus: () => true });
+    status = r.status; html = r.data;
+  } catch (e) { error = e.message; }
+  if (!html || typeof html !== 'string') return res.json({ step: 'embed', embedUrl, status, error });
+  // 2) Parse HLS host/prefix from HTML
+  const m = html.match(/https?:\/\/vz-[^"'\s]+m3u8[^"'\s]*/i) || html.match(/(https?:\/\/vz-[^"'\s]+\.b-cdn\.net)\/[^"'\s]*playlist\.m3u8/i);
+  if (!m) return res.json({ step: 'parse', embedUrl, status, error: 'No HLS URL found in embed HTML', sample: html.slice(0, 1500) });
+  const first = m[0];
+  // Derive base host
+  const hostMatch = first.match(/https?:\/\/(vz-[^\/]+\.b-cdn\.net)/i);
+  if (!hostMatch) return res.json({ step: 'parse', embedUrl, status, found: first, error: 'Could not extract host' });
+  const host = hostMatch[1];
+  // Try standard playlist paths under that host (the embed exposes https://<host>/<guid>/playlist.m3u8)
+  const playlistPaths = ['/playlist.m3u8','/manifest/video.m3u8','/video.m3u8'];
+  const injectedRef = req.query.ref || 'https://iframe.mediadelivery.net';
+  const headersBase = injectedRef ? { Referer: injectedRef } : {};
+  // Optional signing: sign=basic|adv, includeIp=1
+  const signMode = (req.query.sign || '').toLowerCase();
+  const includeIp = req.query.includeIp === '1';
+  const cdnKey = process.env.BUNNY_STREAM_CDN_SIGNING_KEY || process.env.BUNNY_STREAM_SIGNING_KEY;
+  const results = [];
+  for (const p of playlistPaths) {
+    let url = `https://${host}/${guid}${p}`;
+    // Attach token if requested
+    if (cdnKey && (signMode === 'basic' || signMode === 'adv')) {
+      if (signMode === 'basic') {
+        // Basic: token=base64url(md5_raw(key + path + expires [+ ip]))
+        const crypto = require('crypto');
+        const pathToSign = `/${guid}${p}`;
+        const base = includeIp ? `${cdnKey}${pathToSign}${expires}${req.ip || ''}` : `${cdnKey}${pathToSign}${expires}`;
+        const md5Raw = crypto.createHash('md5').update(base).digest();
+        const token = md5Raw.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/,'');
+        url += `${url.includes('?') ? '&' : '?'}token=${token}&expires=${expires}`;
+      } else if (signMode === 'adv') {
+        // Advanced: SHA256 with optional token_path
+        const extra = { token_path: `/${guid}/` };
+        const token = buildAdvancedToken({ key: cdnKey, signedUrlPath: extra.token_path, expires, remoteIp: includeIp ? (req.ip || '') : '', extraParamsObj: extra });
+        const qs = new URLSearchParams();
+        qs.set('token', token); qs.set('expires', String(expires)); qs.set('token_path', extra.token_path);
+        url += `${url.includes('?') ? '&' : '?'}${qs.toString()}`;
+      }
+    }
+    let headStatus = null, getStatus = null, lines = null, contentType = null, err = null, headHeaders = null;
+    try {
+      const h = await axios.head(url, { timeout: 8000, validateStatus: () => true, headers: headersBase });
+      headStatus = h.status; headHeaders = h.headers;
+      if (headStatus === 200 || req.query.forceGet === '1') {
+        const g = await axios.get(url, { timeout: 8000, validateStatus: () => true, headers: headersBase });
+        getStatus = g.status; contentType = g.headers['content-type'];
+        lines = (g.data && typeof g.data === 'string') ? g.data.split('\n').length : null;
+      }
+    } catch (e) { err = e.message; }
+    results.push({ path: p, url, headStatus, headHeaders, getStatus, lines, contentType, error: err });
+  }
+  res.json({ guid, library: libId, embedUrl, host, injectedRef, signMode: signMode || null, includeIp, results });
 });
 
 // Fetch the iframe HTML and then fetch referenced JS assets to search for HLS URL construction
