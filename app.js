@@ -670,14 +670,18 @@ app.get('/debug', (req, res) => {
       '/debug/embed/:guid',
       '/debug/stream/:guid',
       '/debug/stream-signed/:guid',
-      '/debug/stream-matrix/:guid'
+  '/debug/stream-matrix/:guid',
+  '/debug/stream-adv/:guid',
+  '/debug/stream-adv-matrix/:guid'
     ],
     example: {
       video: `/debug/video/your-video-guid-here`,
       embed: `/debug/embed/your-video-guid-here`,
       stream: `/debug/stream/your-video-guid-here?ref=https://iframe.mediadelivery.net`,
       streamSigned: `/debug/stream-signed/your-video-guid-here?ref=https://iframe.mediadelivery.net`,
-      matrix: `/debug/stream-matrix/your-video-guid-here?ref=https://iframe.mediadelivery.net`
+  matrix: `/debug/stream-matrix/your-video-guid-here?ref=https://iframe.mediadelivery.net`,
+  adv: `/debug/stream-adv/your-video-guid-here?ref=https://iframe.mediadelivery.net`,
+  advMatrix: `/debug/stream-adv-matrix/your-video-guid-here?ref=https://iframe.mediadelivery.net`
     }
   });
 });
@@ -727,6 +731,127 @@ app.get('/debug/stream-matrix/:guid', async (req, res) => {
     matrix.push(perCombo);
   }
   return res.json({ guid, library: libId, host, ttl, expires, injectedRef: injectedRef || null, serverIpSeen: req.ip || null, haveKeys: { embed: !!embedKey, cdn: !!cdnKey }, matrix });
+});
+
+// Advanced SHA256 token probes (modern token auth with optional token_path)
+function buildAdvancedToken({ key, signedUrlPath, expires, remoteIp, extraParamsObj }) {
+  const crypto = require('crypto');
+  // Build the base string: key + signed_url + expiration + optional ip + optional encoded_query_params
+  let base = `${key}${signedUrlPath}${expires}`;
+  if (remoteIp) base += remoteIp;
+  // encoded_query_parameters: keys ascending, form-encoded style key=value without URL encoding in the signature
+  if (extraParamsObj && Object.keys(extraParamsObj).length > 0) {
+    const keys = Object.keys(extraParamsObj).sort();
+    const kv = keys.map(k => `${k}=${extraParamsObj[k]}`).join('&');
+    if (kv) base += kv;
+  }
+  const shaRaw = crypto.createHash('sha256').update(base).digest();
+  const token = shaRaw.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/,'');
+  return token;
+}
+
+// Try advanced tokens for common variants: no token_path, token_path='/', token_path=directory
+app.get('/debug/stream-adv/:guid', async (req, res) => {
+  const guid = req.params.guid;
+  const libId = process.env.BUNNY_STREAM_LIBRARY_ID;
+  const key = process.env.BUNNY_STREAM_CDN_SIGNING_KEY || process.env.BUNNY_STREAM_SIGNING_KEY;
+  if (!guid || !libId) return res.status(400).json({ error: 'Missing guid or library id' });
+  if (!key) return res.status(400).json({ error: 'Signing key not set' });
+  const host = `vz-${libId}-${guid}.b-cdn.net`;
+  const axios = require('axios');
+  const ttl = Math.min(Math.max(parseInt(process.env.BUNNY_STREAM_TOKEN_TTL || '3600', 10) || 3600, 60), 86400);
+  const expires = Math.floor(Date.now()/1000) + ttl;
+  const injectedRef = req.query.ref;
+  const headersBase = injectedRef ? { Referer: injectedRef } : {};
+  const remoteIp = process.env.BUNNY_STREAM_TOKEN_INCLUDE_IP === '1' ? (req.ip || '') : '';
+  const playlistPaths = ['/playlist.m3u8','/manifest/video.m3u8','/video.m3u8'];
+  const results = [];
+  for (const p of playlistPaths) {
+    const dir = p.replace(/\/[^/]*$/, '/'); // directory with trailing slash
+    const variants = [
+      { name: 'no_token_path', extra: null },
+      { name: 'token_path_root', extra: { token_path: '/' } },
+      { name: 'token_path_dir', extra: { token_path: dir } }
+    ];
+    for (const v of variants) {
+      const extraForSignature = v.extra ? { ...v.extra } : null;
+      const token = buildAdvancedToken({ key, signedUrlPath: v.extra ? (v.extra.token_path) : p, expires, remoteIp, extraParamsObj: extraForSignature });
+      // Build URL query: token, expires, and include token_path if set (URL-encoded)
+      const qp = new URLSearchParams();
+      qp.set('token', token);
+      qp.set('expires', String(expires));
+      if (v.extra && v.extra.token_path) qp.set('token_path', v.extra.token_path);
+      const url = `https://${host}${p}?${qp.toString()}`;
+      let headStatus = null, getStatus = null, lines = null, contentType = null, error = null, headHeaders = null;
+      try {
+        const h = await axios.head(url, { timeout: 8000, validateStatus: () => true, headers: headersBase });
+        headStatus = h.status; headHeaders = h.headers;
+        if (headStatus === 200 || req.query.forceGet === '1') {
+          const g = await axios.get(url, { timeout: 8000, validateStatus: () => true, headers: headersBase });
+          getStatus = g.status; contentType = g.headers['content-type'];
+          lines = (g.data && typeof g.data === 'string') ? g.data.split('\n').length : null;
+        }
+      } catch (e) { error = e.message; }
+      results.push({ path: p, variant: v.name, url, headStatus, headHeaders, getStatus, lines, contentType, error });
+    }
+  }
+  return res.json({ guid, library: libId, host, ttl, expires, injectedRef: injectedRef || null, keySource: process.env.BUNNY_STREAM_CDN_SIGNING_KEY ? 'CDN_SIGNING_KEY' : 'EMBED_SIGNING_KEY', includeIp: !!remoteIp, results });
+});
+
+// Matrix: try both keys and IP options across paths and token_path variants
+app.get('/debug/stream-adv-matrix/:guid', async (req, res) => {
+  const guid = req.params.guid;
+  const libId = process.env.BUNNY_STREAM_LIBRARY_ID;
+  const keyEmbed = process.env.BUNNY_STREAM_SIGNING_KEY;
+  const keyCdn = process.env.BUNNY_STREAM_CDN_SIGNING_KEY;
+  if (!guid || !libId) return res.status(400).json({ error: 'Missing guid or library id' });
+  if (!keyEmbed && !keyCdn) return res.status(400).json({ error: 'No signing keys set' });
+  const host = `vz-${libId}-${guid}.b-cdn.net`;
+  const axios = require('axios');
+  const ttl = Math.min(Math.max(parseInt(process.env.BUNNY_STREAM_TOKEN_TTL || '3600', 10) || 3600, 60), 86400);
+  const expires = Math.floor(Date.now()/1000) + ttl;
+  const injectedRef = req.query.ref;
+  const headersBase = injectedRef ? { Referer: injectedRef } : {};
+  const playlistPaths = ['/playlist.m3u8','/manifest/video.m3u8','/video.m3u8'];
+  const combos = [];
+  if (keyEmbed) combos.push({ name: 'EMBED_noIP', key: keyEmbed, includeIp: false });
+  if (keyEmbed) combos.push({ name: 'EMBED_withIP', key: keyEmbed, includeIp: true });
+  if (keyCdn) combos.push({ name: 'CDN_noIP', key: keyCdn, includeIp: false });
+  if (keyCdn) combos.push({ name: 'CDN_withIP', key: keyCdn, includeIp: true });
+  const matrix = [];
+  for (const combo of combos) {
+    const remoteIp = combo.includeIp ? (req.ip || '') : '';
+    const perCombo = { combo: combo.name, includeIp: combo.includeIp, results: [] };
+    for (const p of playlistPaths) {
+      const dir = p.replace(/\/[^/]*$/, '/');
+      const variants = [
+        { name: 'no_token_path', extra: null },
+        { name: 'token_path_root', extra: { token_path: '/' } },
+        { name: 'token_path_dir', extra: { token_path: dir } }
+      ];
+      for (const v of variants) {
+        const extraForSignature = v.extra ? { ...v.extra } : null;
+        const token = buildAdvancedToken({ key: combo.key, signedUrlPath: v.extra ? (v.extra.token_path) : p, expires, remoteIp, extraParamsObj: extraForSignature });
+        const qp = new URLSearchParams();
+        qp.set('token', token); qp.set('expires', String(expires));
+        if (v.extra && v.extra.token_path) qp.set('token_path', v.extra.token_path);
+        const url = `https://${host}${p}?${qp.toString()}`;
+        let headStatus = null, getStatus = null, lines = null, contentType = null, error = null, headHeaders = null;
+        try {
+          const h = await axios.head(url, { timeout: 8000, validateStatus: () => true, headers: headersBase });
+          headStatus = h.status; headHeaders = h.headers;
+          if (headStatus === 200 || req.query.forceGet === '1') {
+            const g = await axios.get(url, { timeout: 8000, validateStatus: () => true, headers: headersBase });
+            getStatus = g.status; contentType = g.headers['content-type'];
+            lines = (g.data && typeof g.data === 'string') ? g.data.split('\n').length : null;
+          }
+        } catch (e) { error = e.message; }
+        perCombo.results.push({ path: p, variant: v.name, url, headStatus, headHeaders, getStatus, lines, contentType, error });
+      }
+    }
+    matrix.push(perCombo);
+  }
+  return res.json({ guid, library: libId, host, ttl, expires, injectedRef: injectedRef || null, haveKeys: { embed: !!keyEmbed, cdn: !!keyCdn }, matrix });
 });
 
 // Update multer to handle multiple profile pictures and a video with enhanced configuration
