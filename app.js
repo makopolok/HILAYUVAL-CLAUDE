@@ -672,7 +672,9 @@ app.get('/debug', (req, res) => {
       '/debug/stream-signed/:guid',
   '/debug/stream-matrix/:guid',
   '/debug/stream-adv/:guid',
-  '/debug/stream-adv-matrix/:guid'
+  '/debug/stream-adv-matrix/:guid',
+  '/debug/stream-path/:guid',
+  '/debug/stream-adv-path/:guid'
     ],
     example: {
       video: `/debug/video/your-video-guid-here`,
@@ -852,6 +854,100 @@ app.get('/debug/stream-adv-matrix/:guid', async (req, res) => {
     matrix.push(perCombo);
   }
   return res.json({ guid, library: libId, host, ttl, expires, injectedRef: injectedRef || null, haveKeys: { embed: !!keyEmbed, cdn: !!keyCdn }, matrix });
+});
+
+// Basic MD5 path-based tokens: https://host/bcdn_token=...&expires=...&token_path=.../playlist.m3u8
+app.get('/debug/stream-path/:guid', async (req, res) => {
+  const guid = req.params.guid;
+  const libId = process.env.BUNNY_STREAM_LIBRARY_ID;
+  const key = process.env.BUNNY_STREAM_CDN_SIGNING_KEY || process.env.BUNNY_STREAM_SIGNING_KEY;
+  if (!guid || !libId) return res.status(400).json({ error: 'Missing guid or library id' });
+  if (!key) return res.status(400).json({ error: 'Signing key not set' });
+  const host = `vz-${libId}-${guid}.b-cdn.net`;
+  const axios = require('axios');
+  const crypto = require('crypto');
+  const ttl = Math.min(Math.max(parseInt(process.env.BUNNY_STREAM_TOKEN_TTL || '3600', 10) || 3600, 60), 86400);
+  const expires = Math.floor(Date.now()/1000) + ttl;
+  const injectedRef = req.query.ref;
+  const headersBase = injectedRef ? { Referer: injectedRef } : {};
+  const includeIp = process.env.BUNNY_STREAM_TOKEN_INCLUDE_IP === '1';
+  const remoteIp = includeIp ? (req.ip || '') : '';
+  const playlistPaths = ['/playlist.m3u8','/manifest/video.m3u8','/video.m3u8'];
+  const results = [];
+  for (const p of playlistPaths) {
+    const dir = p.replace(/\/[^/]*$/, '/');
+    const variants = [
+      { name: 'no_token_path', token_path: null },
+      { name: 'token_path_root', token_path: '/' },
+      { name: 'token_path_dir', token_path: dir }
+    ];
+    for (const v of variants) {
+      const base = includeIp ? `${key}${v.token_path ? v.token_path : p}${expires}${remoteIp}` : `${key}${v.token_path ? v.token_path : p}${expires}`;
+      const md5Raw = crypto.createHash('md5').update(base).digest();
+      const token = md5Raw.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/,'');
+      const prefix = `/bcdn_token=${token}&expires=${expires}` + (v.token_path ? `&token_path=${encodeURIComponent(v.token_path)}` : '');
+      const url = `https://${host}${prefix}${p}`;
+      let headStatus = null, headHeaders = null, getStatus = null, lines = null, contentType = null, error = null;
+      try {
+        const h = await axios.head(url, { timeout: 8000, validateStatus: () => true, headers: headersBase });
+        headStatus = h.status; headHeaders = h.headers;
+        if (headStatus === 200 || req.query.forceGet === '1') {
+          const g = await axios.get(url, { timeout: 8000, validateStatus: () => true, headers: headersBase });
+          getStatus = g.status; contentType = g.headers['content-type'];
+          lines = (g.data && typeof g.data === 'string') ? g.data.split('\n').length : null;
+        }
+      } catch (e) { error = e.message; }
+      results.push({ path: p, variant: v.name, url, headStatus, headHeaders, getStatus, lines, contentType, error });
+    }
+  }
+  return res.json({ guid, library: libId, host, ttl, expires, injectedRef: injectedRef || null, includeIp, results });
+});
+
+// Advanced SHA256 path-based tokens
+app.get('/debug/stream-adv-path/:guid', async (req, res) => {
+  const guid = req.params.guid;
+  const libId = process.env.BUNNY_STREAM_LIBRARY_ID;
+  const key = process.env.BUNNY_STREAM_CDN_SIGNING_KEY || process.env.BUNNY_STREAM_SIGNING_KEY;
+  if (!guid || !libId) return res.status(400).json({ error: 'Missing guid or library id' });
+  if (!key) return res.status(400).json({ error: 'Signing key not set' });
+  const host = `vz-${libId}-${guid}.b-cdn.net`;
+  const axios = require('axios');
+  const ttl = Math.min(Math.max(parseInt(process.env.BUNNY_STREAM_TOKEN_TTL || '3600', 10) || 3600, 60), 86400);
+  const expires = Math.floor(Date.now()/1000) + ttl;
+  const injectedRef = req.query.ref;
+  const headersBase = injectedRef ? { Referer: injectedRef } : {};
+  const includeIp = process.env.BUNNY_STREAM_TOKEN_INCLUDE_IP === '1';
+  const remoteIp = includeIp ? (req.ip || '') : '';
+  const playlistPaths = ['/playlist.m3u8','/manifest/video.m3u8','/video.m3u8'];
+  const results = [];
+  for (const p of playlistPaths) {
+    const dir = p.replace(/\/[^/]*$/, '/');
+    const variants = [
+      { name: 'no_token_path', token_path: null },
+      { name: 'token_path_root', token_path: '/' },
+      { name: 'token_path_dir', token_path: dir }
+    ];
+    for (const v of variants) {
+      const extra = v.token_path ? { token_path: v.token_path } : null;
+      // signed_url for advanced path tokens should match token_path if provided; otherwise the full file path
+      const signedUrlPath = v.token_path ? v.token_path : p;
+      const token = buildAdvancedToken({ key, signedUrlPath, expires, remoteIp, extraParamsObj: extra });
+      const prefix = `/bcdn_token=${token}&expires=${expires}` + (v.token_path ? `&token_path=${encodeURIComponent(v.token_path)}` : '');
+      const url = `https://${host}${prefix}${p}`;
+      let headStatus = null, headHeaders = null, getStatus = null, lines = null, contentType = null, error = null;
+      try {
+        const h = await axios.head(url, { timeout: 8000, validateStatus: () => true, headers: headersBase });
+        headStatus = h.status; headHeaders = h.headers;
+        if (headStatus === 200 || req.query.forceGet === '1') {
+          const g = await axios.get(url, { timeout: 8000, validateStatus: () => true, headers: headersBase });
+          getStatus = g.status; contentType = g.headers['content-type'];
+          lines = (g.data && typeof g.data === 'string') ? g.data.split('\n').length : null;
+        }
+      } catch (e) { error = e.message; }
+      results.push({ path: p, variant: v.name, url, headStatus, headHeaders, getStatus, lines, contentType, error });
+    }
+  }
+  return res.json({ guid, library: libId, host, ttl, expires, injectedRef: injectedRef || null, includeIp, results });
 });
 
 // Update multer to handle multiple profile pictures and a video with enhanced configuration
