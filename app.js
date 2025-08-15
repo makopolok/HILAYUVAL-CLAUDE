@@ -580,11 +580,11 @@ app.get('/debug/stream/:guid', async (req, res) => {
   const headersBase = injectedRef ? { Referer: injectedRef } : {};
   for (const p of playlistPaths) {
     const url = `https://${host}${p}`;
-    let headStatus = null, getStatus = null, length = null, contentType = null, error = null;
+    let headStatus = null, getStatus = null, length = null, contentType = null, error = null, headHeaders = null;
     try {
       const h = await axios.head(url, { timeout: 8000, validateStatus: () => true, headers: headersBase });
-      headStatus = h.status;
-      if (headStatus === 200) {
+      headStatus = h.status; headHeaders = h.headers;
+      if (headStatus === 200 || req.query.forceGet === '1') {
         const g = await axios.get(url, { timeout: 8000, validateStatus: () => true, headers: headersBase });
         getStatus = g.status;
         length = (g.data && typeof g.data === 'string') ? g.data.split('\n').length : null;
@@ -593,7 +593,7 @@ app.get('/debug/stream/:guid', async (req, res) => {
     } catch (e) {
       error = e.message;
     }
-    results.push({ path: p, url, headStatus, getStatus, lines: length, contentType, error });
+    results.push({ path: p, url, headStatus, headHeaders, getStatus, lines: length, contentType, error });
   }
   // Try a first segment guess if any playlist succeeded (common pattern: chunk_0.ts)
   let segmentProbe = null;
@@ -638,18 +638,18 @@ app.get('/debug/stream-signed/:guid', async (req, res) => {
     const tokenBase = includeIp ? `${cdnKey}${p}${expires}${req.ip || ''}` : `${cdnKey}${p}${expires}`;
     const token = crypto.createHash('md5').update(tokenBase).digest('hex');
     const url = `https://${host}${p}?token=${token}&expires=${expires}`;
-    let headStatus = null, getStatus = null, length = null, contentType = null, error = null;
+    let headStatus = null, getStatus = null, length = null, contentType = null, error = null, headHeaders = null;
     try {
       const h = await axios.head(url, { timeout: 8000, validateStatus: () => true, headers: headersBase });
-      headStatus = h.status;
-      if (headStatus === 200) {
+      headStatus = h.status; headHeaders = h.headers;
+      if (headStatus === 200 || req.query.forceGet === '1') {
         const g = await axios.get(url, { timeout: 8000, validateStatus: () => true, headers: headersBase });
         getStatus = g.status;
         length = (g.data && typeof g.data === 'string') ? g.data.split('\n').length : null;
         contentType = g.headers['content-type'];
       }
     } catch (e) { error = e.message; }
-    results.push({ path: p, url, headStatus, getStatus, lines: length, contentType, error });
+    results.push({ path: p, url, headStatus, headHeaders, getStatus, lines: length, contentType, error });
   }
   res.json({ 
     guid, library: libId, host, ttl, expires, injectedRef: injectedRef || null, 
