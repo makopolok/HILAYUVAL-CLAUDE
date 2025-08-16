@@ -434,6 +434,17 @@ app.get('/audition/:projectId', async (req, res) => {
   res.render('audition', { project });
 });
 
+// Optional guard for /debug routes (active only if DEBUG_SECRET is set)
+// Usage: append ?key=YOUR_SECRET or send header x-debug-secret: YOUR_SECRET
+const debugGuard = (req, res, next) => {
+  const secret = process.env.DEBUG_SECRET;
+  if (!secret) return next(); // No guard if not configured
+  const provided = req.query.key || req.headers['x-debug-secret'];
+  if (provided && provided === secret) return next();
+  return res.status(403).json({ error: 'Forbidden: invalid or missing debug key' });
+};
+app.use(['/debug', '/debug/*'], debugGuard);
+
 // Debug route to inspect Bunny Stream token computation (does NOT reveal signing key)
 app.get('/debug/video/:guid', async (req, res) => {
   const guid = req.params.guid;
@@ -441,11 +452,11 @@ app.get('/debug/video/:guid', async (req, res) => {
   if (!guid || !libId) return res.status(400).json({ error: 'Missing guid or library id' });
   const ttl = Math.min(Math.max(parseInt(process.env.BUNNY_STREAM_TOKEN_TTL || '3600', 10) || 3600, 60), 86400);
   const expires = Math.floor(Date.now()/1000) + ttl;
+  const pathForToken = `/embed/${libId}/${guid}`;
   let token = null;
   if (process.env.BUNNY_STREAM_SIGNING_KEY) {
     const crypto = require('crypto');
-    // Per docs: SHA256_HEX(key + video_id + expiration)
-    token = crypto.createHash('sha256').update(process.env.BUNNY_STREAM_SIGNING_KEY + guid + expires).digest('hex');
+    token = crypto.createHash('md5').update(process.env.BUNNY_STREAM_SIGNING_KEY + pathForToken + expires).digest('hex');
   }
   // Get status via service
   let status = null;
@@ -459,7 +470,7 @@ app.get('/debug/video/:guid', async (req, res) => {
     library: libId,
     tokenPresent: !!token,
     suggestedEmbed: token ? `https://iframe.mediadelivery.net/embed/${libId}/${guid}?token=${token}&expires=${expires}` : `https://iframe.mediadelivery.net/embed/${libId}/${guid}`,
-  tokenMeta: token ? { expires, ttl, algo: 'sha256(video_id+expires)' } : null,
+    tokenMeta: token ? { expires, ttl, path: pathForToken } : null,
     env: {
       hasSigningKey: !!process.env.BUNNY_STREAM_SIGNING_KEY,
       hasVideoApiKey: !!process.env.BUNNY_VIDEO_API_KEY
@@ -481,7 +492,7 @@ app.get('/debug/embed/:guid', async (req, res) => {
     const crypto = require('crypto');
     ttl = Math.min(Math.max(parseInt(process.env.BUNNY_STREAM_TOKEN_TTL || '3600', 10) || 3600, 60), 86400);
     expires = Math.floor(Date.now()/1000) + ttl;
-    token = crypto.createHash('sha256').update(process.env.BUNNY_STREAM_SIGNING_KEY + guid + expires).digest('hex');
+    token = crypto.createHash('md5').update(process.env.BUNNY_STREAM_SIGNING_KEY + usedPath + expires).digest('hex');
     base += `?token=${token}&expires=${expires}`;
   }
   const axios = require('axios');
@@ -493,7 +504,7 @@ app.get('/debug/embed/:guid', async (req, res) => {
     altTried = true;
     const crypto = require('crypto');
     const altPath = `/iframe/${libId}/${guid}`;
-  const altToken = crypto.createHash('sha256').update(process.env.BUNNY_STREAM_SIGNING_KEY + guid + expires).digest('hex');
+    const altToken = crypto.createHash('md5').update(process.env.BUNNY_STREAM_SIGNING_KEY + altPath + expires).digest('hex');
     const altUrl = `https://iframe.mediadelivery.net/embed/${libId}/${guid}?token=${altToken}&expires=${expires}`;
     try { resultAlt = await axios.get(altUrl, { validateStatus: () => true }); } catch (e) { errorAlt = e.message; }
     return res.json({
@@ -546,7 +557,7 @@ app.get('/debug/embed-matrix/:guid', async (req, res) => {
   ];
   const results = [];
   for (const v of variants) {
-    const token = crypto.createHash('sha256').update(process.env.BUNNY_STREAM_SIGNING_KEY + guid + expires).digest('hex');
+    const token = crypto.createHash('md5').update(process.env.BUNNY_STREAM_SIGNING_KEY + v.path + expires).digest('hex');
     const testUrl = `${v.url}?token=${token}&expires=${expires}`;
     let status = null; let headers = null; let error = null;
     try {
@@ -668,9 +679,6 @@ app.get('/debug', (req, res) => {
     endpoints: [
       '/debug/video/:guid',
       '/debug/embed/:guid',
-  '/debug/embed-snoop/:guid',
-  '/debug/embed-assets/:guid',
-  '/debug/stream-from-embed/:guid',
       '/debug/stream/:guid',
       '/debug/stream-signed/:guid',
   '/debug/stream-matrix/:guid',
@@ -682,9 +690,6 @@ app.get('/debug', (req, res) => {
     example: {
       video: `/debug/video/your-video-guid-here`,
       embed: `/debug/embed/your-video-guid-here`,
-  embedSnoop: `/debug/embed-snoop/your-video-guid-here`,
-  embedAssets: `/debug/embed-assets/your-video-guid-here`,
-  streamFromEmbed: `/debug/stream-from-embed/your-video-guid-here?ref=https://iframe.mediadelivery.net&forceGet=1`,
       stream: `/debug/stream/your-video-guid-here?ref=https://iframe.mediadelivery.net`,
       streamSigned: `/debug/stream-signed/your-video-guid-here?ref=https://iframe.mediadelivery.net`,
   matrix: `/debug/stream-matrix/your-video-guid-here?ref=https://iframe.mediadelivery.net`,
@@ -907,181 +912,6 @@ app.get('/debug/stream-path/:guid', async (req, res) => {
     }
   }
   return res.json({ guid, library: libId, host, ttl, expires, injectedRef: injectedRef || null, includeIp, results });
-});
-
-// Fetch the embed HTML and extract any HLS URL patterns the iframe references (best-effort static parse)
-app.get('/debug/embed-snoop/:guid', async (req, res) => {
-  const guid = req.params.guid;
-  const libId = process.env.BUNNY_STREAM_LIBRARY_ID;
-  if (!guid || !libId) return res.status(400).json({ error: 'Missing guid or library id' });
-  const axios = require('axios');
-  const crypto = require('crypto');
-  const ttl = Math.min(Math.max(parseInt(process.env.BUNNY_STREAM_TOKEN_TTL || '3600', 10) || 3600, 60), 86400);
-  const expires = Math.floor(Date.now()/1000) + ttl;
-  let url = `https://iframe.mediadelivery.net/embed/${libId}/${guid}`;
-  let signed = false;
-  if (process.env.BUNNY_STREAM_SIGNING_KEY) {
-    const token = crypto.createHash('sha256').update(process.env.BUNNY_STREAM_SIGNING_KEY + guid + expires).digest('hex');
-    url += `?token=${token}&expires=${expires}`;
-    signed = true;
-  }
-  let html = null; let status = null; let error = null;
-  try {
-    const r = await axios.get(url, { validateStatus: () => true });
-    status = r.status; html = r.data;
-  } catch (e) { error = e.message; }
-  if (!html || typeof html !== 'string') return res.json({ url, signed, status, error, found: [] });
-  // Extract potential HLS/m3u8 URLs and token hints
-  const found = [];
-  const regexes = [
-    /(https?:\/\/[^"'\s]+m3u8[^"'\s]*)/gi,
-    /(vz-[^"'\s]+\.b-cdn\.net[^"'\s]+)/gi,
-    /(bcdn_token=[^&'\"]+)/gi,
-    /(token_path=[^&'\"]+)/gi,
-    /(token=[^&'\"]+)/gi
-  ];
-  for (const rx of regexes) {
-    let m; let i = 0;
-    while ((m = rx.exec(html)) && i < 100) { found.push(m[0]); i++; }
-  }
-  res.json({ url, signed, status, sample: html.slice(0, 1500), found });
-});
-
-// Use the embed HTML to derive the exact HLS base and then probe it like /debug/stream
-app.get('/debug/stream-from-embed/:guid', async (req, res) => {
-  const guid = req.params.guid;
-  const libId = process.env.BUNNY_STREAM_LIBRARY_ID;
-  if (!guid || !libId) return res.status(400).json({ error: 'Missing guid or library id' });
-  const axios = require('axios');
-  const crypto = require('crypto');
-  const ttl = Math.min(Math.max(parseInt(process.env.BUNNY_STREAM_TOKEN_TTL || '3600', 10) || 3600, 60), 86400);
-  const expires = Math.floor(Date.now()/1000) + ttl;
-  // 1) Fetch embed HTML (signed with SHA256 video_id scheme)
-  let embedUrl = `https://iframe.mediadelivery.net/embed/${libId}/${guid}`;
-  if (process.env.BUNNY_STREAM_SIGNING_KEY) {
-    const token = crypto.createHash('sha256').update(process.env.BUNNY_STREAM_SIGNING_KEY + guid + expires).digest('hex');
-    embedUrl += `?token=${token}&expires=${expires}`;
-  }
-  let html = null; let status = null; let error = null;
-  try {
-    const r = await axios.get(embedUrl, { validateStatus: () => true });
-    status = r.status; html = r.data;
-  } catch (e) { error = e.message; }
-  if (!html || typeof html !== 'string') return res.json({ step: 'embed', embedUrl, status, error });
-  // 2) Parse HLS host/prefix from HTML
-  const m = html.match(/https?:\/\/vz-[^"'\s]+m3u8[^"'\s]*/i) || html.match(/(https?:\/\/vz-[^"'\s]+\.b-cdn\.net)\/[^"'\s]*playlist\.m3u8/i);
-  if (!m) return res.json({ step: 'parse', embedUrl, status, error: 'No HLS URL found in embed HTML', sample: html.slice(0, 1500) });
-  const first = m[0];
-  // Derive base host
-  const hostMatch = first.match(/https?:\/\/(vz-[^\/]+\.b-cdn\.net)/i);
-  if (!hostMatch) return res.json({ step: 'parse', embedUrl, status, found: first, error: 'Could not extract host' });
-  const host = hostMatch[1];
-  // Try standard playlist paths under that host (the embed exposes https://<host>/<guid>/playlist.m3u8)
-  const playlistPaths = ['/playlist.m3u8','/manifest/video.m3u8','/video.m3u8'];
-  const injectedRef = req.query.ref || 'https://iframe.mediadelivery.net';
-  const headersBase = injectedRef ? { Referer: injectedRef } : {};
-  // Optional signing: sign=basic|adv, includeIp=1
-  const signMode = (req.query.sign || '').toLowerCase();
-  const includeIp = req.query.includeIp === '1';
-  const cdnKey = process.env.BUNNY_STREAM_CDN_SIGNING_KEY || process.env.BUNNY_STREAM_SIGNING_KEY;
-  const results = [];
-  for (const p of playlistPaths) {
-    let url = `https://${host}/${guid}${p}`;
-    // Attach token if requested
-    if (cdnKey && (signMode === 'basic' || signMode === 'adv')) {
-      if (signMode === 'basic') {
-        // Basic: token=base64url(md5_raw(key + path + expires [+ ip]))
-        const crypto = require('crypto');
-        const pathToSign = `/${guid}${p}`;
-        const base = includeIp ? `${cdnKey}${pathToSign}${expires}${req.ip || ''}` : `${cdnKey}${pathToSign}${expires}`;
-        const md5Raw = crypto.createHash('md5').update(base).digest();
-        const token = md5Raw.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/,'');
-        url += `${url.includes('?') ? '&' : '?'}token=${token}&expires=${expires}`;
-      } else if (signMode === 'adv') {
-        // Advanced: SHA256 with optional token_path
-        const extra = { token_path: `/${guid}/` };
-        const token = buildAdvancedToken({ key: cdnKey, signedUrlPath: extra.token_path, expires, remoteIp: includeIp ? (req.ip || '') : '', extraParamsObj: extra });
-        const qs = new URLSearchParams();
-        qs.set('token', token); qs.set('expires', String(expires)); qs.set('token_path', extra.token_path);
-        url += `${url.includes('?') ? '&' : '?'}${qs.toString()}`;
-      }
-    }
-    let headStatus = null, getStatus = null, lines = null, contentType = null, err = null, headHeaders = null;
-    try {
-      const h = await axios.head(url, { timeout: 8000, validateStatus: () => true, headers: headersBase });
-      headStatus = h.status; headHeaders = h.headers;
-      if (headStatus === 200 || req.query.forceGet === '1') {
-        const g = await axios.get(url, { timeout: 8000, validateStatus: () => true, headers: headersBase });
-        getStatus = g.status; contentType = g.headers['content-type'];
-        lines = (g.data && typeof g.data === 'string') ? g.data.split('\n').length : null;
-      }
-    } catch (e) { err = e.message; }
-    results.push({ path: p, url, headStatus, headHeaders, getStatus, lines, contentType, error: err });
-  }
-  res.json({ guid, library: libId, embedUrl, host, injectedRef, signMode: signMode || null, includeIp, results });
-});
-
-// Fetch the iframe HTML and then fetch referenced JS assets to search for HLS URL construction
-app.get('/debug/embed-assets/:guid', async (req, res) => {
-  const guid = req.params.guid;
-  const libId = process.env.BUNNY_STREAM_LIBRARY_ID;
-  if (!guid || !libId) return res.status(400).json({ error: 'Missing guid or library id' });
-  const axios = require('axios');
-  const crypto = require('crypto');
-  const ttl = Math.min(Math.max(parseInt(process.env.BUNNY_STREAM_TOKEN_TTL || '3600', 10) || 3600, 60), 86400);
-  const expires = Math.floor(Date.now()/1000) + ttl;
-  let url = `https://iframe.mediadelivery.net/embed/${libId}/${guid}`;
-  let signed = false;
-  if (process.env.BUNNY_STREAM_SIGNING_KEY) {
-    const path = `/embed/${libId}/${guid}`;
-    const token = crypto.createHash('md5').update(process.env.BUNNY_STREAM_SIGNING_KEY + path + expires).digest('hex');
-    url += `?token=${token}&expires=${expires}`;
-    signed = true;
-  }
-  // 1) Get iframe HTML
-  let html = null; let status = null; let error = null;
-  try {
-    const r = await axios.get(url, { validateStatus: () => true });
-    status = r.status; html = r.data;
-  } catch (e) { error = e.message; }
-  if (!html || typeof html !== 'string') return res.json({ step: 'iframe', url, signed, status, error, assets: [] });
-  // 2) Extract JS asset URLs
-  const scriptUrls = [];
-  const srcRx = /<script[^>]+src=["']([^"']+)["'][^>]*><\/script>/gi;
-  let m;
-  while ((m = srcRx.exec(html)) !== null) {
-    let src = m[1];
-    if (!/^https?:\/\//i.test(src)) {
-      // Resolve relative to iframe origin
-      const u = new URL(url);
-      src = new URL(src, `${u.protocol}//${u.host}`).toString();
-    }
-    scriptUrls.push(src);
-  }
-  // 3) Fetch assets and scan for m3u8/CDN token hints
-  const findings = [];
-  const regexes = [
-    /(https?:\/\/[^"'\s]+m3u8[^"'\s]*)/gi,
-    /(vz-[^"'\s]+\.b-cdn\.net[^"'\s]+)/gi,
-    /(bcdn_token=[^&'\"]+)/gi,
-    /(token_path=[^&'\"]+)/gi,
-    /(token=[^&'\"]+)/gi
-  ];
-  for (const s of scriptUrls.slice(0, 8)) { // limit to first 8 assets
-    try {
-      const r = await axios.get(s, { timeout: 10000, validateStatus: () => true });
-      const body = typeof r.data === 'string' ? r.data : '';
-      const local = { url: s, status: r.status, matches: [] };
-      for (const rx of regexes) {
-        let mm; let i = 0;
-        while ((mm = rx.exec(body)) && i < 200) { local.matches.push(mm[0]); i++; }
-      }
-      findings.push(local);
-    } catch (e) {
-      findings.push({ url: s, error: e.message });
-    }
-  }
-  res.json({ iframe: { url, signed, status }, assetsCount: scriptUrls.length, assetsScanned: findings.length, assets: findings });
 });
 
 // Advanced SHA256 path-based tokens
@@ -1345,14 +1175,15 @@ app.post('/audition/:projectId', auditionUpload.fields([
             // Try official path first
             const pathsTried = [];
             const key = process.env.BUNNY_STREAM_SIGNING_KEY;
-            // Per docs: SHA256_HEX(key + video_id + expiration)
-            const tokenBase = key + finalVideoUrl + expires;
-            let token = crypto.createHash('sha256').update(tokenBase).digest('hex');
+            const primaryPath = `/embed/${libId}/${finalVideoUrl}`;
+            pathsTried.push(primaryPath);
+            let token = crypto.createHash('md5').update(key + primaryPath + expires).digest('hex');
             let finalSrc = `${embedBase}?token=${token}&expires=${expires}`;
             // Some configurations (legacy) may expect /iframe instead of /embed
             if (process.env.BUNNY_STREAM_ALT_PATH === '1') {
-              // ALT path still uses the same token scheme (video_id based)
-              token = crypto.createHash('sha256').update(tokenBase).digest('hex');
+              const altPath = `/iframe/${libId}/${finalVideoUrl}`;
+              pathsTried.push(altPath);
+              token = crypto.createHash('md5').update(key + altPath + expires).digest('hex');
               finalSrc = `https://iframe.mediadelivery.net/embed/${libId}/${finalVideoUrl}?token=${token}&expires=${expires}`;
             }
             embedBase = finalSrc;
@@ -1400,11 +1231,11 @@ app.get('/projects/:projectId/auditions', async (req, res) => {
     if (signingKey && libId) {
       ttl = Math.min(Math.max(parseInt(process.env.BUNNY_STREAM_TOKEN_TTL || '3600', 10) || 3600, 60), 86400);
       expires = Math.floor(Date.now()/1000) + ttl;
-    const crypto = require('crypto');
+      const crypto = require('crypto');
       for (const a of auditions) {
         if (a && a.video_type === 'bunny_stream' && a.video_url && a.video_url.length > 10) {
-      // Docs: SHA256_HEX(key + video_id + expiration)
-      const token = crypto.createHash('sha256').update(signingKey + a.video_url + expires).digest('hex');
+          const pathForToken = `/embed/${libId}/${a.video_url}`;
+          const token = crypto.createHash('md5').update(signingKey + pathForToken + expires).digest('hex');
           a.embed_url = `https://iframe.mediadelivery.net/embed/${libId}/${a.video_url}?token=${token}&expires=${expires}`;
         }
       }
