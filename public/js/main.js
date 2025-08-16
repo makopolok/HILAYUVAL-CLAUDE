@@ -80,9 +80,42 @@
 		const progressText = document.querySelector('#upload-progress-text');
 		const directUi = document.querySelector('#direct-upload-ui');
 		const libIdEl = document.querySelector('[data-bunny-library-id]');
+			const resumeHint = document.querySelector('#resume-upload-hint');
 
 		const isBunny = methodEl && methodEl.getAttribute('data-upload-method') === 'cloudflare';
 		if (!form || !videoInput || !isBunny || !libIdEl) return; // Fall back to normal submit
+
+			// If there was an interrupted upload, show a resume hint
+			try {
+				const pending = localStorage.getItem('auditionUploadResume');
+				if (pending && resumeHint) {
+					const info = JSON.parse(pending);
+					if (info && info.filename && info.size) {
+						resumeHint.classList.remove('d-none');
+						const nameEl = resumeHint.querySelector('[data-name]');
+						const sizeEl = resumeHint.querySelector('[data-size]');
+						if (nameEl) nameEl.textContent = info.filename;
+						if (sizeEl) sizeEl.textContent = Math.round(info.size / (1024*1024)) + ' MB';
+					}
+				}
+			} catch (_) {}
+
+			function setUploadActive(active) {
+				if (active) {
+					window.__directUploadActive = true;
+					window.addEventListener('beforeunload', beforeUnloadHandler);
+				} else {
+					window.__directUploadActive = false;
+					window.removeEventListener('beforeunload', beforeUnloadHandler);
+				}
+			}
+			function beforeUnloadHandler(e) {
+				if (window.__directUploadActive) {
+					e.preventDefault();
+					e.returnValue = '';
+					return '';
+				}
+			}
 
 		// Intercept submit to perform direct upload
 		form.addEventListener('submit', async (e) => {
@@ -100,6 +133,17 @@
 
 					if (directUi) directUi.classList.remove('d-none');
 			if (progressBar) progressBar.value = 0;
+					setUploadActive(true);
+					// Save minimal resume info; tus can reuse fingerprint when the same file is picked again
+					try {
+						localStorage.setItem('auditionUploadResume', JSON.stringify({
+							guid: meta.guid,
+							uploadUrl: meta.uploadUrl,
+							filename: file.name,
+							size: file.size,
+							ts: Date.now()
+						}));
+					} catch (_) {}
 					const progressFn = (pct) => {
 						if (progressText) progressText.textContent = pct + '%';
 						if (progressBar) progressBar.value = pct;
@@ -111,6 +155,8 @@
 						// Fallback to single PUT if tus path fails
 						await uploadToBunny({ file, uploadUrl: meta.uploadUrl, accessKey, onProgress: progressFn });
 					}
+					setUploadActive(false);
+					try { localStorage.removeItem('auditionUploadResume'); } catch (_) {}
 				// 3) Submit a lightweight form with only the GUID (no file)
 				const guidInputName = 'video_url';
 				let hidden = form.querySelector('input[name="' + guidInputName + '"]');
