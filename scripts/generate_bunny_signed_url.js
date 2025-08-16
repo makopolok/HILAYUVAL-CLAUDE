@@ -23,5 +23,5 @@ if (ttl > 86400) ttl = 86400;
 const expires = Math.floor(Date.now()/1000) + ttl;
 const pathForToken = `/embed/${BUNNY_STREAM_LIBRARY_ID}/${guid}`;
 const token = crypto.createHash('md5').update(BUNNY_STREAM_SIGNING_KEY + pathForToken + expires).digest('hex');
-const url = `https://iframe.mediadelivery.net/embed/${BUNNY_STREAM_LIBRARY_ID}/${guid}?token=${token}&expires=${expires}`;
+const url = `https://iframe.mediadelivery.net/embed/${BUNNY_STREAM_LIBRARY_ID}/${guid}?token=${token}&expires=${expires}&autoplay=false`;
 console.log(url);

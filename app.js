@@ -506,7 +506,7 @@ app.get('/debug/video/:guid', async (req, res) => {
     guid,
     library: libId,
     tokenPresent: !!token,
-    suggestedEmbed: token ? `https://iframe.mediadelivery.net/embed/${libId}/${guid}?token=${token}&expires=${expires}` : `https://iframe.mediadelivery.net/embed/${libId}/${guid}`,
+  suggestedEmbed: token ? `https://iframe.mediadelivery.net/embed/${libId}/${guid}?token=${token}&expires=${expires}&autoplay=false` : `https://iframe.mediadelivery.net/embed/${libId}/${guid}?autoplay=false`,
     tokenMeta: token ? { expires, ttl, path: pathForToken } : null,
     env: {
       hasSigningKey: !!process.env.BUNNY_STREAM_SIGNING_KEY,
@@ -542,7 +542,7 @@ app.get('/debug/embed/:guid', async (req, res) => {
     const crypto = require('crypto');
     const altPath = `/iframe/${libId}/${guid}`;
     const altToken = crypto.createHash('md5').update(process.env.BUNNY_STREAM_SIGNING_KEY + altPath + expires).digest('hex');
-    const altUrl = `https://iframe.mediadelivery.net/embed/${libId}/${guid}?token=${altToken}&expires=${expires}`;
+  const altUrl = `https://iframe.mediadelivery.net/embed/${libId}/${guid}?token=${altToken}&expires=${expires}&autoplay=false`;
     try { resultAlt = await axios.get(altUrl, { validateStatus: () => true }); } catch (e) { errorAlt = e.message; }
     return res.json({
       guid,
@@ -1224,18 +1224,20 @@ app.post('/audition/:projectId', auditionUpload.fields([
             const primaryPath = `/embed/${libId}/${finalVideoUrl}`;
             pathsTried.push(primaryPath);
             let token = crypto.createHash('md5').update(key + primaryPath + expires).digest('hex');
-            let finalSrc = `${embedBase}?token=${token}&expires=${expires}`;
+            let finalSrc = `${embedBase}?token=${token}&expires=${expires}&autoplay=false`;
             // Some configurations (legacy) may expect /iframe instead of /embed
             if (process.env.BUNNY_STREAM_ALT_PATH === '1') {
               const altPath = `/iframe/${libId}/${finalVideoUrl}`;
               pathsTried.push(altPath);
               token = crypto.createHash('md5').update(key + altPath + expires).digest('hex');
-              finalSrc = `https://iframe.mediadelivery.net/embed/${libId}/${finalVideoUrl}?token=${token}&expires=${expires}`;
+              finalSrc = `https://iframe.mediadelivery.net/embed/${libId}/${finalVideoUrl}?token=${token}&expires=${expires}&autoplay=false`;
             }
             embedBase = finalSrc;
             console.log(`BUNNY_EMBED_SIGNED_URL_GENERATED ttl=${ttl}s guid=${finalVideoUrl} paths=${pathsTried.join('|')}`);
         } else {
             console.log(`BUNNY_EMBED_UNSIGNED_URL: ${embedBase}`);
+            // Ensure no autoplay on unsigned embeds
+            embedBase = `${embedBase}?autoplay=false`;
         }
         submissionData.embed_url = embedBase;
         submissionData.bunny_embed_signed = !!process.env.BUNNY_STREAM_SIGNING_KEY;
@@ -1277,7 +1279,7 @@ app.get('/projects/:projectId/auditions', async (req, res) => {
     const libId = process.env.BUNNY_STREAM_LIBRARY_ID;
     const signingKey = process.env.BUNNY_STREAM_SIGNING_KEY;
     let ttl = null, expires = null;
-    if (signingKey && libId) {
+  if (signingKey && libId) {
       ttl = Math.min(Math.max(parseInt(process.env.BUNNY_STREAM_TOKEN_TTL || '3600', 10) || 3600, 60), 86400);
       expires = Math.floor(Date.now()/1000) + ttl;
       const crypto = require('crypto');
@@ -1285,13 +1287,13 @@ app.get('/projects/:projectId/auditions', async (req, res) => {
         if (a && a.video_type === 'bunny_stream' && a.video_url && a.video_url.length > 10) {
           const pathForToken = `/embed/${libId}/${a.video_url}`;
           const token = crypto.createHash('md5').update(signingKey + pathForToken + expires).digest('hex');
-          a.embed_url = `https://iframe.mediadelivery.net/embed/${libId}/${a.video_url}?token=${token}&expires=${expires}`;
+      a.embed_url = `https://iframe.mediadelivery.net/embed/${libId}/${a.video_url}?token=${token}&expires=${expires}&autoplay=false`;
         }
       }
     } else if (libId) {
       for (const a of auditions) {
         if (a && a.video_type === 'bunny_stream' && a.video_url && a.video_url.length > 10) {
-          a.embed_url = `https://iframe.mediadelivery.net/embed/${libId}/${a.video_url}`;
+      a.embed_url = `https://iframe.mediadelivery.net/embed/${libId}/${a.video_url}?autoplay=false`;
         }
       }
     }
