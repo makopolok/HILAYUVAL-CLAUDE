@@ -2,46 +2,59 @@
 {{! Edit Project: Add new roles }}
 {{> header}}
 <div class="container mt-4">
-  <h2 class="mb-1">Edit Project: {{project.name}}</h2>
-  <p class="text-muted">{{project.description}}</p>
+  <div class="d-flex align-items-center mb-3">
+    <a href="/projects" class="btn btn-sm btn-outline-secondary me-2">
+      <i class="fas fa-arrow-left me-1"></i> Back
+    </a>
+    <h2 class="mb-0">Edit Project: {{project.name}}</h2>
+  </div>
+  {{#if project.description}}
+    <p class="text-muted mb-4">{{project.description}}</p>
+  {{/if}}
 
   {{#if message}}
     <div class="alert alert-info">{{message}}</div>
   {{/if}}
 
-  <div class="row">
-    <div class="col-md-6">
-      <div class="card mb-4">
+  <div class="row g-4">
+    <div class="col-12 col-lg-7">
+      <div class="card shadow-sm border-danger audition-role-card">
         <div class="card-header bg-danger text-white">Current Roles</div>
-        <div class="card-body">
+        <div class="card-body p-0">
           {{#if project.roles.length}}
-            <ul class="list-group">
+            <ul class="list-group list-group-flush">
               {{#each project.roles}}
                 <li class="list-group-item d-flex justify-content-between align-items-center">
-                  <span>{{this.name}}</span>
+                  <div class="d-flex align-items-center gap-2">
+                    <i class="fas fa-user-tag text-danger"></i>
+                    <span class="fw-semibold">{{this.name}}</span>
+                  </div>
                   {{#if this.playlist_id}}
-                    <span class="badge text-bg-secondary">Playlist: {{this.playlist_id}}</span>
+                    <span class="badge bg-secondary">Playlist: {{this.playlist_id}}</span>
                   {{/if}}
                 </li>
               {{/each}}
             </ul>
           {{else}}
-            <div class="text-muted">No roles yet.</div>
+            <div class="p-3 text-muted">No roles yet.</div>
           {{/if}}
         </div>
       </div>
     </div>
-    <div class="col-md-6">
-      <div class="card mb-4">
+    <div class="col-12 col-lg-5">
+      <div class="card shadow-sm">
         <div class="card-header bg-light">Add New Role</div>
         <div class="card-body">
-          <form method="POST" action="/projects/{{project.id}}/add-role">
-            <div class="mb-3">
-              <label for="newRole" class="form-label">Role Name</label>
-              <input type="text" class="form-control" id="newRole" name="newRole" required>
+          <form method="POST" action="/projects/{{project.id}}/add-role" class="needs-validation" novalidate>
+            <label for="newRole" class="form-label">Role Name</label>
+            <div class="input-group mb-2">
+              <span class="input-group-text"><i class="fas fa-plus"></i></span>
+              <input type="text" class="form-control" id="newRole" name="newRole" placeholder="e.g., Lead, Supporting, Guest" required>
             </div>
-            <button type="submit" class="btn btn-outline-danger">Add Role</button>
-            <a href="/projects" class="btn btn-outline-secondary ms-2">Back to Projects</a>
+            <div class="d-flex justify-content-start gap-2">
+              <button type="submit" class="btn btn-danger">Add Role</button>
+              <a href="/projects" class="btn btn-outline-secondary">Back to Projects</a>
+            </div>
           </form>
         </div>
       </div>
