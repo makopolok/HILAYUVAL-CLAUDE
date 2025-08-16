@@ -212,13 +212,14 @@ app.post('/audition', generalAuditionUpload.single('video'), async (req, res) =>
       video_url: videoId, // For YouTube, we store the video ID
       video_type: 'youtube',
       profile_pictures: [],
-      submitted_time: new Date().toLocaleString('en-US', {
+      submitted_time: new Date().toLocaleString('en-IL', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
         day: 'numeric',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
+        timeZone: 'Asia/Jerusalem'
       }),
       project: { name: 'General Audition', id: 'general' }
     };
@@ -436,13 +437,14 @@ app.post('/projects/create', async (req, res, next) => { // Added next
       project: { id: newProjectId, ...project, roles: finalProjectRoles },
       audition_base_url: auditionBaseUrl,
       used_default_playlist: usedDefault,
-      submitted_time: new Date().toLocaleString('en-US', {
+      submitted_time: new Date().toLocaleString('en-IL', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
         day: 'numeric',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
+        timeZone: 'Asia/Jerusalem'
       })
     };
     
@@ -1196,13 +1198,14 @@ app.post('/audition/:projectId', auditionUpload.fields([
       video_type: videoType,
       profile_pictures: profilePictureUploadResults || [],
       showreel_url: body.showreel_url,
-      submitted_time: new Date().toLocaleString('en-US', {
+      submitted_time: new Date().toLocaleString('en-IL', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
         day: 'numeric',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
+        timeZone: 'Asia/Jerusalem'
       })
     };
 
@@ -1268,7 +1271,7 @@ app.get('/projects/:projectId/auditions', async (req, res) => {
       return res.status(404).render('error/404', { message: 'Project not found.' });
     }
 
-    const auditions = await auditionService.getAuditionsByProjectId(projectId, req.query);
+  const auditions = await auditionService.getAuditionsByProjectId(projectId, req.query);
     // If Bunny Stream is used, pre-compute signed embed URLs for each audition video
     const libId = process.env.BUNNY_STREAM_LIBRARY_ID;
     const signingKey = process.env.BUNNY_STREAM_SIGNING_KEY;
@@ -1292,7 +1295,19 @@ app.get('/projects/:projectId/auditions', async (req, res) => {
       }
     }
     
-    // Group auditions by role for structured display
+    // Format timestamps to Tel Aviv time and group auditions by role for structured display
+    for (const a of auditions) {
+      if (a && a.created_at) {
+        try {
+          a.created_at_formatted = new Date(a.created_at).toLocaleString('en-IL', {
+            year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit',
+            timeZone: 'Asia/Jerusalem'
+          });
+        } catch (_) {
+          a.created_at_formatted = a.created_at;
+        }
+      }
+    }
     const rolesWithAuditions = project.roles.map(role => {
       return {
         ...role,

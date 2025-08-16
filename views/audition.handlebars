@@ -271,7 +271,10 @@
       </div>
       
       <div class="progress mx-auto mt-3" style="width: 300px; height: 8px;">
-        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="background-color: var(--primary-red); width: 100%"></div>
+        <div class="progress-bar progress-bar-striped progress-bar-animated" id="overlay-upload-progress-bar" role="progressbar" style="background-color: var(--primary-red); width: 0%"></div>
+      </div>
+      <div class="text-center mt-2">
+        <small class="text-light">Progress: <span id="overlay-upload-progress-text">0%</span></small>
       </div>
       
       <!-- Tips for large uploads -->

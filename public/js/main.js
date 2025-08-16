@@ -71,8 +71,10 @@
 		const form = document.querySelector('form#audition-form');
 		const videoInput = document.querySelector('input[type="file"][name="video"]');
 		const methodEl = document.querySelector('[data-upload-method]');
-		const progressBar = document.querySelector('#upload-progress');
-		const progressText = document.querySelector('#upload-progress-text');
+	const progressBar = document.querySelector('#upload-progress');
+	const progressText = document.querySelector('#upload-progress-text');
+	const overlayBar = document.querySelector('#overlay-upload-progress-bar');
+	const overlayText = document.querySelector('#overlay-upload-progress-text');
 		const directUi = document.querySelector('#direct-upload-ui');
 		const libIdEl = document.querySelector('[data-bunny-library-id]');
 			const resumeHint = document.querySelector('#resume-upload-hint');
@@ -166,6 +168,8 @@
 							const progressFn = (pct) => {
 						if (progressText) progressText.textContent = pct + '%';
 						if (progressBar) progressBar.value = pct;
+						if (overlayText) overlayText.textContent = pct + '%';
+						if (overlayBar) overlayBar.style.width = pct + '%';
 					};
 					try {
 						// Prefer tus if available
