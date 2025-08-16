@@ -117,6 +117,14 @@
                     <i class="fas fa-times"></i>
                   </button>
                 </div>
+                <div class="mt-3 d-none" id="direct-upload-ui">
+                  <div class="d-flex align-items-center mb-2">
+                    <i class="fas fa-cloud-arrow-up me-2 text-success"></i>
+                    <strong>Direct upload to Bunny.net</strong>
+                  </div>
+                  <progress id="upload-progress" max="100" value="0" style="width:100%;"></progress>
+                  <div class="small text-muted mt-1">Progress: <span id="upload-progress-text">0%</span></div>
+                </div>
               </div>
             </div>
           </div>
@@ -150,6 +158,14 @@
                   <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearVideoSelection()">
                     <i class="fas fa-times"></i>
                   </button>
+                </div>
+                <div class="mt-3 d-none" id="direct-upload-ui">
+                  <div class="d-flex align-items-center mb-2">
+                    <i class="fas fa-cloud-arrow-up me-2 text-success"></i>
+                    <strong>Direct upload to Bunny.net</strong>
+                  </div>
+                  <progress id="upload-progress" max="100" value="0" style="width:100%;"></progress>
+                  <div class="small text-muted mt-1">Progress: <span id="upload-progress-text">0%</span></div>
                 </div>
               </div>
             </div>

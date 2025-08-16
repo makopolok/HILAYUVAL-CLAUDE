@@ -37,6 +37,7 @@
 		const methodEl = document.querySelector('[data-upload-method]');
 		const progressBar = document.querySelector('#upload-progress');
 		const progressText = document.querySelector('#upload-progress-text');
+		const directUi = document.querySelector('#direct-upload-ui');
 		const libIdEl = document.querySelector('[data-bunny-library-id]');
 
 		const isBunny = methodEl && methodEl.getAttribute('data-upload-method') === 'cloudflare';
@@ -56,12 +57,13 @@
 				const accessKey = keyMeta && keyMeta.content;
 				if (!accessKey) throw new Error('Missing Bunny AccessKey in page');
 
-				progressBar && (progressBar.style.display = 'block');
+			if (directUi) directUi.classList.remove('d-none');
+			if (progressBar) progressBar.value = 0;
 				await uploadToBunny({
 					file,
 					uploadUrl: meta.uploadUrl,
 					accessKey,
-					onProgress: (pct) => {
+					  onProgress: (pct) => {
 						if (progressText) progressText.textContent = pct + '%';
 						if (progressBar) progressBar.value = pct;
 					}
