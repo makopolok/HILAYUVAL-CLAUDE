@@ -13,6 +13,10 @@
     {{#if bunny_stream_library_id}}
     <meta name="bunny-stream-library" content="{{bunny_stream_library_id}}">
     {{/if}}
+    {{!-- Bunny tus (resumable) endpoint pattern (informational) --}}
+    {{#if bunny_stream_library_id}}
+    <meta name="bunny-tus-endpoint" content="https://video.bunnycdn.com/library/{{bunny_stream_library_id}}/videos">
+    {{/if}}
 </head>
 <body>
     {{> header}}

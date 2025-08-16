@@ -20,6 +20,47 @@
 				if (e.lengthComputable && typeof onProgress === 'function') {
 					onProgress(Math.round((e.loaded / e.total) * 100), e.loaded, e.total);
 				}
+
+					function useTusIfAvailable() {
+						return typeof window.tus !== 'undefined' && window.tus && typeof window.tus.Upload === 'function';
+					}
+
+					async function uploadWithTus({ file, uploadUrl, accessKey, onProgress }) {
+						return new Promise((resolve, reject) => {
+							if (!useTusIfAvailable()) return reject(new Error('tus not available'));
+							// Bunny supports PUT to /videos/{guid}. tus typically expects an endpoint that accepts creation.
+							// We simulate tus by using the existing resource URL with X-HTTP-Method-Override when needed.
+							const options = {
+								endpoint: uploadUrl, // Using full resource URL
+								chunkSize: 5 * 1024 * 1024,
+								retryDelays: [0, 1000, 3000, 5000, 10000, 20000],
+								removeFingerprintOnSuccess: true,
+								overridePatchMethod: true,
+								headers: {
+									'AccessKey': accessKey,
+									'Content-Type': file.type || 'application/octet-stream'
+								},
+								metadata: {
+									filename: file.name,
+									filetype: file.type || 'application/octet-stream'
+								},
+								onError: (error) => reject(error),
+								onProgress: (bytesUploaded, bytesTotal) => {
+									if (typeof onProgress === 'function' && bytesTotal > 0) {
+										const pct = Math.floor((bytesUploaded / bytesTotal) * 100);
+										onProgress(pct, bytesUploaded, bytesTotal);
+									}
+								},
+								onSuccess: () => resolve()
+							};
+							try {
+								const upload = new window.tus.Upload(file, options);
+								upload.start();
+							} catch (e) {
+								reject(e);
+							}
+						});
+					}
 			};
 			xhr.onload = () => {
 				if (xhr.status >= 200 && xhr.status < 300) return resolve();
@@ -57,17 +98,19 @@
 				const accessKey = keyMeta && keyMeta.content;
 				if (!accessKey) throw new Error('Missing Bunny AccessKey in page');
 
-			if (directUi) directUi.classList.remove('d-none');
+					if (directUi) directUi.classList.remove('d-none');
 			if (progressBar) progressBar.value = 0;
-				await uploadToBunny({
-					file,
-					uploadUrl: meta.uploadUrl,
-					accessKey,
-					  onProgress: (pct) => {
+					const progressFn = (pct) => {
 						if (progressText) progressText.textContent = pct + '%';
 						if (progressBar) progressBar.value = pct;
+					};
+					try {
+						// Prefer tus if available
+						await uploadWithTus({ file, uploadUrl: meta.uploadUrl, accessKey, onProgress: progressFn });
+					} catch (_) {
+						// Fallback to single PUT if tus path fails
+						await uploadToBunny({ file, uploadUrl: meta.uploadUrl, accessKey, onProgress: progressFn });
 					}
-				});
 				// 3) Submit a lightweight form with only the GUID (no file)
 				const guidInputName = 'video_url';
 				let hidden = form.querySelector('input[name="' + guidInputName + '"]');

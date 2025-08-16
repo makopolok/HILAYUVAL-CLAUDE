@@ -463,7 +463,7 @@ app.get('/audition/:projectId', async (req, res) => {
     bunny_stream_library_id: libId,
     upload_method: project && project.uploadMethod ? project.uploadMethod : 'cloudflare',
     bunny_video_access_key: expose ? (process.env.BUNNY_VIDEO_API_KEY || '') : null,
-    direct_upload_exposed: expose
+  direct_upload_exposed: expose
   });
 });
 
