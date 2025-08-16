@@ -58,6 +58,15 @@
                       {{#if video_url}}
                         {{#if (and (eq video_type "bunny_stream") video_url (isLength video_url min=10))}}
                         <!-- Bunny.net Stream Video -->
+                        {{#if ../../disable_inline_player}}
+                          <div class="text-center p-3 mb-3" style="background-color: #f8f9fa; border-radius: 8px;">
+                            <a class="btn btn-outline-primary btn-sm" target="_blank" rel="noopener"
+                               href="{{#if embed_url}}{{embed_url}}{{else}}https://iframe.mediadelivery.net/embed/{{../../bunny_stream_library_id}}/{{video_url}}{{/if}}">
+                              <i class="fas fa-external-link-alt me-2"></i>Open Video
+                            </a>
+                            <div class="small text-muted mt-2">Inline player disabled</div>
+                          </div>
+                        {{else}}
                         <div class="video-container mb-3" data-video-url="{{video_url}}" data-video-type="{{video_type}}" data-library-id="{{../../bunny_stream_library_id}}">
                           <div class="video-loading text-center p-3" style="background-color: #f8f9fa; border-radius: 8px;">
                             <div class="spinner-border spinner-border-sm text-danger mb-2" role="status">
@@ -83,6 +92,7 @@
                             </div>
                           </div>
                         </div>
+                        {{/if}}
                         {{else}}
                         <div class="text-center p-3 mb-3" style="background-color: #f8f9fa; border-radius: 8px;">
                           <i class="fas fa-video-slash text-muted mb-2"></i>

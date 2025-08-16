@@ -223,7 +223,9 @@ app.post('/audition', generalAuditionUpload.single('video'), async (req, res) =>
       project: { name: 'General Audition', id: 'general' }
     };
     
-    res.render('audition-success', submissionData);
+  // Inline player toggle
+  submissionData.disable_inline_player = process.env.DISABLE_INLINE_PLAYER === '1';
+  res.render('audition-success', submissionData);
   } catch (error) {
     console.error('Error uploading audition:', error);
     res.status(500).send(`<h2>Error uploading audition.</h2><pre>${error && error.message ? error.message : error}</pre><pre>${error && error.response && error.response.data ? JSON.stringify(error.response.data, null, 2) : ''}</pre>`);
@@ -1232,6 +1234,8 @@ app.post('/audition/:projectId', auditionUpload.fields([
     } else if (videoType === 'bunny_stream') {
       console.log('BUNNY_EMBED_MISSING_ENV: Cannot build embed URL - missing video GUID or library ID');
     }
+  // Inline player toggle
+  submissionData.disable_inline_player = process.env.DISABLE_INLINE_PLAYER === '1';
     
     res.render('audition-success', submissionData);
     
@@ -1291,7 +1295,8 @@ app.get('/projects/:projectId/auditions', async (req, res) => {
     res.render('auditions', { 
       project: { ...project, roles: rolesWithAuditions },
       query: req.query,
-      bunny_stream_library_id: process.env.BUNNY_STREAM_LIBRARY_ID // Pass library ID to the template
+      bunny_stream_library_id: process.env.BUNNY_STREAM_LIBRARY_ID, // Pass library ID to the template
+      disable_inline_player: process.env.DISABLE_INLINE_PLAYER === '1'
     });
   } catch (error) {
     console.error(`[App.js GET /projects/:projectId/auditions] Error fetching auditions:`, error);

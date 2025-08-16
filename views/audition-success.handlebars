@@ -72,6 +72,11 @@
                 <i class="fas fa-external-link-alt me-2"></i>Open Video
               </a>
             </div>
+            {{#if disable_inline_player}}
+              <div class="alert alert-secondary">
+                Inline player is disabled for faster navigation. Use the "Open Video" button above to view.
+              </div>
+            {{else}}
             <div id="video-container">
               <!-- Processing indicator -->
               <div id="video-processing" class="text-center p-5" style="display: block;">
@@ -243,6 +248,7 @@
               }
             });
             </script>
+            {{/if}}
           {{else if (eq video_type "youtube")}}
             <div class="ratio ratio-16x9 mb-3">
               <iframe 
