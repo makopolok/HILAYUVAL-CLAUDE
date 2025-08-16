@@ -288,7 +288,7 @@ app.get('/projects/create', (req, res) => {
 // Route to handle project creation
 app.post('/projects/create', async (req, res, next) => { // Added next
   try { // Added try
-  const { name, description, uploadMethod: projectUploadMethod, playerMode } = req.body;
+  const { name, description, uploadMethod: projectUploadMethod } = req.body;
   const effectiveUploadMethod = projectUploadMethod || 'bunny'; // Default to bunny
 
     let rolesInput = req.body.roles;
@@ -400,7 +400,6 @@ app.post('/projects/create', async (req, res, next) => { // Added next
       name,
       description,
       uploadMethod: effectiveUploadMethod,
-      player_mode: playerMode === 'inline' ? 'inline' : 'link',
       roles: finalProjectRoles,
       createdAt: new Date().toISOString(),
       director: req.body.director,
@@ -1246,10 +1245,9 @@ app.post('/audition/:projectId', auditionUpload.fields([
     } else if (videoType === 'bunny_stream') {
       console.log('BUNNY_EMBED_MISSING_ENV: Cannot build embed URL - missing video GUID or library ID');
     }
-  // Inline player toggle: global flag overrides per-project preference
+  // Inline player toggle on success page: rely only on global env flag
   const globalDisable = process.env.DISABLE_INLINE_PLAYER === '1';
-  const prefersInline = project && project.player_mode === 'inline';
-  submissionData.disable_inline_player = globalDisable ? true : !prefersInline;
+  submissionData.disable_inline_player = !!globalDisable;
     
     res.render('audition-success', submissionData);
     
@@ -1318,10 +1316,10 @@ app.get('/projects/:projectId/auditions', async (req, res) => {
       };
     });
 
-    // Resolve inline-player behavior priority:
+    // Resolve inline-player behavior priority for auditions list:
     // 1) Query param ?mode=inline|link (viewer preference)
     // 2) Global env DISABLE_INLINE_PLAYER=1 (force link-only)
-    // 3) Fallback to project preference (if present), else default to link-only
+    // 3) Default to link-only (no DB-backed per-project preference)
     let disableInlineEffective;
     const qpMode = (req.query.mode || '').toString();
     if (qpMode === 'inline') {
@@ -1331,8 +1329,7 @@ app.get('/projects/:projectId/auditions', async (req, res) => {
     } else if (process.env.DISABLE_INLINE_PLAYER === '1') {
       disableInlineEffective = true;
     } else {
-      const projectPrefersInline = project && project.player_mode === 'inline';
-      disableInlineEffective = !projectPrefersInline; // default link-only
+      disableInlineEffective = true; // default link-only
     }
 
     res.render('auditions', { 
