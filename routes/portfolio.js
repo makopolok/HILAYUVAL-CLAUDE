@@ -20,7 +20,7 @@ router.get('/projects', async (req, res) => {
             id: p.id,
             name: p.name || p.title || '',
             description: p.description || p.storyline || '',
-            createdAt: p.created_at ? new Date(p.created_at).toLocaleString('en-GB') : '',
+            createdAt: p.created_at ? new Date(p.created_at).toLocaleString('en-IL', { year:'numeric', month:'short', day:'2-digit', hour:'2-digit', minute:'2-digit', timeZone:'Asia/Jerusalem' }) : '',
             upload_method: p.upload_method,
             roles: Array.isArray(p.roles) ? p.roles : []
         }));
