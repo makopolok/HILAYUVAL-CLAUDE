@@ -17,22 +17,6 @@
         {{/each}}
       </select>
     </div>
-    <div class="col-md-4">
-      <label class="form-label small text-muted">Player Mode</label>
-      <div class="d-flex align-items-center gap-3">
-        <div class="form-check">
-          <input class="form-check-input" type="radio" name="mode" id="modeLink" value="link" {{#if (eq query.mode "link")}}checked{{/if}}>
-          <label class="form-check-label" for="modeLink">Link Only</label>
-        </div>
-        <div class="form-check">
-          <input class="form-check-input" type="radio" name="mode" id="modeInline" value="inline" {{#if (eq query.mode "inline")}}checked{{/if}}>
-          <label class="form-check-label" for="modeInline">Inline Player</label>
-        </div>
-      </div>
-      <div class="form-text small text-muted mt-1">
-        Tip: switch between link-only and inline players using these options. This preference only affects your view.
-      </div>
-    </div>
     <div class="col-12">
       <button type="submit" class="btn btn-outline-danger">Filter</button>
       <a href="/projects/{{project.id}}/auditions" class="btn btn-outline-secondary ms-2">Clear</a>

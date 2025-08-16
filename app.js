@@ -1316,21 +1316,8 @@ app.get('/projects/:projectId/auditions', async (req, res) => {
       };
     });
 
-    // Resolve inline-player behavior priority for auditions list:
-    // 1) Query param ?mode=inline|link (viewer preference)
-    // 2) Global env DISABLE_INLINE_PLAYER=1 (force link-only)
-    // 3) Default to link-only (no DB-backed per-project preference)
-    let disableInlineEffective;
-    const qpMode = (req.query.mode || '').toString();
-    if (qpMode === 'inline') {
-      disableInlineEffective = false;
-    } else if (qpMode === 'link') {
-      disableInlineEffective = true;
-    } else if (process.env.DISABLE_INLINE_PLAYER === '1') {
-      disableInlineEffective = true;
-    } else {
-      disableInlineEffective = true; // default link-only
-    }
+  // Casting director page: simplify to global flag only (no per-viewer toggle)
+  const disableInlineEffective = process.env.DISABLE_INLINE_PLAYER === '1' ? true : false;
 
     res.render('auditions', { 
       project: { ...project, roles: rolesWithAuditions },
