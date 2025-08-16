@@ -1318,10 +1318,22 @@ app.get('/projects/:projectId/auditions', async (req, res) => {
       };
     });
 
-    // Resolve inline-player behavior: global env can override per-project
-    const disableInlineGlobal = process.env.DISABLE_INLINE_PLAYER === '1';
-    const projectPrefersInline = project.player_mode === 'inline';
-    const disableInlineEffective = disableInlineGlobal ? true : !projectPrefersInline;
+    // Resolve inline-player behavior priority:
+    // 1) Query param ?mode=inline|link (viewer preference)
+    // 2) Global env DISABLE_INLINE_PLAYER=1 (force link-only)
+    // 3) Fallback to project preference (if present), else default to link-only
+    let disableInlineEffective;
+    const qpMode = (req.query.mode || '').toString();
+    if (qpMode === 'inline') {
+      disableInlineEffective = false;
+    } else if (qpMode === 'link') {
+      disableInlineEffective = true;
+    } else if (process.env.DISABLE_INLINE_PLAYER === '1') {
+      disableInlineEffective = true;
+    } else {
+      const projectPrefersInline = project && project.player_mode === 'inline';
+      disableInlineEffective = !projectPrefersInline; // default link-only
+    }
 
     res.render('auditions', { 
       project: { ...project, roles: rolesWithAuditions },
