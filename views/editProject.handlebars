@@ -38,8 +38,8 @@
                         <input type="text" name="newName" class="form-control form-control-sm" placeholder="Rename" style="max-width: 180px;">
                         <button class="btn btn-sm btn-outline-primary" type="submit">Rename</button>
                       </form>
-                      <form method="POST" action="/projects/{{../project.id}}/roles/{{this.id}}/delete" onsubmit="return confirm('Delete role &quot;{{this.name}}&quot;?');">
-                        <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+                      <form method="POST" action="/projects/{{../project.id}}/roles/{{this.id}}/delete" onsubmit="return confirm('Move role &quot;{{this.name}}&quot; to Trash?');">
+                        <button class="btn btn-sm btn-outline-danger" type="submit">Move to Trash</button>
                       </form>
                     </div>
                   </div>
@@ -51,6 +51,41 @@
           {{/if}}
         </div>
       </div>
+
+      {{!-- Trash section --}}
+      {{#if deletedRoles.length}}
+      <div class="card shadow-sm mt-4">
+        <div class="card-header bg-light d-flex align-items-center justify-content-between">
+          <span><i class="fas fa-trash-alt me-2"></i>Trash</span>
+          <small class="text-muted">Recently deleted roles</small>
+        </div>
+        <div class="card-body p-0">
+          <ul class="list-group list-group-flush">
+            {{#each deletedRoles}}
+              <li class="list-group-item">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                  <div class="d-flex flex-column">
+                    <span class="text-decoration-line-through">{{this.name}}</span>
+                    {{#if this.deleted_at}}
+                      <small class="text-muted">Deleted at {{this.deleted_at}}</small>
+                    {{/if}}
+                  </div>
+                  <div class="d-flex align-items-center gap-2">
+                    <form method="POST" action="/projects/{{../project.id}}/roles/{{this.id}}/restore">
+                      <button class="btn btn-sm btn-outline-success" type="submit">Restore</button>
+                    </form>
+                    <form method="POST" action="/projects/{{../project.id}}/roles/{{this.id}}/purge" onsubmit="return confirm('Permanently delete role &quot;{{this.name}}&quot;? This cannot be undone.');">
+                      <button class="btn btn-sm btn-outline-secondary" type="submit">Purge</button>
+                    </form>
+                  </div>
+                </div>
+              </li>
+            {{/each}}
+          </ul>
+        </div>
+      </div>
+      {{/if}}
+
     </div>
     <div class="col-12 col-lg-5">
       <div class="card shadow-sm">

@@ -41,14 +41,16 @@ async function resetDatabase() {
 
     // Create roles table
     console.log('\n👥 Creating roles table...');
-    await pool.query(`
-      CREATE TABLE roles (
-        id SERIAL PRIMARY KEY,
-        project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
-        name TEXT NOT NULL,
-        playlist_id TEXT
-      );
-    `);
+      await pool.query(`
+        CREATE TABLE roles (
+          id SERIAL PRIMARY KEY,
+          project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+          name TEXT NOT NULL,
+          playlist_id TEXT,
+          is_deleted BOOLEAN DEFAULT FALSE,
+          deleted_at TIMESTAMP NULL
+        );
+      `);
     console.log('✅ Roles table created');
 
     // Create auditions table
@@ -81,7 +83,8 @@ async function resetDatabase() {
     await pool.query('CREATE INDEX idx_auditions_project_id ON auditions(project_id);');
     await pool.query('CREATE INDEX idx_auditions_role ON auditions(role);');
     await pool.query('CREATE INDEX idx_auditions_email ON auditions(email);');
-    await pool.query('CREATE INDEX idx_roles_project_id ON roles(project_id);');
+  await pool.query('CREATE INDEX idx_roles_project_id ON roles(project_id);');
+  await pool.query('CREATE INDEX idx_roles_project_is_deleted ON roles(project_id, is_deleted);');
     console.log('✅ Indexes created');
 
     // Verify final structure

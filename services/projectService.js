@@ -38,7 +38,8 @@ async function addProject(project) {
 
 async function getAllProjects() {
     const projectsRes = await pool.query('SELECT * FROM projects ORDER BY created_at DESC');
-    const rolesRes = await pool.query('SELECT * FROM roles');
+    // Only non-deleted roles
+    const rolesRes = await pool.query('SELECT * FROM roles WHERE COALESCE(is_deleted, FALSE) = FALSE');
     console.log('PROJECT_SERVICE_GET_ALL_PROJECTS:', { projects: projectsRes.rows, roles: rolesRes.rows });
     return projectsRes.rows.map(project => ({
         ...project,
@@ -56,7 +57,7 @@ const getProjectById = async (id) => {
           project = projectResult.rows[0];
           console.log(`PROJECT_SERVICE_GET_BY_ID_PROJECT_FOUND: Project data for ${id}: ${JSON.stringify(project)}`);
 
-          const rolesResult = await pool.query('SELECT * FROM roles WHERE project_id = $1', [id]);
+          const rolesResult = await pool.query('SELECT * FROM roles WHERE project_id = $1 AND COALESCE(is_deleted, FALSE) = FALSE', [id]);
           project.roles = rolesResult.rows;
           console.log(`PROJECT_SERVICE_GET_BY_ID_ROLES_FETCHED: Roles for project ${id}: ${JSON.stringify(project.roles)}. Roles count: ${project.roles.length}. IsArray: ${Array.isArray(project.roles)}`);
           
@@ -110,7 +111,7 @@ async function renameRole(projectId, roleId, newName) {
     const current = rows[0];
     // Prevent duplicate name within the same project (case-insensitive)
     const dupCheck = await client.query(
-      'SELECT 1 FROM roles WHERE project_id=$1 AND LOWER(name)=LOWER($2) AND id<>$3 LIMIT 1',
+      'SELECT 1 FROM roles WHERE project_id=$1 AND LOWER(name)=LOWER($2) AND id<>$3 AND COALESCE(is_deleted, FALSE)=FALSE LIMIT 1',
       [projectId, newName, roleId]
     );
     if (dupCheck.rows.length > 0) {
@@ -130,11 +131,55 @@ async function renameRole(projectId, roleId, newName) {
   }
 }
 
-// Delete a role from a project. Note: existing auditions keep their role text.
-async function deleteRole(projectId, roleId) {
-  const res = await pool.query('DELETE FROM roles WHERE id=$1 AND project_id=$2', [roleId, projectId]);
+// Soft delete a role (mark as deleted). Existing auditions keep their role text.
+async function softDeleteRole(projectId, roleId) {
+  const res = await pool.query(
+    'UPDATE roles SET is_deleted=TRUE, deleted_at=NOW() WHERE id=$1 AND project_id=$2 AND COALESCE(is_deleted, FALSE)=FALSE',
+    [roleId, projectId]
+  );
   return res.rowCount > 0;
+}
+
+// Restore a previously soft-deleted role
+async function restoreRole(projectId, roleId) {
+  // Prevent restoring to a duplicate active name
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query('SELECT id, name FROM roles WHERE id=$1 AND project_id=$2 AND COALESCE(is_deleted, FALSE)=TRUE', [roleId, projectId]);
+    if (rows.length === 0) {
+      await client.query('ROLLBACK');
+      return false;
+    }
+    const role = rows[0];
+    const dup = await client.query('SELECT 1 FROM roles WHERE project_id=$1 AND LOWER(name)=LOWER($2) AND COALESCE(is_deleted, FALSE)=FALSE LIMIT 1', [projectId, role.name]);
+    if (dup.rows.length > 0) {
+      throw new Error('Cannot restore: an active role with the same name exists');
+    }
+    await client.query('UPDATE roles SET is_deleted=FALSE, deleted_at=NULL WHERE id=$1 AND project_id=$2', [roleId, projectId]);
+    await client.query('COMMIT');
+    return true;
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
+// Permanently purge a soft-deleted role row
+async function purgeRole(projectId, roleId) {
+  const res = await pool.query('DELETE FROM roles WHERE id=$1 AND project_id=$2 AND COALESCE(is_deleted, FALSE)=TRUE', [roleId, projectId]);
+  return res.rowCount > 0;
+}
+
+// Delete a role from a project (backward-compatible, now soft delete)
+async function deleteRole(projectId, roleId) {
+  return softDeleteRole(projectId, roleId);
 }
 
 module.exports.renameRole = renameRole;
 module.exports.deleteRole = deleteRole;
+module.exports.softDeleteRole = softDeleteRole;
+module.exports.restoreRole = restoreRole;
+module.exports.purgeRole = purgeRole;
