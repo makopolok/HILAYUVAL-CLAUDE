@@ -96,3 +96,45 @@ module.exports = {
   getProjectById,
   addRoleToProject
 };
+
+// Rename a role; also update existing auditions to the new name for this project
+async function renameRole(projectId, roleId, newName) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // Fetch current role and validate project ownership
+    const { rows } = await client.query('SELECT id, project_id, name FROM roles WHERE id=$1 AND project_id=$2', [roleId, projectId]);
+    if (rows.length === 0) {
+      throw new Error('Role not found for this project');
+    }
+    const current = rows[0];
+    // Prevent duplicate name within the same project (case-insensitive)
+    const dupCheck = await client.query(
+      'SELECT 1 FROM roles WHERE project_id=$1 AND LOWER(name)=LOWER($2) AND id<>$3 LIMIT 1',
+      [projectId, newName, roleId]
+    );
+    if (dupCheck.rows.length > 0) {
+      throw new Error('A role with this name already exists');
+    }
+    // Update role name
+    await client.query('UPDATE roles SET name=$1 WHERE id=$2 AND project_id=$3', [newName, roleId, projectId]);
+    // Cascade rename in auditions for consistency
+    await client.query('UPDATE auditions SET role=$1 WHERE project_id=$2 AND role=$3', [newName, projectId, current.name]);
+    await client.query('COMMIT');
+    return { oldName: current.name, newName };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+// Delete a role from a project. Note: existing auditions keep their role text.
+async function deleteRole(projectId, roleId) {
+  const res = await pool.query('DELETE FROM roles WHERE id=$1 AND project_id=$2', [roleId, projectId]);
+  return res.rowCount > 0;
+}
+
+module.exports.renameRole = renameRole;
+module.exports.deleteRole = deleteRole;

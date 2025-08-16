@@ -76,3 +76,32 @@ router.post('/projects/:projectId/add-role', async (req, res) => {
         res.status(500).render('error/500', { message: 'Failed to add role.' });
     }
 });
+
+// Rename role
+router.post('/projects/:projectId/roles/:roleId/rename', async (req, res) => {
+    try {
+        const { projectId, roleId } = req.params;
+        const newName = (req.body.newName || '').toString().trim();
+        if (!newName) {
+            return res.redirect(`/projects/${projectId}/edit?msg=${encodeURIComponent('New name is required')}`);
+        }
+        await projectService.renameRole(projectId, roleId, newName);
+        return res.redirect(`/projects/${projectId}/edit?msg=${encodeURIComponent('Role renamed')}`);
+    } catch (err) {
+        console.error('PROJECT_RENAME_ROLE_ROUTE_ERROR:', err);
+        const msg = err && err.message ? err.message : 'Failed to rename role';
+        res.redirect(`/projects/${req.params.projectId}/edit?msg=${encodeURIComponent(msg)}`);
+    }
+});
+
+// Delete role
+router.post('/projects/:projectId/roles/:roleId/delete', async (req, res) => {
+    try {
+        const { projectId, roleId } = req.params;
+        await projectService.deleteRole(projectId, roleId);
+        return res.redirect(`/projects/${projectId}/edit?msg=${encodeURIComponent('Role deleted')}`);
+    } catch (err) {
+        console.error('PROJECT_DELETE_ROLE_ROUTE_ERROR:', err);
+        res.redirect(`/projects/${req.params.projectId}/edit?msg=${encodeURIComponent('Failed to delete role')}`);
+    }
+});
