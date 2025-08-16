@@ -1,5 +1,5 @@
 // public/js/videoMonitor.js
-// Unified VideoMonitor for Bunny.net and Cloudflare
+// Unified VideoMonitor for Bunny.net (canonical) and legacy Cloudflare
 
 class VideoMonitor {
   constructor({ videoUid, apiUrl, maxChecks, readyCheck, onReady, onWarning }) {

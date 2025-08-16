@@ -113,13 +113,13 @@ async function main() {
   }
   // --- End Prepare dummy files ---
 
-  // Test Case 1: Create a Cloudflare project and submit an audition
-  console.log("\n--- Test Case 1: Cloudflare Project & Audition ---");
+  // Test Case 1: Create a Bunny project and submit an audition
+  console.log("\n--- Test Case 1: Bunny Project & Audition ---");
   const cfProjectData = {
-    name: 'Automated Test CF Project',
-    description: 'Test project for Cloudflare uploads (automated)',
-    uploadMethod: 'cloudflare', // Explicitly 'cloudflare'
-    roles: JSON.stringify([{ name: 'Lead CF Role' }, { name: 'Support CF Role' }]), // Ensure roles are stringified if sending as x-www-form-urlencoded
+    name: 'Automated Test Bunny Project',
+    description: 'Test project for Bunny uploads (automated)',
+    uploadMethod: 'bunny', // Explicitly 'bunny'
+    roles: JSON.stringify([{ name: 'Lead Bunny Role' }, { name: 'Support Bunny Role' }]), // Ensure roles are stringified if sending as x-www-form-urlencoded
     director: 'Auto Test Director',
     production_company: 'Auto Test Prod Co'
   };
@@ -133,8 +133,8 @@ async function main() {
   cfProjectFormParams.append('name', cfProjectData.name);
   cfProjectFormParams.append('description', cfProjectData.description);
   cfProjectFormParams.append('uploadMethod', cfProjectData.uploadMethod);
-  cfProjectFormParams.append('roles[0][name]', 'Lead CF Role');
-  cfProjectFormParams.append('roles[1][name]', 'Support CF Role');
+  cfProjectFormParams.append('roles[0][name]', 'Lead Bunny Role');
+  cfProjectFormParams.append('roles[1][name]', 'Support Bunny Role');
   cfProjectFormParams.append('director', cfProjectData.director);
   cfProjectFormParams.append('production_company', cfProjectData.production_company);
 
@@ -143,13 +143,13 @@ async function main() {
 
   if (cfProjectId) {
     await submitTestAudition(cfProjectId, {
-      role: 'Lead CF Role', // Must match one of the roles created
-      first_name_en: 'CF_Test',
+      role: 'Lead Bunny Role', // Must match one of the roles created
+      first_name_en: 'Bunny_Test',
       last_name_en: 'User_Auto',
-      email: 'cf.test.auto@example.com',
+      email: 'bunny.test.auto@example.com',
     }, dummyVideoPath, [dummyProfilePicPath]);
   } else {
-    console.log("Skipping CF audition submission due to project creation failure.");
+    console.log("Skipping Bunny audition submission due to project creation failure.");
   }
 
   // Test Case 2: Create a YouTube project and submit an audition

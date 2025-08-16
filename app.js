@@ -161,7 +161,7 @@ app.get('/audition', (req, res) => {
   const expose = process.env.DIRECT_UPLOAD_EXPOSE_KEY === '1';
   res.render('audition', {
     bunny_stream_library_id: libId,
-    upload_method: 'cloudflare',
+  upload_method: 'bunny',
     bunny_video_access_key: expose ? (process.env.BUNNY_VIDEO_API_KEY || '') : null,
     direct_upload_exposed: expose
   });
@@ -286,7 +286,7 @@ app.get('/projects/create', (req, res) => {
 app.post('/projects/create', async (req, res, next) => { // Added next
   try { // Added try
     const { name, description, uploadMethod: projectUploadMethod } = req.body;
-    const effectiveUploadMethod = projectUploadMethod || 'cloudflare'; // Default to cloudflare
+  const effectiveUploadMethod = projectUploadMethod || 'bunny'; // Default to bunny
 
     let rolesInput = req.body.roles;
     if (!name || !rolesInput) {
@@ -461,7 +461,7 @@ app.get('/audition/:projectId', async (req, res) => {
   res.render('audition', { 
     project,
     bunny_stream_library_id: libId,
-    upload_method: project && project.uploadMethod ? project.uploadMethod : 'cloudflare',
+  upload_method: project && project.uploadMethod ? project.uploadMethod : 'bunny',
     bunny_video_access_key: expose ? (process.env.BUNNY_VIDEO_API_KEY || '') : null,
   direct_upload_exposed: expose
   });

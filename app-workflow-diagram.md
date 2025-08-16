@@ -15,7 +15,7 @@ graph TD
     B --> E[Project Creation Handler<br>/projects/create POST]
     E --> F{Upload Method?}
     F -->|YouTube| G[Create YouTube Playlists<br>for each role]
-    F -->|Cloudflare| H[Use Cloudflare Storage]
+    F -->|Bunny| H[Use Bunny Storage]
     G --> I[Save Project to PostgreSQL]
     H --> I
     I --> J[Send Email Notification]
@@ -27,7 +27,7 @@ graph TD
     M --> N[Process File Uploads]
     N --> O{Video Upload Method?}
     O -->|YouTube| P[Upload to YouTube<br>Add to Role Playlist]
-    O -->|Cloudflare| Q[Upload to Cloudflare Stream]
+    O -->|Bunny| Q[Upload to Bunny Stream]
     P --> R[Save Audition to PostgreSQL]
     Q --> R
     R --> S[Audition Success Page<br>with Video Player]
@@ -35,7 +35,7 @@ graph TD
     %% Management Views
     K --> T[All Projects View<br>/projects]
     T --> U[Individual Project Auditions<br>/projects/:id/auditions]
-    U --> V[Video Playback<br>Cloudflare Stream Player]
+    U --> V[Video Playback<br>Bunny Stream Player]
     
     %% Portfolio/Home
     W[Public Portfolio<br>/] --> X[Home Page<br>Hila's Work Display]
@@ -47,7 +47,7 @@ graph TD
     
     %% External Services
     G --> AA[Google YouTube API]
-    Q --> BB[Cloudflare Stream API]
+    Q --> BB[Bunny Stream API]
     J --> CC[SMTP Email Service]
 ```
 
@@ -125,7 +125,7 @@ erDiagram
 
 ### External Services
 - **Google YouTube API** - Video upload and playlist management
-- **Cloudflare Stream** - Video hosting and streaming
+- **Bunny Stream** - Video hosting and streaming
 - **Nodemailer/SMTP** - Email notifications
 - **Heroku** - Cloud hosting platform
 
@@ -138,15 +138,15 @@ erDiagram
 
 1. **Dual Video Upload Methods**
    - YouTube: Public playlists for each role
-   - Cloudflare Stream: Private video hosting
+    - Bunny Stream: Private video hosting
 
 2. **Multi-language Support**
    - Hebrew and English name fields
    - Right-to-left text support
 
 3. **File Management**
-   - Profile picture uploads via Cloudflare Images
-   - Video file processing and upload to Cloudflare Stream or YouTube
+    - Profile picture uploads via Bunny Storage
+    - Video file processing and upload to Bunny Stream or YouTube
 
 4. **Search and Filtering**
    - Search auditions by name, email, role
