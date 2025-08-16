@@ -1080,7 +1080,7 @@ app.post('/audition/:projectId', auditionUpload.fields([
     let videoType = null;
     let finalVideoUrl = null; // Using a more descriptive name
 
-    if (videoFile) {
+  if (videoFile) {
       console.log(`POST_AUDITION_UPLOADING_VIDEO: ${videoFile.originalname} for project ${project.id}. Project's uploadMethod: ${project.upload_method}`);
       
       if (project.upload_method === 'youtube') { // MODIFIED HERE
@@ -1146,9 +1146,17 @@ app.post('/audition/:projectId', auditionUpload.fields([
         }
       }
     } else {
-      console.log('POST_AUDITION_NO_VIDEO_UPLOADED: User submitted audition without video');
-      finalVideoUrl = null;
-      videoType = null;
+      // Support direct-to-Bunny uploads: client submits a GUID in body.video_url
+      const guidFromForm = (body.video_url || '').toString().trim();
+      if (guidFromForm && guidFromForm.length > 10) {
+        console.log(`POST_AUDITION_DIRECT_BUNNY_GUID_DETECTED: ${guidFromForm}`);
+        finalVideoUrl = guidFromForm;
+        videoType = 'bunny_stream';
+      } else {
+        console.log('POST_AUDITION_NO_VIDEO_UPLOADED: User submitted audition without video');
+        finalVideoUrl = null;
+        videoType = null;
+      }
     }
 
     const audition = {
