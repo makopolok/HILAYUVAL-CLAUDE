@@ -124,6 +124,12 @@
                   </div>
                   <progress id="upload-progress" max="100" value="0" style="width:100%;"></progress>
                   <div class="small text-muted mt-1">Progress: <span id="upload-progress-text">0%</span></div>
+                  <div class="mt-2 d-flex gap-2">
+                    <button type="button" id="btn-upload-pause" class="btn btn-sm btn-outline-secondary">Pause</button>
+                    <button type="button" id="btn-upload-resume" class="btn btn-sm btn-outline-secondary" disabled>Resume</button>
+                    <button type="button" id="btn-upload-cancel" class="btn btn-sm btn-outline-danger">Cancel</button>
+                  </div>
+                  <div id="upload-error" class="alert alert-danger d-none mt-2" role="alert"></div>
                 </div>
               </div>
             </div>

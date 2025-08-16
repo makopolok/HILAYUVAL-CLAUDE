@@ -26,40 +26,35 @@
 					}
 
 					async function uploadWithTus({ file, uploadUrl, accessKey, onProgress }) {
-						return new Promise((resolve, reject) => {
-							if (!useTusIfAvailable()) return reject(new Error('tus not available'));
-							// Bunny supports PUT to /videos/{guid}. tus typically expects an endpoint that accepts creation.
-							// We simulate tus by using the existing resource URL with X-HTTP-Method-Override when needed.
-							const options = {
-								endpoint: uploadUrl, // Using full resource URL
-								chunkSize: 5 * 1024 * 1024,
-								retryDelays: [0, 1000, 3000, 5000, 10000, 20000],
-								removeFingerprintOnSuccess: true,
-								overridePatchMethod: true,
-								headers: {
-									'AccessKey': accessKey,
-									'Content-Type': file.type || 'application/octet-stream'
-								},
-								metadata: {
-									filename: file.name,
-									filetype: file.type || 'application/octet-stream'
-								},
-								onError: (error) => reject(error),
-								onProgress: (bytesUploaded, bytesTotal) => {
-									if (typeof onProgress === 'function' && bytesTotal > 0) {
-										const pct = Math.floor((bytesUploaded / bytesTotal) * 100);
-										onProgress(pct, bytesUploaded, bytesTotal);
-									}
-								},
-								onSuccess: () => resolve()
-							};
-							try {
-								const upload = new window.tus.Upload(file, options);
-								upload.start();
-							} catch (e) {
-								reject(e);
-							}
-						});
+							return new Promise((resolve, reject) => {
+								if (!useTusIfAvailable()) return reject(new Error('tus not available'));
+								// Using the resource URL; Bunny may accept PATCH via override
+								const options = {
+									endpoint: uploadUrl,
+									chunkSize: 5 * 1024 * 1024,
+									retryDelays: [0, 1000, 3000, 5000, 10000, 20000],
+									removeFingerprintOnSuccess: true,
+									overridePatchMethod: true,
+									headers: {
+										'AccessKey': accessKey,
+										'Content-Type': file.type || 'application/octet-stream'
+									},
+									metadata: { filename: file.name, filetype: file.type || 'application/octet-stream' },
+									onError: (error) => reject(error),
+									onProgress: (bytesUploaded, bytesTotal) => {
+										if (typeof onProgress === 'function' && bytesTotal > 0) {
+											const pct = Math.floor((bytesUploaded / bytesTotal) * 100);
+											onProgress(pct, bytesUploaded, bytesTotal);
+										}
+									},
+									onSuccess: () => resolve()
+								};
+								try {
+									window.__currentTusOptions = { file, uploadUrl, accessKey, onProgress };
+									window.__currentTus = new window.tus.Upload(file, options);
+									window.__currentTus.start();
+								} catch (e) { reject(e); }
+							});
 					}
 			};
 			xhr.onload = () => {
@@ -82,7 +77,8 @@
 		const libIdEl = document.querySelector('[data-bunny-library-id]');
 			const resumeHint = document.querySelector('#resume-upload-hint');
 
-		const isBunny = methodEl && methodEl.getAttribute('data-upload-method') === 'cloudflare';
+		const methodVal = methodEl && methodEl.getAttribute('data-upload-method');
+		const isBunny = methodVal && ['cloudflare','bunny','bunny_stream','bunnystream'].includes(methodVal);
 		if (!form || !videoInput || !isBunny || !libIdEl) return; // Fall back to normal submit
 
 			// If there was an interrupted upload, show a resume hint
@@ -117,6 +113,28 @@
 				}
 			}
 
+			// Pause/Resume/Cancel controls
+			const btnPause = document.querySelector('#btn-upload-pause');
+			const btnResume = document.querySelector('#btn-upload-resume');
+			const btnCancel = document.querySelector('#btn-upload-cancel');
+			const errorBox = document.querySelector('#upload-error');
+
+			function setControls({ pauseDisabled, resumeDisabled, cancelDisabled }) {
+				if (btnPause) btnPause.disabled = !!pauseDisabled;
+				if (btnResume) btnResume.disabled = !!resumeDisabled;
+				if (btnCancel) btnCancel.disabled = !!cancelDisabled;
+			}
+			function showError(msg) {
+				if (!errorBox) return;
+				errorBox.textContent = msg;
+				errorBox.classList.remove('d-none');
+			}
+			function clearError() {
+				if (!errorBox) return;
+				errorBox.classList.add('d-none');
+				errorBox.textContent = '';
+			}
+
 		// Intercept submit to perform direct upload
 		form.addEventListener('submit', async (e) => {
 			const file = videoInput.files && videoInput.files[0];
@@ -144,16 +162,22 @@
 							ts: Date.now()
 						}));
 					} catch (_) {}
-					const progressFn = (pct) => {
+							clearError();
+							const progressFn = (pct) => {
 						if (progressText) progressText.textContent = pct + '%';
 						if (progressBar) progressBar.value = pct;
 					};
 					try {
 						// Prefer tus if available
 						await uploadWithTus({ file, uploadUrl: meta.uploadUrl, accessKey, onProgress: progressFn });
+								setControls({ pauseDisabled: true, resumeDisabled: true, cancelDisabled: true });
 					} catch (_) {
 						// Fallback to single PUT if tus path fails
-						await uploadToBunny({ file, uploadUrl: meta.uploadUrl, accessKey, onProgress: progressFn });
+								setControls({ pauseDisabled: true, resumeDisabled: true, cancelDisabled: false });
+								await uploadToBunny({ file, uploadUrl: meta.uploadUrl, accessKey, onProgress: progressFn }).catch(err => {
+									showError('Upload failed: ' + err.message);
+									throw err;
+								});
 					}
 					setUploadActive(false);
 					try { localStorage.removeItem('auditionUploadResume'); } catch (_) {}
@@ -171,8 +195,49 @@
 				videoInput.value = '';
 				form.submit();
 			} catch (err) {
-				alert('Upload failed: ' + err.message);
+						setUploadActive(false);
+						showError((err && err.message) ? err.message : 'Upload failed');
 			}
 		});
+
+				// Button handlers
+				if (btnPause) {
+					btnPause.addEventListener('click', () => {
+						try {
+							if (window.__currentTus) {
+								window.__currentTus.abort(true); // keep resume data
+								setControls({ pauseDisabled: true, resumeDisabled: false, cancelDisabled: false });
+							} else {
+								showError('Pause is only available for resumable uploads.');
+							}
+						} catch (e) { showError('Pause failed: ' + e.message); }
+					});
+				}
+				if (btnResume) {
+					btnResume.addEventListener('click', () => {
+						try {
+							if (window.__currentTus) {
+								window.__currentTus.start();
+								setControls({ pauseDisabled: false, resumeDisabled: true, cancelDisabled: false });
+							} else {
+								showError('Resume is only available for resumable uploads. Re-select the same file to continue.');
+							}
+						} catch (e) { showError('Resume failed: ' + e.message); }
+					});
+				}
+				if (btnCancel) {
+					btnCancel.addEventListener('click', () => {
+						try {
+							if (window.__currentTus) {
+								window.__currentTus.abort(true);
+							}
+							setUploadActive(false);
+							try { localStorage.removeItem('auditionUploadResume'); } catch (_) {}
+							if (progressBar) progressBar.value = 0;
+							if (progressText) progressText.textContent = '0%';
+							setControls({ pauseDisabled: true, resumeDisabled: true, cancelDisabled: true });
+						} catch (e) { showError('Cancel failed: ' + e.message); }
+					});
+				}
 	});
 })();
