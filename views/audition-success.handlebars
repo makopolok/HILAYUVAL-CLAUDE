@@ -65,6 +65,13 @@
         </div>
         <div class="card-body">
           {{#if (eq video_type "bunny_stream")}}
+            <!-- Quick access link so you don't have to wait for the inline player -->
+            <div class="d-flex justify-content-end mb-3">
+              <a class="btn btn-outline-primary btn-sm" target="_blank" rel="noopener"
+                 href="{{#if embed_url}}{{embed_url}}{{else}}https://iframe.mediadelivery.net/embed/{{bunny_stream_library_id}}/{{video_url}}{{/if}}">
+                <i class="fas fa-external-link-alt me-2"></i>Open Video
+              </a>
+            </div>
             <div id="video-container">
               <!-- Processing indicator -->
               <div id="video-processing" class="text-center p-5" style="display: block;">
