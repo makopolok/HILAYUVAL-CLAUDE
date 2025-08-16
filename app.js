@@ -18,6 +18,7 @@ const rateLimit = require('express-rate-limit');
 const portfolioRoutes = require('./routes/portfolio'); // Define portfolioRoutes
 // Import DB health check
 const { checkDbConnection } = require('./services/auditionService');
+const bunnyService = require('./services/bunnyUploadService');
 
 // Add a version log at the top for deployment verification
 console.log('INFO: app.js version 2025-06-08_2100_DEBUG running');
@@ -137,9 +138,33 @@ app.get('/health/db', async (req, res) => {
   });
 });
 
+// API: Create a Bunny video stub and return upload info for direct browser upload
+// This avoids routing the large file through Heroku. The client will PUT the file directly to Bunny.
+app.post('/api/videos', async (req, res) => {
+  try {
+    const title = (req.query.title || req.body?.title || '').toString().slice(0, 200) || `audition_${Date.now()}`;
+    const created = await bunnyService.createVideo(title);
+    const libId = process.env.BUNNY_STREAM_LIBRARY_ID;
+    // Bunny simple direct upload endpoint: PUT the raw file to /videos/{guid}
+    const uploadUrl = `https://video.bunnycdn.com/library/${libId}/videos/${created.guid}`;
+    // Return minimal info; DO NOT return AccessKey
+    res.json({ guid: created.guid, title: created.title, uploadUrl });
+  } catch (e) {
+    console.error('API /api/videos create error:', e.message);
+    res.status(500).json({ error: 'Failed to create Bunny video' });
+  }
+});
+
 // Route to render audition submission form
 app.get('/audition', (req, res) => {
-  res.render('audition');
+  const libId = process.env.BUNNY_STREAM_LIBRARY_ID || '';
+  const expose = process.env.DIRECT_UPLOAD_EXPOSE_KEY === '1';
+  res.render('audition', {
+    bunny_stream_library_id: libId,
+    upload_method: 'cloudflare',
+    bunny_video_access_key: expose ? (process.env.BUNNY_VIDEO_API_KEY || '') : null,
+    direct_upload_exposed: expose
+  });
 });
 
 // POST route to handle audition form submission and upload to YouTube
@@ -431,7 +456,15 @@ app.get('/audition/:projectId', async (req, res) => {
   if (!project) {
     return res.status(404).send('Project not found.');
   }
-  res.render('audition', { project });
+  const libId = process.env.BUNNY_STREAM_LIBRARY_ID || '';
+  const expose = process.env.DIRECT_UPLOAD_EXPOSE_KEY === '1';
+  res.render('audition', { 
+    project,
+    bunny_stream_library_id: libId,
+    upload_method: project && project.uploadMethod ? project.uploadMethod : 'cloudflare',
+    bunny_video_access_key: expose ? (process.env.BUNNY_VIDEO_API_KEY || '') : null,
+    direct_upload_exposed: expose
+  });
 });
 
 // Optional guard for /debug routes (active only if DEBUG_SECRET is set)

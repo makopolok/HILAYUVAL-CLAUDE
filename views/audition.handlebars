@@ -11,7 +11,7 @@
     {{/if}}
   </h1>
   {{!-- Form action is dynamic: /audition/:projectId for project-specific, /audition for generic --}}
-  <form action="{{#if project}}/audition/{{project.id}}{{else}}/audition{{/if}}" method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
+  <form id="audition-form" action="{{#if project}}/audition/{{project.id}}{{else}}/audition{{/if}}" method="POST" enctype="multipart/form-data" class="needs-validation" novalidate data-upload-method="{{upload_method}}" data-bunny-library-id="{{bunny_stream_library_id}}">
     <div class="row">
       <div class="col-md-6 mb-3">
         <label for="first_name_he" class="form-label">שם פרטי (First Name, Hebrew)</label>

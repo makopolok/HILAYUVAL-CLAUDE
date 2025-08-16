@@ -15,6 +15,24 @@ const BUNNY_STREAM_LIBRARY_ID = process.env.BUNNY_STREAM_LIBRARY_ID;
 const BUNNY_CDN_BASE_URL = process.env.BUNNY_CDN_BASE_URL?.replace(/\/$/, '');
 
 module.exports = {
+  // Create a Bunny.net Stream video entry and return its GUID (no upload yet)
+  async createVideo(title) {
+    if (!BUNNY_STREAM_LIBRARY_ID || !BUNNY_VIDEO_API_KEY) {
+      throw new Error('Bunny.net Stream credentials not configured.');
+    }
+    const createUrl = `https://video.bunnycdn.com/library/${BUNNY_STREAM_LIBRARY_ID}/videos`;
+    const payload = { title: title || `upload_${Date.now()}` };
+    const res = await axios.post(createUrl, payload, {
+      headers: {
+        'AccessKey': BUNNY_VIDEO_API_KEY,
+        'Content-Type': 'application/json'
+      }
+    });
+    if (!res || !res.data || !res.data.guid) {
+      throw new Error('Failed to create Bunny Stream video.');
+    }
+    return { guid: res.data.guid, title: res.data.title };
+  },
   // Upload video to Bunny.net Stream
   async uploadVideo(videoFile) {
     if (!videoFile) throw new Error('No video file provided.');
