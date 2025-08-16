@@ -36,3 +36,43 @@ router.get('/projects', async (req, res) => {
 });
 
 module.exports = router;
+
+// --- Project edit and roles management ---
+// Show edit page for a project (add roles, view existing)
+router.get('/projects/:projectId/edit', async (req, res) => {
+    try {
+        const projectId = req.params.projectId;
+        const project = await projectService.getProjectById(projectId);
+        if (!project) {
+            return res.status(404).render('error/404', { message: 'Project not found.' });
+        }
+        res.render('editProject', { project, message: req.query.msg || null });
+    } catch (err) {
+        console.error('PROJECT_EDIT_ROUTE_ERROR:', err);
+        res.status(500).render('error/500', { message: 'Failed to load project editor.' });
+    }
+});
+
+// Add a role to a project
+router.post('/projects/:projectId/add-role', async (req, res) => {
+    try {
+        const projectId = req.params.projectId;
+        const roleName = (req.body.newRole || '').toString().trim();
+        if (!roleName) {
+            return res.redirect(`/projects/${projectId}/edit?msg=${encodeURIComponent('Role name is required')}`);
+        }
+        const project = await projectService.getProjectById(projectId);
+        if (!project) {
+            return res.status(404).render('error/404', { message: 'Project not found.' });
+        }
+        const exists = Array.isArray(project.roles) && project.roles.some(r => (r.name || '').toLowerCase() === roleName.toLowerCase());
+        if (exists) {
+            return res.redirect(`/projects/${projectId}/edit?msg=${encodeURIComponent('Role already exists')}`);
+        }
+        await projectService.addRoleToProject(projectId, { name: roleName, playlistId: null });
+        return res.redirect(`/projects/${projectId}/edit?msg=${encodeURIComponent('Role added')}`);
+    } catch (err) {
+        console.error('PROJECT_ADD_ROLE_ROUTE_ERROR:', err);
+        res.status(500).render('error/500', { message: 'Failed to add role.' });
+    }
+});

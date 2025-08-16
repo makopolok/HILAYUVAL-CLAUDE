@@ -24,6 +24,7 @@
           <th>Created</th>
           <th>Audition Form Link</th>
           <th>Audition Playlist</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -37,6 +38,9 @@
           </td>
           <td>
             <a href="/projects/{{this.id}}/auditions" class="btn btn-outline-danger btn-sm">View Auditions</a>
+          </td>
+          <td>
+            <a href="/projects/{{this.id}}/edit" class="btn btn-outline-secondary btn-sm">Edit</a>
           </td>
         </tr>
         {{/each}}

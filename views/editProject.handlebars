@@ -2,23 +2,50 @@
 {{! Edit Project: Add new roles }}
 {{> header}}
 <div class="container mt-4">
-  <h2>Edit Project: {{project.name}}</h2>
-  <p>{{project.description}}</p>
-  <h4>Current Roles</h4>
-  <ul>
-    {{#each project.roles}}
-      <li>{{this.name}} <span class="text-muted">({{this.playlistId}})</span></li>
-    {{/each}}
-  </ul>
-  <hr>
-  <h4>Add New Role</h4>
-  <form method="POST" action="/projects/{{project.id}}/add-role">
-    <div class="mb-3">
-      <label for="newRole" class="form-label">Role Name</label>
-      <input type="text" class="form-control" id="newRole" name="newRole" required>
+  <h2 class="mb-1">Edit Project: {{project.name}}</h2>
+  <p class="text-muted">{{project.description}}</p>
+
+  {{#if message}}
+    <div class="alert alert-info">{{message}}</div>
+  {{/if}}
+
+  <div class="row">
+    <div class="col-md-6">
+      <div class="card mb-4">
+        <div class="card-header bg-danger text-white">Current Roles</div>
+        <div class="card-body">
+          {{#if project.roles.length}}
+            <ul class="list-group">
+              {{#each project.roles}}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  <span>{{this.name}}</span>
+                  {{#if this.playlist_id}}
+                    <span class="badge text-bg-secondary">Playlist: {{this.playlist_id}}</span>
+                  {{/if}}
+                </li>
+              {{/each}}
+            </ul>
+          {{else}}
+            <div class="text-muted">No roles yet.</div>
+          {{/if}}
+        </div>
+      </div>
     </div>
-    <button type="submit" class="btn btn-primary">Add Role</button>
-    <a href="/projects" class="btn btn-secondary">Back to Projects</a>
-  </form>
+    <div class="col-md-6">
+      <div class="card mb-4">
+        <div class="card-header bg-light">Add New Role</div>
+        <div class="card-body">
+          <form method="POST" action="/projects/{{project.id}}/add-role">
+            <div class="mb-3">
+              <label for="newRole" class="form-label">Role Name</label>
+              <input type="text" class="form-control" id="newRole" name="newRole" required>
+            </div>
+            <button type="submit" class="btn btn-outline-danger">Add Role</button>
+            <a href="/projects" class="btn btn-outline-secondary ms-2">Back to Projects</a>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 {{> footer}}
