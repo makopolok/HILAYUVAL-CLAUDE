@@ -13,9 +13,9 @@ async function addProject(project) {
     await client.query('BEGIN');
     // Let DB generate primary key (SERIAL/BIGSERIAL). Return id.
     const insertRes = await client.query(
-      `INSERT INTO projects (name, description, upload_method, created_at, director, production_company)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-      [project.name, project.description, project.uploadMethod, project.createdAt, project.director, project.production_company]
+      `INSERT INTO projects (name, description, upload_method, created_at, director, production_company, player_mode)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+      [project.name, project.description, project.uploadMethod, project.createdAt, project.director, project.production_company, project.player_mode || 'link']
     );
     const newProjectId = insertRes.rows[0].id;
     // Insert roles referencing generated id

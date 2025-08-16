@@ -288,7 +288,7 @@ app.get('/projects/create', (req, res) => {
 // Route to handle project creation
 app.post('/projects/create', async (req, res, next) => { // Added next
   try { // Added try
-    const { name, description, uploadMethod: projectUploadMethod } = req.body;
+  const { name, description, uploadMethod: projectUploadMethod, playerMode } = req.body;
   const effectiveUploadMethod = projectUploadMethod || 'bunny'; // Default to bunny
 
     let rolesInput = req.body.roles;
@@ -400,6 +400,7 @@ app.post('/projects/create', async (req, res, next) => { // Added next
       name,
       description,
       uploadMethod: effectiveUploadMethod,
+      player_mode: playerMode === 'inline' ? 'inline' : 'link',
       roles: finalProjectRoles,
       createdAt: new Date().toISOString(),
       director: req.body.director,
@@ -1209,7 +1210,7 @@ app.post('/audition/:projectId', auditionUpload.fields([
       })
     };
 
-    // Build optional signed Bunny Stream embed URL if signing key provided
+  // Build optional signed Bunny Stream embed URL if signing key provided
   if (videoType === 'bunny_stream' && finalVideoUrl && process.env.BUNNY_STREAM_LIBRARY_ID) {
       try {
         const libId = process.env.BUNNY_STREAM_LIBRARY_ID;
@@ -1245,8 +1246,10 @@ app.post('/audition/:projectId', auditionUpload.fields([
     } else if (videoType === 'bunny_stream') {
       console.log('BUNNY_EMBED_MISSING_ENV: Cannot build embed URL - missing video GUID or library ID');
     }
-  // Inline player toggle
-  submissionData.disable_inline_player = process.env.DISABLE_INLINE_PLAYER === '1';
+  // Inline player toggle: global flag overrides per-project preference
+  const globalDisable = process.env.DISABLE_INLINE_PLAYER === '1';
+  const prefersInline = project && project.player_mode === 'inline';
+  submissionData.disable_inline_player = globalDisable ? true : !prefersInline;
     
     res.render('audition-success', submissionData);
     
@@ -1315,11 +1318,16 @@ app.get('/projects/:projectId/auditions', async (req, res) => {
       };
     });
 
+    // Resolve inline-player behavior: global env can override per-project
+    const disableInlineGlobal = process.env.DISABLE_INLINE_PLAYER === '1';
+    const projectPrefersInline = project.player_mode === 'inline';
+    const disableInlineEffective = disableInlineGlobal ? true : !projectPrefersInline;
+
     res.render('auditions', { 
       project: { ...project, roles: rolesWithAuditions },
       query: req.query,
       bunny_stream_library_id: process.env.BUNNY_STREAM_LIBRARY_ID, // Pass library ID to the template
-      disable_inline_player: process.env.DISABLE_INLINE_PLAYER === '1'
+      disable_inline_player: disableInlineEffective
     });
   } catch (error) {
     console.error(`[App.js GET /projects/:projectId/auditions] Error fetching auditions:`, error);
