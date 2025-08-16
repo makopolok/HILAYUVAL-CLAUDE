@@ -50,7 +50,7 @@ router.get('/projects/:projectId/edit', async (req, res) => {
         // Also fetch deleted roles for Undo/Purge section
         const deletedRolesResult = await pool.query('SELECT * FROM roles WHERE project_id=$1 AND COALESCE(is_deleted, FALSE)=TRUE ORDER BY deleted_at DESC NULLS LAST, id DESC', [projectId]);
         const deletedRoles = deletedRolesResult.rows;
-        res.render('editProject', { project, deletedRoles, message: req.query.msg || null });
+    res.render('editProject', { project, deletedRoles });
     } catch (err) {
         console.error('PROJECT_EDIT_ROUTE_ERROR:', err);
         res.status(500).render('error/500', { message: 'Failed to load project editor.' });
@@ -63,7 +63,8 @@ router.post('/projects/:projectId/add-role', async (req, res) => {
         const projectId = req.params.projectId;
         const roleName = (req.body.newRole || '').toString().trim();
         if (!roleName) {
-            return res.redirect(`/projects/${projectId}/edit?msg=${encodeURIComponent('Role name is required')}`);
+            req.flash('error', 'Role name is required');
+            return res.redirect(`/projects/${projectId}/edit`);
         }
                 const project = await projectService.getProjectById(projectId);
         if (!project) {
@@ -71,7 +72,8 @@ router.post('/projects/:projectId/add-role', async (req, res) => {
         }
                 const exists = Array.isArray(project.roles) && project.roles.some(r => (r.name || '').toLowerCase() === roleName.toLowerCase());
                 if (exists) {
-                        return res.redirect(`/projects/${projectId}/edit?msg=${encodeURIComponent('Role already exists')}`);
+                        req.flash('error', 'Role already exists');
+                        return res.redirect(`/projects/${projectId}/edit`);
                 }
                 // If there is a soft-deleted role with the same name, restore it instead of creating a duplicate row
                 const deletedByName = await pool.query(
@@ -82,14 +84,16 @@ router.post('/projects/:projectId/add-role', async (req, res) => {
                     const roleId = deletedByName.rows[0].id;
                     try {
                         await projectService.restoreRole(projectId, roleId);
-                        return res.redirect(`/projects/${projectId}/edit?msg=${encodeURIComponent('Role restored from Trash')}`);
+                        req.flash('success', 'Role restored from Trash');
+                        return res.redirect(`/projects/${projectId}/edit`);
                     } catch (e) {
                         // Fall back to create if restore fails for unexpected reason
                         console.warn('ADD_ROLE_RESTORE_FAILED_FALLBACK_CREATE:', e.message);
                     }
                 }
                 await projectService.addRoleToProject(projectId, { name: roleName, playlistId: null });
-                return res.redirect(`/projects/${projectId}/edit?msg=${encodeURIComponent('Role added')}`);
+                req.flash('success', 'Role added');
+                return res.redirect(`/projects/${projectId}/edit`);
     } catch (err) {
         console.error('PROJECT_ADD_ROLE_ROUTE_ERROR:', err);
         res.status(500).render('error/500', { message: 'Failed to add role.' });
@@ -102,14 +106,17 @@ router.post('/projects/:projectId/roles/:roleId/rename', async (req, res) => {
         const { projectId, roleId } = req.params;
         const newName = (req.body.newName || '').toString().trim();
         if (!newName) {
-            return res.redirect(`/projects/${projectId}/edit?msg=${encodeURIComponent('New name is required')}`);
+            req.flash('error', 'New name is required');
+            return res.redirect(`/projects/${projectId}/edit`);
         }
         await projectService.renameRole(projectId, roleId, newName);
-        return res.redirect(`/projects/${projectId}/edit?msg=${encodeURIComponent('Role renamed')}`);
+    req.flash('success', 'Role renamed');
+    return res.redirect(`/projects/${projectId}/edit`);
     } catch (err) {
         console.error('PROJECT_RENAME_ROLE_ROUTE_ERROR:', err);
-        const msg = err && err.message ? err.message : 'Failed to rename role';
-        res.redirect(`/projects/${req.params.projectId}/edit?msg=${encodeURIComponent(msg)}`);
+    const msg = err && err.message ? err.message : 'Failed to rename role';
+    req.flash('error', msg);
+    res.redirect(`/projects/${req.params.projectId}/edit`);
     }
 });
 
@@ -118,10 +125,12 @@ router.post('/projects/:projectId/roles/:roleId/delete', async (req, res) => {
     try {
         const { projectId, roleId } = req.params;
         await projectService.deleteRole(projectId, roleId);
-        return res.redirect(`/projects/${projectId}/edit?msg=${encodeURIComponent('Role moved to trash')}`);
+    req.flash('success', 'Role moved to Trash');
+    return res.redirect(`/projects/${projectId}/edit`);
     } catch (err) {
         console.error('PROJECT_DELETE_ROLE_ROUTE_ERROR:', err);
-        res.redirect(`/projects/${req.params.projectId}/edit?msg=${encodeURIComponent('Failed to delete role')}`);
+    req.flash('error', 'Failed to delete role');
+    res.redirect(`/projects/${req.params.projectId}/edit`);
     }
 });
 
@@ -130,12 +139,14 @@ router.post('/projects/:projectId/roles/:roleId/restore', async (req, res) => {
     try {
         const { projectId, roleId } = req.params;
         const ok = await projectService.restoreRole(projectId, roleId);
-        const msg = ok ? 'Role restored' : 'Role not found or not deleted';
-        return res.redirect(`/projects/${projectId}/edit?msg=${encodeURIComponent(msg)}`);
+    const msg = ok ? 'Role restored' : 'Role not found or not deleted';
+    req.flash(ok ? 'success' : 'error', msg);
+    return res.redirect(`/projects/${projectId}/edit`);
     } catch (err) {
         console.error('PROJECT_RESTORE_ROLE_ROUTE_ERROR:', err);
-        const msg = err && err.message ? err.message : 'Failed to restore role';
-        res.redirect(`/projects/${req.params.projectId}/edit?msg=${encodeURIComponent(msg)}`);
+    const msg = err && err.message ? err.message : 'Failed to restore role';
+    req.flash('error', msg);
+    res.redirect(`/projects/${req.params.projectId}/edit`);
     }
 });
 
@@ -144,9 +155,11 @@ router.post('/projects/:projectId/roles/:roleId/purge', async (req, res) => {
     try {
         const { projectId, roleId } = req.params;
         await projectService.purgeRole(projectId, roleId);
-        return res.redirect(`/projects/${projectId}/edit?msg=${encodeURIComponent('Role permanently deleted')}`);
+    req.flash('success', 'Role permanently deleted');
+    return res.redirect(`/projects/${projectId}/edit`);
     } catch (err) {
         console.error('PROJECT_PURGE_ROLE_ROUTE_ERROR:', err);
-        res.redirect(`/projects/${req.params.projectId}/edit?msg=${encodeURIComponent('Failed to permanently delete role')}`);
+    req.flash('error', 'Failed to permanently delete role');
+    res.redirect(`/projects/${req.params.projectId}/edit`);
     }
 });

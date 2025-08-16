@@ -19,6 +19,8 @@ const portfolioRoutes = require('./routes/portfolio'); // Define portfolioRoutes
 // Import DB health check
 const { checkDbConnection } = require('./services/auditionService');
 const bunnyService = require('./services/bunnyUploadService');
+const session = require('express-session');
+const flash = require('connect-flash');
 
 // Add a version log at the top for deployment verification
 console.log('INFO: app.js version 2025-06-08_2100_DEBUG running');
@@ -89,6 +91,23 @@ app.use(express.urlencoded({
 }));
 // Serve static files from the "public" directory
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Sessions + flash messages
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'change-me',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { sameSite: 'lax' }
+}));
+app.use(flash());
+app.use((req, res, next) => {
+  res.locals.flash = {
+    success: req.flash('success'),
+    error: req.flash('error'),
+    info: req.flash('info')
+  };
+  next();
+});
 
 // Configure multer with comprehensive file size and type restrictions
 const multerConfig = {
