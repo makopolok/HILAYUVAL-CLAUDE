@@ -109,6 +109,43 @@ app.use((req, res, next) => {
   next();
 });
 
+// Proxy-serving uploaded images from Bunny Storage when no CDN is configured
+// This allows using relative URLs like /images/<filename> for uploaded profile pictures.
+app.get('/images/:file', async (req, res) => {
+  try {
+    const file = (req.params.file || '').replace(/[^A-Za-z0-9._-]/g, '');
+    if (!file) return res.status(400).send('Bad file name');
+    const zone = process.env.BUNNY_STORAGE_ZONE;
+    const key = process.env.BUNNY_API_KEY;
+    const cdnBase = process.env.BUNNY_CDN_BASE_URL;
+    // If a CDN base is configured, redirect to the CDN URL (faster + cached)
+    if (cdnBase) {
+      const url = `${cdnBase.replace(/\/$/, '')}/images/${file}`;
+      return res.redirect(302, url);
+    }
+    if (!zone || !key) return res.status(404).send('Not found');
+    const axios = require('axios');
+    const upstream = `https://storage.bunnycdn.com/${zone}/images/${file}`;
+    const upstreamResp = await axios.get(upstream, {
+      responseType: 'stream',
+      headers: { 'AccessKey': key },
+      validateStatus: () => true,
+    });
+    if (upstreamResp.status !== 200) {
+      return res.status(404).send('Not found');
+    }
+    // Pass through content-type if provided
+    const contentType = upstreamResp.headers['content-type'] || 'application/octet-stream';
+    res.setHeader('Content-Type', contentType);
+    // Cache for 7 days at edge and browser
+    res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+    upstreamResp.data.pipe(res);
+  } catch (e) {
+    console.error('IMAGE_PROXY_ERROR:', e.message);
+    res.status(500).send('Server error');
+  }
+});
+
 // Configure multer with comprehensive file size and type restrictions
 const multerConfig = {
   dest: 'uploads/',
