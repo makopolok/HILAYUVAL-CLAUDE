@@ -113,19 +113,26 @@ app.use((req, res, next) => {
 // This allows using relative URLs like /images/<filename> for uploaded profile pictures.
 app.get('/images/:file', async (req, res) => {
   try {
-    const file = (req.params.file || '').replace(/[^A-Za-z0-9._-]/g, '');
-    if (!file) return res.status(400).send('Bad file name');
+    // Accept the raw filename (Express decodes %20 etc.)
+    const raw = (req.params.file || '');
+    // Basic safety: disallow path separators and traversal patterns
+    if (!raw || raw.includes('/') || raw.includes('\\') || raw.includes('..')) {
+      return res.status(400).send('Bad file name');
+    }
+    // Re-encode for upstream URL (handles spaces and unicode safely)
+    const safeEncoded = encodeURIComponent(raw);
+
     const zone = process.env.BUNNY_STORAGE_ZONE;
     const key = process.env.BUNNY_API_KEY;
     const cdnBase = process.env.BUNNY_CDN_BASE_URL;
     // If a CDN base is configured, redirect to the CDN URL (faster + cached)
     if (cdnBase) {
-      const url = `${cdnBase.replace(/\/$/, '')}/images/${file}`;
+      const url = `${cdnBase.replace(/\/$/, '')}/images/${encodeURIComponent(raw)}`;
       return res.redirect(302, url);
     }
     if (!zone || !key) return res.status(404).send('Not found');
     const axios = require('axios');
-    const upstream = `https://storage.bunnycdn.com/${zone}/images/${file}`;
+    const upstream = `https://storage.bunnycdn.com/${zone}/images/${safeEncoded}`;
     const upstreamResp = await axios.get(upstream, {
       responseType: 'stream',
       headers: { 'AccessKey': key },
@@ -196,30 +203,112 @@ app.get('/health/db', async (req, res) => {
 
 // API: Create a Bunny video stub and return upload info for direct browser upload
 // This avoids routing the large file through Heroku. The client will PUT the file directly to Bunny.
+// SECURE VERSION: Uses secureUploadService to avoid exposing API keys
+const secureUploadService = require('./services/secureUploadService');
+
 app.post('/api/videos', async (req, res) => {
   try {
     const title = (req.query.title || req.body?.title || '').toString().slice(0, 200) || `audition_${Date.now()}`;
-    const created = await bunnyService.createVideo(title);
-    const libId = process.env.BUNNY_STREAM_LIBRARY_ID;
-    // Bunny simple direct upload endpoint: PUT the raw file to /videos/{guid}
-    const uploadUrl = `https://video.bunnycdn.com/library/${libId}/videos/${created.guid}`;
-    // Return minimal info; DO NOT return AccessKey
-    res.json({ guid: created.guid, title: created.title, uploadUrl });
+    // Use the secure service that doesn't expose API keys
+    const created = await secureUploadService.createSecureUploadSession(title);
+    res.json(created);
   } catch (e) {
     console.error('API /api/videos create error:', e.message);
     res.status(500).json({ error: 'Failed to create Bunny video' });
   }
 });
 
+// Secure proxy endpoint for Bunny.net upload authorization
+// Client will call this to get a signed upload token for each chunk
+app.post('/api/videos/:guid/auth', async (req, res) => {
+  try {
+    const { guid } = req.params;
+    if (!guid) {
+      return res.status(400).json({ error: 'Missing video GUID' });
+    }
+
+    // Return a token the client can use to authenticate its upload
+    // This is much more secure than exposing the API key
+    const token = Math.random().toString(36).substring(2, 15) + 
+                  Math.random().toString(36).substring(2, 15) + 
+                  Date.now().toString();
+    
+    // Store this token briefly in the session for validation
+    if (!req.session.uploadTokens) req.session.uploadTokens = {};
+    req.session.uploadTokens[guid] = {
+      token,
+      expires: Date.now() + (10 * 60 * 1000) // 10 minutes
+    };
+    
+    res.json({ 
+      token,
+      guid,
+      expires: req.session.uploadTokens[guid].expires
+    });
+  } catch (e) {
+    console.error('API /api/videos/auth error:', e.message);
+    res.status(500).json({ error: 'Failed to generate upload token' });
+  }
+});
+
+// Secure proxy endpoint for Bunny.net uploads
+// All uploads go through here instead of directly to Bunny
+app.put('/api/upload/:guid', async (req, res) => {
+  const { guid } = req.params;
+  const token = req.headers['x-upload-token'];
+  const contentType = req.headers['content-type'] || 'application/octet-stream';
+  const contentLength = req.headers['content-length'];
+  const range = req.headers['content-range'];
+  
+  // Validate the upload token
+  if (!req.session.uploadTokens || 
+      !req.session.uploadTokens[guid] ||
+      req.session.uploadTokens[guid].token !== token ||
+      req.session.uploadTokens[guid].expires < Date.now()) {
+    return res.status(401).json({ error: 'Invalid or expired upload token' });
+  }
+
+  try {
+    // Get secure headers from the service (API key never leaves the server)
+    const secureHeaders = secureUploadService.getSecureUploadHeaders(guid);
+    const libId = process.env.BUNNY_STREAM_LIBRARY_ID;
+    const uploadUrl = `https://video.bunnycdn.com/library/${libId}/videos/${guid}`;
+
+    // Proxy the request to Bunny.net with proper authentication
+    const bunnyResponse = await axios({
+      method: 'PUT',
+      url: uploadUrl,
+      data: req,
+      headers: {
+        ...secureHeaders,
+        'Content-Type': contentType,
+        'Content-Length': contentLength,
+        ...(range && { 'Content-Range': range })
+      },
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity
+    });
+
+    // Return the Bunny.net response to the client
+    res.status(bunnyResponse.status || 200).json(bunnyResponse.data || {});
+  } catch (error) {
+    console.error('Secure upload proxy error:', error.message);
+    const status = error.response?.status || 500;
+    res.status(status).json({ 
+      error: 'Upload failed',
+      message: error.message
+    });
+  }
+});
+
 // Route to render audition submission form
 app.get('/audition', (req, res) => {
   const libId = process.env.BUNNY_STREAM_LIBRARY_ID || '';
-  const expose = process.env.DIRECT_UPLOAD_EXPOSE_KEY === '1';
+  // No longer exposing API key - using secure proxy instead
   res.render('audition', {
     bunny_stream_library_id: libId,
-  upload_method: 'bunny',
-    bunny_video_access_key: expose ? (process.env.BUNNY_VIDEO_API_KEY || '') : null,
-    direct_upload_exposed: expose
+    upload_method: 'bunny',
+    direct_upload_enabled: true // Enable direct upload through secure proxy
   });
 });
 
@@ -517,13 +606,12 @@ app.get('/audition/:projectId', async (req, res) => {
     return res.status(404).send('Project not found.');
   }
   const libId = process.env.BUNNY_STREAM_LIBRARY_ID || '';
-  const expose = process.env.DIRECT_UPLOAD_EXPOSE_KEY === '1';
+  // No longer exposing API key - using secure proxy instead
   res.render('audition', { 
     project,
     bunny_stream_library_id: libId,
-  upload_method: project && project.uploadMethod ? project.uploadMethod : 'bunny',
-    bunny_video_access_key: expose ? (process.env.BUNNY_VIDEO_API_KEY || '') : null,
-  direct_upload_exposed: expose
+    upload_method: project && project.uploadMethod ? project.uploadMethod : 'bunny',
+    direct_upload_enabled: true // Enable direct upload through secure proxy
   });
 });
 
