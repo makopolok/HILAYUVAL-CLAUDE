@@ -218,84 +218,89 @@ app.post('/api/videos', async (req, res) => {
   }
 });
 
-// Secure proxy endpoint for Bunny.net upload authorization
-// Client will call this to get a signed upload token for each chunk
-app.post('/api/videos/:guid/auth', async (req, res) => {
+// Secure API endpoints for token-based upload authentication
+// Create a secure upload session with temporary token
+app.post('/api/secure-upload/create', async (req, res) => {
+  try {
+    const title = (req.body?.title || '').toString().slice(0, 200) || `upload_${Date.now()}`;
+    
+    // Create the secure upload session via our service
+    const session = await secureUploadService.createSecureUploadSession(title);
+    
+    // Return only what the client needs (no API keys)
+    res.json({
+      guid: session.guid,
+      title: session.title,
+      uploadUrl: `/api/secure-upload/${session.guid}`,
+      uploadToken: session.uploadToken,
+      expires: session.tokenExpires
+    });
+  } catch (error) {
+    console.error('Create secure upload session error:', error);
+    res.status(500).json({ 
+      error: 'Failed to create upload session',
+      message: error.message
+    });
+  }
+});
+
+// Secure endpoint for uploading video content with token authentication
+app.put('/api/secure-upload/:guid', async (req, res) => {
+  try {
+    const { guid } = req.params;
+    const token = req.headers['x-upload-token'];
+    const contentType = req.headers['content-type'] || 'application/octet-stream';
+    const contentLength = req.headers['content-length'];
+    const range = req.headers['content-range'];
+    
+    // Verify the upload token is valid for this GUID
+    const isValid = await secureUploadService.verifyUploadToken(guid, token);
+    if (!isValid) {
+      return res.status(401).json({ error: 'Invalid or expired upload token' });
+    }
+    
+    // Forward the upload to Bunny.net with server-side authentication
+    const result = await secureUploadService.proxyUpload(guid, req, {
+      contentType,
+      contentLength,
+      contentRange: range
+    });
+    
+    // Return the result to the client
+    res.status(result.status || 200).json(result.data || {});
+  } catch (error) {
+    console.error('Secure upload proxy error:', error);
+    const status = error.response?.status || 500;
+    res.status(status).json({
+      error: 'Upload failed',
+      message: error.message
+    });
+  }
+});
+
+// Check video processing status
+app.get('/api/video/:guid/status', async (req, res) => {
   try {
     const { guid } = req.params;
     if (!guid) {
       return res.status(400).json({ error: 'Missing video GUID' });
     }
-
-    // Return a token the client can use to authenticate its upload
-    // This is much more secure than exposing the API key
-    const token = Math.random().toString(36).substring(2, 15) + 
-                  Math.random().toString(36).substring(2, 15) + 
-                  Date.now().toString();
     
-    // Store this token briefly in the session for validation
-    if (!req.session.uploadTokens) req.session.uploadTokens = {};
-    req.session.uploadTokens[guid] = {
-      token,
-      expires: Date.now() + (10 * 60 * 1000) // 10 minutes
-    };
+    // Use the secure service to check status (no API keys exposed)
+    const status = await secureUploadService.getVideoStatus(guid);
     
-    res.json({ 
-      token,
+    res.json({
       guid,
-      expires: req.session.uploadTokens[guid].expires
+      status: status.status || 'unknown',
+      encodingProgress: status.encodingProgress,
+      ready: status.status === 'ready',
+      thumbnail: status.thumbnailUrl,
+      length: status.length
     });
-  } catch (e) {
-    console.error('API /api/videos/auth error:', e.message);
-    res.status(500).json({ error: 'Failed to generate upload token' });
-  }
-});
-
-// Secure proxy endpoint for Bunny.net uploads
-// All uploads go through here instead of directly to Bunny
-app.put('/api/upload/:guid', async (req, res) => {
-  const { guid } = req.params;
-  const token = req.headers['x-upload-token'];
-  const contentType = req.headers['content-type'] || 'application/octet-stream';
-  const contentLength = req.headers['content-length'];
-  const range = req.headers['content-range'];
-  
-  // Validate the upload token
-  if (!req.session.uploadTokens || 
-      !req.session.uploadTokens[guid] ||
-      req.session.uploadTokens[guid].token !== token ||
-      req.session.uploadTokens[guid].expires < Date.now()) {
-    return res.status(401).json({ error: 'Invalid or expired upload token' });
-  }
-
-  try {
-    // Get secure headers from the service (API key never leaves the server)
-    const secureHeaders = secureUploadService.getSecureUploadHeaders(guid);
-    const libId = process.env.BUNNY_STREAM_LIBRARY_ID;
-    const uploadUrl = `https://video.bunnycdn.com/library/${libId}/videos/${guid}`;
-
-    // Proxy the request to Bunny.net with proper authentication
-    const bunnyResponse = await axios({
-      method: 'PUT',
-      url: uploadUrl,
-      data: req,
-      headers: {
-        ...secureHeaders,
-        'Content-Type': contentType,
-        'Content-Length': contentLength,
-        ...(range && { 'Content-Range': range })
-      },
-      maxContentLength: Infinity,
-      maxBodyLength: Infinity
-    });
-
-    // Return the Bunny.net response to the client
-    res.status(bunnyResponse.status || 200).json(bunnyResponse.data || {});
   } catch (error) {
-    console.error('Secure upload proxy error:', error.message);
-    const status = error.response?.status || 500;
-    res.status(status).json({ 
-      error: 'Upload failed',
+    console.error('Video status check error:', error);
+    res.status(500).json({
+      error: 'Failed to check video status',
       message: error.message
     });
   }

@@ -289,6 +289,9 @@
 </div>
 
 {{> footer}}
+<!-- Load the secure uploader script -->
+<script src="/js/secure-upload.js"></script>
+
 <script>
 // File size constants (matching backend limits)
 const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
@@ -322,42 +325,6 @@ function validateVideoType(file) {
 
 function validateImageType(file) {
   return IMAGE_TYPES.includes(file.type);
-}
-
-// Video file handling
-function handleVideoSelection(event) {
-  const file = event.target.files[0];
-  const preview = document.getElementById('video-preview');
-  
-  if (!file) {
-    preview.classList.add('d-none');
-    return;
-  }
-
-  // Validate file type
-  if (!validateVideoType(file)) {
-    showFileError('video', 'Please select a valid video file (MP4, MOV, AVI, WMV, FLV, WebM, MKV)');
-    event.target.value = '';
-    preview.classList.add('d-none');
-    return;
-  }
-
-  // Validate file size
-  if (!validateFileSize(file)) {
-    showFileError('video', `Video file is too large (${formatFileSize(file.size)}). Maximum size is 500MB.`);
-    event.target.value = '';
-    preview.classList.add('d-none');
-    return;
-  }
-
-  // Show preview
-  document.getElementById('video-name').textContent = file.name;
-  document.getElementById('video-size').textContent = formatFileSize(file.size);
-  document.getElementById('video-type').textContent = file.type;
-  preview.classList.remove('d-none');
-  
-  // Clear any previous errors
-  clearFileError('video');
 }
 
 // Profile pictures handling
@@ -464,56 +431,96 @@ function clearFileError(fieldName) {
 function clearVideoSelection() {
   document.getElementById('video').value = '';
   document.getElementById('video-preview').classList.add('d-none');
+  document.getElementById('video_url').value = ''; // Clear the hidden input for video URL
   clearFileError('video');
+}
+
+// Initialize secure uploader
+function initializeSecureUploader() {
+  // Add a hidden input for the video URL
+  const form = document.getElementById('audition-form');
+  const videoUrlInput = document.createElement('input');
+  videoUrlInput.type = 'hidden';
+  videoUrlInput.id = 'video_url';
+  videoUrlInput.name = 'video_url';
+  form.appendChild(videoUrlInput);
+  
+  // Create the secure uploader instance
+  const uploader = initSecureUploader({
+    fileInputId: 'video',
+    progressElementId: 'upload-progress',
+    statusElementId: 'upload-progress-text',
+    videoIdInputId: 'video_url',
+    formId: 'audition-form',
+    submitButtonId: 'submit-btn',
+    titlePrefix: 'Audition'
+  });
+  
+  // Update the loading overlay progress when upload progress changes
+  uploader.options.onProgress = (percent) => {
+    document.getElementById('overlay-upload-progress-bar').style.width = `${percent}%`;
+    document.getElementById('overlay-upload-progress-text').textContent = `${percent}%`;
+    document.getElementById('upload-progress-text').textContent = `${percent}%`;
+    document.getElementById('upload-progress').value = percent;
+    
+    // Show the direct upload UI when upload starts
+    if (percent > 0) {
+      document.getElementById('direct-upload-ui').classList.remove('d-none');
+    }
+  };
 }
 
 // Enhanced form submission with upload progress
 function enhanceFormSubmission() {
   const form = document.querySelector('.needs-validation');
-  const originalSubmit = form.onsubmit;
   
   form.addEventListener('submit', function(event) {
-    // Run original validation first
-    if (!form.checkValidity()) {
-      event.preventDefault();
-      event.stopPropagation();
-      form.classList.add('was-validated');
-      return;
+    // Only run this validation if we're not already handling video upload via the secure uploader
+    if (!document.getElementById('video_url').value) {
+      // Run original validation first
+      if (!form.checkValidity()) {
+        event.preventDefault();
+        event.stopPropagation();
+        form.classList.add('was-validated');
+        return;
+      }
+
+      // Check for file validation errors
+      const fileErrors = form.querySelectorAll('.file-error');
+      if (fileErrors.length > 0) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+
+      // Only show loading overlay for form submission with profile pictures
+      // (video is handled by secure uploader)
+      const profileFiles = document.getElementById('profile_pictures').files;
+      
+      let totalSize = 0;
+      if (profileFiles) {
+        Array.from(profileFiles).forEach(file => totalSize += file.size);
+      }
+
+      // Update loading message based on file sizes
+      if (totalSize > 0) {
+        if (totalSize > 100 * 1024 * 1024) { // > 100MB
+          updateLoadingMessage('Large files detected. This may take several minutes...', totalSize);
+        } else if (totalSize > 10 * 1024 * 1024) { // > 10MB
+          updateLoadingMessage('Uploading files. Please wait...', totalSize);
+        }
+
+        // Show loading overlay
+        document.getElementById('loading-overlay').classList.remove('d-none');
+      }
+      
+      document.getElementById('submit-text').classList.add('d-none');
+      document.getElementById('submit-spinner').classList.remove('d-none');
+      document.getElementById('submit-btn').disabled = true;
+
+      // Prevent multiple submissions
+      form.querySelector('button[type="submit"]').style.pointerEvents = 'none';
     }
-
-    // Check for file validation errors
-    const fileErrors = form.querySelectorAll('.file-error');
-    if (fileErrors.length > 0) {
-      event.preventDefault();
-      event.stopPropagation();
-      return;
-    }
-
-    // Show enhanced loading overlay for large files
-    const videoFile = document.getElementById('video').files[0];
-    const profileFiles = document.getElementById('profile_pictures').files;
-    
-    let totalSize = 0;
-    if (videoFile) totalSize += videoFile.size;
-    if (profileFiles) {
-      Array.from(profileFiles).forEach(file => totalSize += file.size);
-    }
-
-    // Update loading message based on file sizes
-    if (totalSize > 100 * 1024 * 1024) { // > 100MB
-      updateLoadingMessage('Large files detected. This may take several minutes...', totalSize);
-    } else if (totalSize > 10 * 1024 * 1024) { // > 10MB
-      updateLoadingMessage('Uploading files. Please wait...', totalSize);
-    }
-
-    // Show loading overlay
-    document.getElementById('loading-overlay').classList.remove('d-none');
-    document.getElementById('submit-text').classList.add('d-none');
-    document.getElementById('submit-spinner').classList.remove('d-none');
-    document.getElementById('submit-btn').disabled = true;
-
-    // Prevent multiple submissions
-    form.querySelector('button[type="submit"]').style.pointerEvents = 'none';
   });
 }
 
@@ -526,14 +533,11 @@ function updateLoadingMessage(message, totalSize) {
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
-  // Attach file handlers
-  const videoInput = document.getElementById('video');
+  // Initialize the secure uploader
+  initializeSecureUploader();
+  
+  // Attach profile pictures handler
   const profileInput = document.getElementById('profile_pictures');
-  
-  if (videoInput) {
-    videoInput.addEventListener('change', handleVideoSelection);
-  }
-  
   if (profileInput) {
     profileInput.addEventListener('change', handleProfilePicturesSelection);
   }

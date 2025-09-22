@@ -90,8 +90,10 @@ module.exports = {
       fs.unlinkSync(imageFile.path);
       if (res.status === 201 || res.status === 200) {
           const fileName = path.basename(uploadUrl);
-          // If a CDN base is configured, build absolute URL; otherwise return relative path
-          const publicUrl = BUNNY_CDN_BASE_URL ? `${BUNNY_CDN_BASE_URL}/images/${fileName}` : `/images/${fileName}`;
+          // If a CDN base is configured, build absolute URL; otherwise return relative path.
+          // Encode only the file name segment to safely handle spaces/unicode while keeping path readable.
+          const encodedFileName = encodeURIComponent(fileName);
+          const publicUrl = BUNNY_CDN_BASE_URL ? `${BUNNY_CDN_BASE_URL}/images/${encodedFileName}` : `/images/${encodedFileName}`;
           return {
             url: publicUrl,
             id: fileName
