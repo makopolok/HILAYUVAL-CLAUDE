@@ -45,8 +45,25 @@
         // Show the manual submit button when upload completes
         if (percent === 100) {
           setTimeout(() => {
-            document.getElementById('manual-submit-container').classList.remove('d-none');
-          }, 5000); // Show after 5 seconds to give time for processing
+            const manualSubmitContainer = document.getElementById('manual-submit-container');
+            if (manualSubmitContainer) {
+              manualSubmitContainer.classList.remove('d-none');
+            }
+            
+            // Also make the upload-status-complete visible to show the submit button there
+            setTimeout(() => {
+              const uploadStatusComplete = document.getElementById('upload-status-complete');
+              if (uploadStatusComplete) {
+                uploadStatusComplete.classList.remove('d-none');
+                
+                // Highlight the continue button with animation
+                const continueBtn = document.getElementById('continue-submit-btn');
+                if (continueBtn) {
+                  continueBtn.classList.add('shadow-pulse');
+                }
+              }
+            }, 1000);
+          }, 3000); // Show after 3 seconds to give time for processing
         }
       }; project-specific, /audition for generic --}}
   <form id="audition-form" action="{{#if project}}/audition/{{project.id}}{{else}}/audition{{/if}}" method="POST" enctype="multipart/form-data" class="needs-validation" novalidate data-upload-method="{{upload_method}}" data-bunny-library-id="{{bunny_stream_library_id}}">
@@ -246,9 +263,12 @@
                             <i class="fas fa-check-circle me-2"></i>
                             <span class="fw-bold">Video Ready!</span>
                           </div>
+                          <div class="alert alert-success py-2 mt-2">
+                            <p class="small mb-1">Your video has been uploaded successfully and is ready for submission.</p>
+                          </div>
                           <div class="d-flex justify-content-end mt-2">
-                            <button id="continue-submit-btn" type="button" class="btn btn-success btn-sm">
-                              <i class="fas fa-check-circle me-1"></i>Submit Audition
+                            <button id="continue-submit-btn" type="button" class="btn btn-success">
+                              <i class="fas fa-check-circle me-1"></i>Submit Audition Now
                             </button>
                           </div>
                         </div>
@@ -773,6 +793,14 @@ function initializeSecureUploader() {
         if (percent < 100) {
           // Disable during active upload
           submitButton.disabled = true;
+        } else if (percent === 100) {
+          // Re-enable and style for completion
+          setTimeout(() => {
+            submitButton.disabled = false;
+            submitButton.innerHTML = '<i class="fas fa-check-circle me-2"></i>Submit Audition';
+            submitButton.classList.remove('btn-primary');
+            submitButton.classList.add('btn-success');
+          }, 2000);
         }
       }
     },
@@ -807,24 +835,37 @@ function initializeSecureUploader() {
         // Update action buttons
         const actionButtons = document.getElementById('overlay-action-buttons');
         if (actionButtons) {
-          actionButtons.innerHTML = `
-            <button id="overlay-submit-btn" class="btn btn-success">
-              <i class="fas fa-check-circle me-1"></i>Submit Audition Now
-            </button>
-          `;
-          
-          // Add event listener to submit button
-          setTimeout(() => {
-            const submitNowBtn = document.getElementById('overlay-submit-btn');
-            if (submitNowBtn) {
-              submitNowBtn.addEventListener('click', () => {
-                loadingOverlay.classList.add('d-none');
-                document.getElementById('audition-form').submit();
-              });
-            }
-          }, 100);
-          
-          // Auto-hide overlay after 3 seconds unless user interacted with it
+              actionButtons.innerHTML = `
+                <button id="overlay-submit-btn" class="btn btn-success">
+                  <i class="fas fa-check-circle me-1"></i>Submit Audition Now
+                </button>
+              `;
+              
+              // Add event listener to submit button
+              setTimeout(() => {
+                const submitNowBtn = document.getElementById('overlay-submit-btn');
+                if (submitNowBtn) {
+                  submitNowBtn.addEventListener('click', () => {
+                    loadingOverlay.classList.add('d-none');
+                    
+                    // Force form submission
+                    console.log("Force submitting form from overlay button...");
+                    const form = document.getElementById('audition-form');
+                    
+                    // First try direct submit
+                    if (form) {
+                      try {
+                        form.submit();
+                      } catch (e) {
+                        console.error("Form submit failed, trying forceFormSubmission", e);
+                        if (typeof forceFormSubmission === 'function') {
+                          forceFormSubmission();
+                        }
+                      }
+                    }
+                  });
+                }
+              }, 100);          // Auto-hide overlay after 3 seconds unless user interacted with it
           setTimeout(() => {
             if (!loadingOverlay.dataset.userInteracted) {
               loadingOverlay.classList.add('d-none');
@@ -859,7 +900,7 @@ function initializeSecureUploader() {
         overlayBar.style.width = '100%';
       }
       
-      // Update status messages
+          // Update status messages
       document.getElementById('upload-status-uploading').classList.add('d-none');
       document.getElementById('upload-status-processing').classList.add('d-none');
       document.getElementById('upload-status-complete').classList.remove('d-none');
@@ -871,20 +912,58 @@ function initializeSecureUploader() {
         submitButton.classList.remove('btn-secondary');
         submitButton.classList.add('btn-success');
         submitButton.innerHTML = '<i class="fas fa-check-circle me-2"></i>Submit Audition';
-      }
-      
-      // Add event listener to the continue button
+        
+        // Force form to submit when clicked
+        submitButton.onclick = function(e) {
+          e.preventDefault();
+          const form = document.getElementById('audition-form');
+          if (form) {
+            console.log("Force submitting form...");
+            form.submit();
+          }
+        };
+      }      // Add event listener to the continue button
       const continueButton = document.getElementById('continue-submit-btn');
       if (continueButton) {
-        continueButton.addEventListener('click', function() {
+        // Remove any existing event listeners
+        continueButton.replaceWith(continueButton.cloneNode(true));
+        
+        // Get the fresh reference and add event listener
+        const freshContinueButton = document.getElementById('continue-submit-btn');
+        freshContinueButton.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('Continue submit button clicked');
+          
           const form = document.getElementById('audition-form');
           if (form) {
             // Show submission in progress
             showSubmissionInProgress();
-            // Submit the form
-            form.submit();
+            
+            // Force the form submission with a slight delay to ensure UI updates first
+            setTimeout(() => {
+              try {
+                // First try regular submit
+                form.submit();
+              } catch (err) {
+                console.error('Form submit failed, using backup method', err);
+                // Use backup submission method
+                if (typeof forceFormSubmission === 'function') {
+                  forceFormSubmission();
+                }
+              }
+            }, 200);
           }
         });
+        
+        // Make button more prominent
+        freshContinueButton.classList.remove('btn-sm');
+        freshContinueButton.classList.add('btn-lg');
+        
+        // Highlight the button with animation
+        setTimeout(() => {
+          freshContinueButton.classList.add('shadow-pulse');
+        }, 300);
       }
     },
     
@@ -958,11 +1037,17 @@ function enhanceFormSubmission() {
   };
   
   form.addEventListener('submit', function(event) {
+    console.log('Form submission initiated');
+    
     // For debugging: log all form data
     const formData = new FormData(form);
     const formDataObj = {};
     for (let [key, value] of formData.entries()) {
-      formDataObj[key] = value;
+      if (typeof value === 'string') {
+        formDataObj[key] = value;
+      } else {
+        formDataObj[key] = '[File or non-string data]';
+      }
     }
     console.log('Form data being submitted:', formDataObj);
     
@@ -978,6 +1063,13 @@ function enhanceFormSubmission() {
       videoUrl,
       uploaderInitialized: window.uploaderInitialized || false 
     });
+    
+    // Special case - if we have a video URL but the form is being force-submitted
+    if (hasVideoId && event.submitter && event.submitter.id === 'continue-submit-btn') {
+      console.log('Force submission from continue button detected with video ID');
+      showSubmissionInProgress();
+      return true; // Allow submission without further validation
+    }
     
     // Perform custom phone validation
     const phoneInput = document.getElementById('phone');
@@ -1006,8 +1098,11 @@ function enhanceFormSubmission() {
           console.log(`Invalid field: ${field.id || field.name} - ${field.validationMessage}`);
         });
         
-        return;
+        return false;
       }
+      
+      // Show submission in progress UI
+      showSubmissionInProgress();
       return true; // Allow submission
     }
     
@@ -1027,15 +1122,16 @@ function enhanceFormSubmission() {
           console.log(`Invalid field: ${field.id || field.name} - ${field.validationMessage}`);
         });
         
-        return;
+        return false;
       }
       
       // Show submission in progress UI
       showSubmissionInProgress();
+      console.log('Form validated and ready to submit with video ID');
       return true; // Allow submission
     }
     
-    // CASE 4: User selected video file but no ID yet (upload completed but processing failed)
+    // CASE 4: User selected video file but no ID yet (upload not complete or processing failed)
     console.log('Video selected but no ID, checking if upload is still in progress');
     
     const progressElement = document.getElementById('upload-progress');
@@ -1044,15 +1140,76 @@ function enhanceFormSubmission() {
                            parseInt(progressElement.value || '0') < 100;
     
     if (uploadInProgress) {
-      console.log('Upload still in progress, secure-upload.js will handle this');
+      console.log('Upload still in progress, preventing form submission');
       event.preventDefault();
       event.stopPropagation();
-      alert('Please wait for the video upload to complete before submitting.');
+      
+      // Show a user-friendly message
+      const alertDiv = document.createElement('div');
+      alertDiv.className = 'alert alert-warning alert-dismissible fade show';
+      alertDiv.innerHTML = `
+        <strong>Upload in progress!</strong> Please wait for your video to finish uploading before submitting.
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      `;
+      
+      // Insert at the top of the form
+      form.insertBefore(alertDiv, form.firstChild);
+      
+      // Scroll to the top of the form
+      window.scrollTo({
+        top: form.offsetTop - 100,
+        behavior: 'smooth'
+      });
+      
+      return false;
+    }
+    
+    // CASE 5: Video selected but upload hasn't started or failed silently
+    if (hasVideoFile && !hasVideoId && (!progressElement || parseInt(progressElement.value || '0') === 0)) {
+      console.log('Video selected but upload hasn\'t started or failed silently');
+      
+      // Check if validation passes otherwise
+      if (!form.checkValidity()) {
+        event.preventDefault();
+        event.stopPropagation();
+        form.classList.add('was-validated');
+        
+        // Highlight invalid fields for better visibility
+        const invalidFields = form.querySelectorAll(':invalid');
+        invalidFields.forEach(field => {
+          console.log(`Invalid field: ${field.id || field.name} - ${field.validationMessage}`);
+        });
+        
+        return false;
+      }
+      
+      // Show a message that we're processing the video upload
+      const alertDiv = document.createElement('div');
+      alertDiv.className = 'alert alert-info alert-dismissible fade show';
+      alertDiv.innerHTML = `
+        <strong>Processing video!</strong> Your video needs to be uploaded before submission. Please wait a moment...
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      `;
+      
+      // Insert at the top of the form
+      form.insertBefore(alertDiv, form.firstChild);
+      
+      // Try to trigger the upload if it hasn't started
+      if (typeof initializeSecureUploader === 'function') {
+        console.log('Attempting to re-initialize uploader');
+        try {
+          initializeSecureUploader();
+        } catch (e) {
+          console.error('Failed to re-initialize uploader', e);
+        }
+      }
+      
+      event.preventDefault();
+      event.stopPropagation();
       return false;
     }
     
     // Otherwise run normal validation
-    // Run original validation first
     if (!form.checkValidity()) {
       event.preventDefault();
       event.stopPropagation();
@@ -1064,7 +1221,7 @@ function enhanceFormSubmission() {
         console.log(`Invalid field: ${field.id || field.name} - ${field.validationMessage}`);
       });
       
-      return;
+      return false;
     }
 
     // Check for file validation errors
@@ -1072,11 +1229,10 @@ function enhanceFormSubmission() {
     if (fileErrors.length > 0) {
       event.preventDefault();
       event.stopPropagation();
-      return;
+      return false;
     }
 
-    // Only show loading overlay for form submission with profile pictures
-    // (video is handled by secure uploader)
+    // Handle profile pictures upload
     const profileFiles = document.getElementById('profile_pictures').files;
     
     let totalSize = 0;
@@ -1098,9 +1254,14 @@ function enhanceFormSubmission() {
     
     // Show submission in progress UI
     showSubmissionInProgress();
+    
+    // Log successful validation
+    console.log('Form validated successfully and will be submitted');
 
     // Prevent multiple submissions
     form.querySelector('button[type="submit"]').style.pointerEvents = 'none';
+    
+    return true;
   });
 }
 
@@ -1111,8 +1272,122 @@ function updateLoadingMessage(message, totalSize) {
   }
 }
 
+// Force submission of the form, bypassing validation if needed
+function forceFormSubmission() {
+  console.log('Forcing form submission bypassing validation');
+  const form = document.getElementById('audition-form');
+  
+  if (form) {
+    // Try multiple submission methods for redundancy
+    try {
+      // Method 1: Disable validation and try regular submit
+      form.setAttribute('novalidate', 'novalidate');
+      form.submit();
+      console.log('Form submission method 1 used');
+      return true;
+    } catch (e) {
+      console.warn('Method 1 failed, trying method 2', e);
+    }
+    
+    try {
+      // Method 2: Create and submit a hidden form with data copied from the original form
+      const tempForm = document.createElement('form');
+      tempForm.method = form.method;
+      tempForm.action = form.action;
+      tempForm.style.display = 'none';
+      tempForm.setAttribute('enctype', 'multipart/form-data');
+      
+      // Copy all form fields except file inputs
+      const inputs = form.querySelectorAll('input, select, textarea');
+      inputs.forEach(input => {
+        if (input.type === 'file') return; // Skip file inputs - we're using URLs instead
+        
+        const clone = document.createElement('input');
+        clone.type = 'hidden';
+        clone.name = input.name;
+        clone.value = input.value;
+        tempForm.appendChild(clone);
+      });
+      
+      // Make sure video URL is included
+      const videoUrlInput = document.getElementById('video_url');
+      if (videoUrlInput && videoUrlInput.value) {
+        const videoUrlClone = document.createElement('input');
+        videoUrlClone.type = 'hidden';
+        videoUrlClone.name = 'video_url';
+        videoUrlClone.value = videoUrlInput.value;
+        tempForm.appendChild(videoUrlClone);
+      }
+      
+      // Add to body and submit
+      document.body.appendChild(tempForm);
+      tempForm.submit();
+      console.log('Form submission method 2 used');
+      return true;
+    } catch (e) {
+      console.warn('Method 2 failed, trying method 3', e);
+    }
+    
+    try {
+      // Method 3: Use fetch API to submit the form data
+      const formData = new FormData(form);
+      
+      // Make sure video URL is included
+      const videoUrlInput = document.getElementById('video_url');
+      if (videoUrlInput && videoUrlInput.value) {
+        formData.set('video_url', videoUrlInput.value);
+      }
+      
+      // Attempt submission via fetch API
+      fetch(form.action, {
+        method: form.method,
+        body: formData,
+        credentials: 'same-origin'
+      })
+      .then(response => {
+        if (response.redirected) {
+          // Follow the redirect
+          window.location.href = response.url;
+        } else {
+          response.text().then(html => {
+            // Replace current page with response
+            document.open();
+            document.write(html);
+            document.close();
+          });
+        }
+      })
+      .catch(error => {
+        console.error('Fetch submission failed:', error);
+        
+        // Last resort - redirect to form action with query parameters
+        let url = form.action + '?submission_forced=true';
+        
+        // Add basic form data as query parameters
+        formData.forEach((value, key) => {
+          if (typeof value === 'string' && key !== 'video' && !key.includes('profile_pictures')) {
+            url += `&${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
+          }
+        });
+        
+        window.location.href = url;
+      });
+      
+      console.log('Form submission method 3 used');
+      return true;
+    } catch (e) {
+      console.error('All form submission methods failed', e);
+      return false;
+    }
+  }
+  
+  return false;
+}
+
 // Function to show submission in progress UI
 function showSubmissionInProgress() {
+  console.log('Showing submission in progress UI');
+  
   // Show a full-page loading overlay during submission
   const loadingOverlay = document.getElementById('loading-overlay');
   if (loadingOverlay) {
@@ -1121,55 +1396,84 @@ function showSubmissionInProgress() {
     document.getElementById('processing-phase').classList.add('d-none');
     document.getElementById('complete-phase').classList.add('d-none');
     
-    // Update overlay title and subtitle
+    // Update overlay title and subtitle with more engaging message
     const statusTitle = document.getElementById('overlay-status-title');
     const statusSubtitle = document.getElementById('overlay-status-subtitle');
     
     if (statusTitle) {
-      statusTitle.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Submitting Audition...';
+      statusTitle.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Submitting Your Audition';
     }
     
     if (statusSubtitle) {
-      statusSubtitle.textContent = 'Please wait while we submit your audition. This will only take a moment.';
+      statusSubtitle.innerHTML = 'Almost done! Your form is being submitted. <strong>Please wait until completion.</strong>';
     }
     
-    // Update detailed status
+    // Update detailed status with more information
     const overlayDetailedStatus = document.getElementById('overlay-detailed-status');
     if (overlayDetailedStatus) {
-      overlayDetailedStatus.textContent = 'Finalizing Submission';
+      overlayDetailedStatus.innerHTML = 'Finalizing Submission<br><small class="text-muted">Your video is ready</small>';
       overlayDetailedStatus.classList.remove('text-success');
       overlayDetailedStatus.classList.add('text-white');
     }
     
-    // Update action buttons - no actions during submission
+    // Update action buttons with a visual indicator
     const actionButtons = document.getElementById('overlay-action-buttons');
     if (actionButtons) {
-      actionButtons.innerHTML = '';
+      actionButtons.innerHTML = `
+        <div class="alert alert-light text-dark p-2 mt-2">
+          <div class="d-flex align-items-center">
+            <div class="spinner-border spinner-border-sm text-success me-2" role="status">
+              <span class="visually-hidden">Processing...</span>
+            </div>
+            <span>Please wait while we finalize your submission...</span>
+          </div>
+        </div>
+      `;
     }
     
-    // Set progress bar to indeterminate state
+    // Set progress bar to indeterminate state with better visual indicator
     const overlayBar = document.getElementById('overlay-upload-progress-bar');
     if (overlayBar) {
       overlayBar.classList.add('progress-bar-animated', 'progress-bar-striped');
       overlayBar.classList.remove('bg-success');
       overlayBar.style.width = '100%';
+      overlayBar.style.backgroundColor = '#28a745'; // Green for submission
     }
     
     const overlayText = document.getElementById('overlay-upload-progress-text');
     if (overlayText) {
-      overlayText.textContent = 'Processing...';
+      overlayText.textContent = 'Submitting...';
     }
     
-    // Show the overlay
+    // Show the overlay with a small delay to ensure it's visible
     loadingOverlay.classList.remove('d-none');
+    
+    // Add a message about not closing the tab
+    const loadingText = document.querySelector('#loading-overlay p.text-light');
+    if (loadingText) {
+      loadingText.innerHTML = `<strong>Almost done!</strong> Please don't close this tab while we complete your submission.`;
+    }
   }
   
-  // Disable the submit button and show spinner
+  // Disable the submit button and show spinner with improved visual feedback
   const submitButton = document.getElementById('submit-btn');
   if (submitButton) {
     submitButton.disabled = true;
+    submitButton.classList.remove('btn-primary');
+    submitButton.classList.add('btn-secondary');
     submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Submitting...';
   }
+  
+  // Disable any additional submission buttons
+  const continueSubmitBtn = document.getElementById('continue-submit-btn');
+  if (continueSubmitBtn) {
+    continueSubmitBtn.disabled = true;
+    continueSubmitBtn.classList.remove('btn-success');
+    continueSubmitBtn.classList.add('btn-secondary');
+    continueSubmitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Submitting...';
+  }
+  
+  console.log('Submission in progress UI displayed');
 }
 
 // Initialize when DOM is ready
