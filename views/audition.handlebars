@@ -10,7 +10,45 @@
       Submit Your Audition
     {{/if}}
   </h1>
-  {{!-- Form action is dynamic: /audition/:projectId for project-specific, /audition for generic --}}
+  {{!-- Form action is dynamic: /audition/:p      // Create a container for the manual submission button
+      const manualSubmitContainer = document.createElement('div');
+      manualSubmitContainer.id = 'manual-submit-container';
+      manualSubmitContainer.className = 'd-none alert alert-success mt-3';
+      manualSubmitContainer.innerHTML = `
+        <p><strong>Video upload complete!</strong> Your video is ready for submission.</p>
+        <button id="manual-submit-btn" type="button" class="btn btn-success">
+          <i class="fas fa-check-circle me-2"></i>Continue with Submission
+        </button>
+      `;
+      
+      // Add it after the direct upload UI
+      document.getElementById('direct-upload-ui').parentNode.appendChild(manualSubmitContainer);
+      
+      // Add click handler to manual submit button
+      document.getElementById('manual-submit-btn').addEventListener('click', function() {
+        console.log('Manual submit button clicked');
+        document.getElementById('audition-form').submit();
+      });
+      
+      // Update the loading overlay progress when upload progress changes
+      uploader.options.onProgress = (percent) => {
+        document.getElementById('overlay-upload-progress-bar').style.width = `${percent}%`;
+        document.getElementById('overlay-upload-progress-text').textContent = `${percent}%`;
+        document.getElementById('upload-progress-text').textContent = `${percent}%`;
+        document.getElementById('upload-progress').value = percent;
+        
+        // Show the direct upload UI when upload starts
+        if (percent > 0) {
+          document.getElementById('direct-upload-ui').classList.remove('d-none');
+        }
+        
+        // Show the manual submit button when upload completes
+        if (percent === 100) {
+          setTimeout(() => {
+            document.getElementById('manual-submit-container').classList.remove('d-none');
+          }, 5000); // Show after 5 seconds to give time for processing
+        }
+      }; project-specific, /audition for generic --}}
   <form id="audition-form" action="{{#if project}}/audition/{{project.id}}{{else}}/audition{{/if}}" method="POST" enctype="multipart/form-data" class="needs-validation" novalidate data-upload-method="{{upload_method}}" data-bunny-library-id="{{bunny_stream_library_id}}">
     <div class="row">
       <div class="col-md-6 mb-3">
@@ -478,10 +516,35 @@ function initializeSecureUploader() {
 function enhanceFormSubmission() {
   const form = document.querySelector('.needs-validation');
   
+  // Add a function to bypass validation and force submission
+  window.forceFormSubmission = function() {
+    console.log('Forcing form submission bypassing validation');
+    
+    // First try regular submission
+    const submitButton = document.getElementById('submit-btn');
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.click();
+    }
+    
+    // If that didn't work, submit directly
+    setTimeout(() => {
+      form.noValidate = true;
+      form.submit();
+    }, 200);
+  };
+  
   form.addEventListener('submit', function(event) {
     console.log('Form submit event triggered with video_url:', document.getElementById('video_url').value);
     
-    // Only run this validation if we're not already handling video upload via the secure uploader
+    // If we have a video URL, always allow submission
+    if (document.getElementById('video_url').value) {
+      console.log('Video URL present, allowing submission regardless of validation');
+      // Continue with submission
+      return true;
+    }
+    
+    // Only run validation if we're not already handling video upload via the secure uploader
     if (!document.getElementById('video_url').value) {
       // Run original validation first
       if (!form.checkValidity()) {
