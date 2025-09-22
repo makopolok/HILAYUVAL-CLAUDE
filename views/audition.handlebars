@@ -511,7 +511,7 @@ function initializeSecureUploader() {
   videoUrlInput.name = 'video_url';
   form.appendChild(videoUrlInput);
   
-  // Create the secure uploader instance
+  // Create the secure uploader instance with all options at once
   const uploader = initSecureUploader({
     fileInputId: 'video',
     progressElementId: 'upload-progress',
@@ -519,14 +519,10 @@ function initializeSecureUploader() {
     videoIdInputId: 'video_url',
     formId: 'audition-form',
     submitButtonId: 'submit-btn',
-    titlePrefix: 'Audition'
-  });
-  
-  // Mark uploader as initialized
-  window.uploaderInitialized = true;
-  
-  // Update the loading overlay progress when upload progress changes
-  uploader.options.onProgress = (percent) => {
+    titlePrefix: 'Audition',
+    
+    // Define all callbacks in the initial options object
+    onProgress: (percent) => {
     console.log('Upload progress update:', percent);
     
     // Update all progress indicators
@@ -570,74 +566,73 @@ function initializeSecureUploader() {
     // Show the direct upload UI when upload starts
     if (percent > 0) {
       document.getElementById('direct-upload-ui').classList.remove('d-none');
+    },
+    
+    // Handle upload completion
+    onComplete: (videoData) => {
+      console.log('Upload complete callback with video data:', videoData);
+      
+      // Hide loading overlay when processing completes
+      const loadingOverlay = document.getElementById('loading-overlay');
+      if (loadingOverlay) {
+        loadingOverlay.classList.add('d-none');
+      }
+      
+      // Show success message
+      const progressText = document.getElementById('upload-progress-text');
+      if (progressText) {
+        progressText.textContent = 'Video ready!';
+        progressText.style.color = 'green';
+        progressText.style.fontWeight = 'bold';
+      }
+      
+      // Update status messages
+      document.getElementById('upload-status-uploading').classList.add('d-none');
+      document.getElementById('upload-status-processing').classList.add('d-none');
+      document.getElementById('upload-status-complete').classList.remove('d-none');
+      
+      // Show a "Continue with submission" button
+      const continueButton = document.createElement('button');
+      continueButton.type = 'button';
+      continueButton.className = 'btn btn-success btn-block mt-3';
+      continueButton.innerHTML = '<i class="fas fa-check-circle me-2"></i>Continue with submission';
+      continueButton.onclick = () => {
+        document.getElementById('audition-form').submit();
+      };
+      
+      const uploadStatus = document.getElementById('upload-status');
+      if (uploadStatus) {
+        uploadStatus.appendChild(continueButton);
+      }
+    },
+    
+    // Handle upload errors
+    onError: (error) => {
+      console.error('Upload error:', error);
+      
+      // Hide loading overlay
+      const loadingOverlay = document.getElementById('loading-overlay');
+      if (loadingOverlay) {
+        loadingOverlay.classList.add('d-none');
+      }
+      
+      // Update status messages
+      document.getElementById('upload-status-uploading').classList.add('d-none');
+      document.getElementById('upload-status-processing').classList.add('d-none');
+      document.getElementById('upload-status-error').classList.remove('d-none');
+      document.getElementById('upload-status-error').querySelector('span').textContent = 
+        `Error: ${error.message || 'Unknown error during upload'}`;
+    },
+    
+    // Additional event handler for when the file upload is done but processing hasn't finished yet
+    onUploadComplete: () => {
+      console.log('File upload complete, now processing...');
+      
+      // Update status messages
+      document.getElementById('upload-status-uploading').classList.add('d-none');
+      document.getElementById('upload-status-processing').classList.remove('d-none');
     }
-  };
-  
-  // Handle upload completion
-  uploader.options.onComplete = (videoData) => {
-    console.log('Upload complete callback with video data:', videoData);
-    
-    // Hide loading overlay when processing completes
-    const loadingOverlay = document.getElementById('loading-overlay');
-    if (loadingOverlay) {
-      loadingOverlay.classList.add('d-none');
-    }
-    
-    // Show success message
-    const progressText = document.getElementById('upload-progress-text');
-    if (progressText) {
-      progressText.textContent = 'Video ready!';
-      progressText.style.color = 'green';
-      progressText.style.fontWeight = 'bold';
-    }
-    
-    // Update status messages
-    document.getElementById('upload-status-uploading').classList.add('d-none');
-    document.getElementById('upload-status-processing').classList.add('d-none');
-    document.getElementById('upload-status-complete').classList.remove('d-none');
-    
-    // Show a "Continue with submission" button
-    const continueButton = document.createElement('button');
-    continueButton.type = 'button';
-    continueButton.className = 'btn btn-success btn-block mt-3';
-    continueButton.innerHTML = '<i class="fas fa-check-circle me-2"></i>Continue with submission';
-    continueButton.onclick = () => {
-      document.getElementById('audition-form').submit();
-    };
-    
-    const uploadStatus = document.getElementById('upload-status');
-    if (uploadStatus) {
-      uploadStatus.appendChild(continueButton);
-    }
-  };
-  
-  // Handle upload errors
-  uploader.options.onError = (error) => {
-    console.error('Upload error:', error);
-    
-    // Hide loading overlay
-    const loadingOverlay = document.getElementById('loading-overlay');
-    if (loadingOverlay) {
-      loadingOverlay.classList.add('d-none');
-    }
-    
-    // Update status messages
-    document.getElementById('upload-status-uploading').classList.add('d-none');
-    document.getElementById('upload-status-processing').classList.add('d-none');
-    document.getElementById('upload-status-error').classList.remove('d-none');
-    document.getElementById('upload-status-error').querySelector('span').textContent = 
-      `Error: ${error.message || 'Unknown error during upload'}`;
-  };
-  
-  // Add additional event handlers for the upload process
-  uploader.options.onUploadComplete = () => {
-    // This fires when the file upload is done but processing hasn't finished yet
-    console.log('File upload complete, now processing...');
-    
-    // Update status messages
-    document.getElementById('upload-status-uploading').classList.add('d-none');
-    document.getElementById('upload-status-processing').classList.remove('d-none');
-  };
+  });
 }
 
 // Enhanced form submission with upload progress
