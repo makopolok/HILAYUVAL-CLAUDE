@@ -210,6 +210,30 @@
                   </div>
                   <progress id="upload-progress" max="100" value="0" style="width:100%;"></progress>
                   <div class="small text-muted mt-1">Progress: <span id="upload-progress-text">0%</span></div>
+                  
+                  <!-- Upload status messages -->
+                  <div id="upload-status" class="mt-2">
+                    <div id="upload-status-uploading" class="d-flex align-items-center">
+                      <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                      </div>
+                      <span>Uploading video to secure server...</span>
+                    </div>
+                    <div id="upload-status-processing" class="d-none d-flex align-items-center">
+                      <div class="spinner-border spinner-border-sm text-warning me-2" role="status">
+                        <span class="visually-hidden">Processing...</span>
+                      </div>
+                      <span>Processing video (this may take a moment)...</span>
+                    </div>
+                    <div id="upload-status-complete" class="d-none text-success">
+                      <i class="fas fa-check-circle me-2"></i>
+                      <span>Video ready!</span>
+                    </div>
+                    <div id="upload-status-error" class="d-none text-danger">
+                      <i class="fas fa-exclamation-triangle me-2"></i>
+                      <span>Error processing video.</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -498,17 +522,121 @@ function initializeSecureUploader() {
     titlePrefix: 'Audition'
   });
   
+  // Mark uploader as initialized
+  window.uploaderInitialized = true;
+  
   // Update the loading overlay progress when upload progress changes
   uploader.options.onProgress = (percent) => {
-    document.getElementById('overlay-upload-progress-bar').style.width = `${percent}%`;
-    document.getElementById('overlay-upload-progress-text').textContent = `${percent}%`;
-    document.getElementById('upload-progress-text').textContent = `${percent}%`;
-    document.getElementById('upload-progress').value = percent;
+    console.log('Upload progress update:', percent);
+    
+    // Update all progress indicators
+    const elementsToUpdate = [
+      // Main progress bar in form
+      { id: 'upload-progress', type: 'value', value: percent },
+      { id: 'upload-progress-text', type: 'text', value: `${percent}%` },
+      
+      // Loading overlay indicators
+      { id: 'overlay-upload-progress-bar', type: 'width', value: `${percent}%` },
+      { id: 'overlay-upload-progress-text', type: 'text', value: `${percent}%` }
+    ];
+    
+    elementsToUpdate.forEach(element => {
+      const el = document.getElementById(element.id);
+      if (el) {
+        if (element.type === 'value') {
+          el.value = element.value;
+        } else if (element.type === 'width') {
+          el.style.width = element.value;
+        } else if (element.type === 'text') {
+          el.textContent = element.value;
+        }
+      }
+    });
+    
+    // Show loading overlay for uploads
+    const loadingOverlay = document.getElementById('loading-overlay');
+    if (loadingOverlay) {
+      if (percent > 0 && percent < 100) {
+        // Show overlay during active upload
+        loadingOverlay.classList.remove('d-none');
+      } else if (percent === 100) {
+        // Hide overlay when upload completes
+        setTimeout(() => {
+          loadingOverlay.classList.add('d-none');
+        }, 1000); // Hide after 1 second to show completion
+      }
+    }
     
     // Show the direct upload UI when upload starts
     if (percent > 0) {
       document.getElementById('direct-upload-ui').classList.remove('d-none');
     }
+  };
+  
+  // Handle upload completion
+  uploader.options.onComplete = (videoData) => {
+    console.log('Upload complete callback with video data:', videoData);
+    
+    // Hide loading overlay when processing completes
+    const loadingOverlay = document.getElementById('loading-overlay');
+    if (loadingOverlay) {
+      loadingOverlay.classList.add('d-none');
+    }
+    
+    // Show success message
+    const progressText = document.getElementById('upload-progress-text');
+    if (progressText) {
+      progressText.textContent = 'Video ready!';
+      progressText.style.color = 'green';
+      progressText.style.fontWeight = 'bold';
+    }
+    
+    // Update status messages
+    document.getElementById('upload-status-uploading').classList.add('d-none');
+    document.getElementById('upload-status-processing').classList.add('d-none');
+    document.getElementById('upload-status-complete').classList.remove('d-none');
+    
+    // Show a "Continue with submission" button
+    const continueButton = document.createElement('button');
+    continueButton.type = 'button';
+    continueButton.className = 'btn btn-success btn-block mt-3';
+    continueButton.innerHTML = '<i class="fas fa-check-circle me-2"></i>Continue with submission';
+    continueButton.onclick = () => {
+      document.getElementById('audition-form').submit();
+    };
+    
+    const uploadStatus = document.getElementById('upload-status');
+    if (uploadStatus) {
+      uploadStatus.appendChild(continueButton);
+    }
+  };
+  
+  // Handle upload errors
+  uploader.options.onError = (error) => {
+    console.error('Upload error:', error);
+    
+    // Hide loading overlay
+    const loadingOverlay = document.getElementById('loading-overlay');
+    if (loadingOverlay) {
+      loadingOverlay.classList.add('d-none');
+    }
+    
+    // Update status messages
+    document.getElementById('upload-status-uploading').classList.add('d-none');
+    document.getElementById('upload-status-processing').classList.add('d-none');
+    document.getElementById('upload-status-error').classList.remove('d-none');
+    document.getElementById('upload-status-error').querySelector('span').textContent = 
+      `Error: ${error.message || 'Unknown error during upload'}`;
+  };
+  
+  // Add additional event handlers for the upload process
+  uploader.options.onUploadComplete = () => {
+    // This fires when the file upload is done but processing hasn't finished yet
+    console.log('File upload complete, now processing...');
+    
+    // Update status messages
+    document.getElementById('upload-status-uploading').classList.add('d-none');
+    document.getElementById('upload-status-processing').classList.remove('d-none');
   };
 }
 
@@ -537,15 +665,53 @@ function enhanceFormSubmission() {
   form.addEventListener('submit', function(event) {
     console.log('Form submit event triggered with video_url:', document.getElementById('video_url').value);
     
-    // If we have a video URL, always allow submission
-    if (document.getElementById('video_url').value) {
-      console.log('Video URL present, allowing submission regardless of validation');
-      // Continue with submission
-      return true;
+    // Get video file input status
+    const videoInput = document.getElementById('video');
+    const hasVideoFile = videoInput && videoInput.files && videoInput.files.length > 0;
+    const hasVideoId = document.getElementById('video_url') && document.getElementById('video_url').value;
+    
+    console.log('Form submission state:', { 
+      hasVideoFile, 
+      hasVideoId, 
+      uploaderInitialized: window.uploaderInitialized || false 
+    });
+    
+    // CASE 1: User selected video but didn't wait for upload (handled by secure-upload.js)
+    
+    // CASE 2: User didn't select any video file - normal form validation
+    if (!hasVideoFile) {
+      console.log('No video file selected, proceeding with normal form validation');
+      if (!form.checkValidity()) {
+        event.preventDefault();
+        event.stopPropagation();
+        form.classList.add('was-validated');
+        return;
+      }
+      return true; // Allow submission
     }
     
-    // Only run validation if we're not already handling video upload via the secure uploader
-    if (!document.getElementById('video_url').value) {
+    // CASE 3: User has video ID - allow submission regardless
+    if (hasVideoId) {
+      console.log('Video ID present, allowing submission regardless of validation');
+      return true; // Allow submission
+    }
+    
+    // CASE 4: User selected video file but no ID yet (upload completed but processing failed)
+    // We'll allow submission anyway as long as they're not in the middle of an upload
+    console.log('Video selected but no ID, checking if upload is still in progress');
+    
+    const progressElement = document.getElementById('upload-progress');
+    const uploadInProgress = progressElement && 
+                           parseInt(progressElement.value || '0') > 0 && 
+                           parseInt(progressElement.value || '0') < 100;
+    
+    if (uploadInProgress) {
+      console.log('Upload still in progress, secure-upload.js will handle this');
+      // Let secure-upload.js handle this case
+      return;
+    }
+    
+    // Otherwise run normal validation
       // Run original validation first
       if (!form.checkValidity()) {
         event.preventDefault();

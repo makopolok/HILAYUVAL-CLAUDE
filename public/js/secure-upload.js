@@ -8,6 +8,7 @@ class SecureUploader {
       onProgress: null,
       onComplete: null,
       onError: null,
+      onUploadComplete: null, // Added for when the file upload is done but processing hasn't finished
       ...options
     };
     console.log('SecureUploader initialized with options:', options);
@@ -64,6 +65,11 @@ class SecureUploader {
         
         if (xhr.status >= 200 && xhr.status < 300) {
           console.log('Upload completed successfully');
+          
+          // Notify that the upload part is complete (but processing may still be ongoing)
+          if (this.options.onUploadComplete) {
+            this.options.onUploadComplete(uploadSession);
+          }
           
           // Start polling for video processing status
           console.log('Starting processing status polling for video:', uploadSession.guid);
@@ -358,21 +364,47 @@ function initSecureUploader(options) {
     }
   });
   
-  // Only prevent form submission if upload is in progress
+  // Manage form submission based on upload state
   if (form && submitButton) {
     form.addEventListener('submit', (event) => {
-      // If video upload is in progress (not completed) and we don't have a video ID yet
-      const uploadInProgress = progressElement && 
-                              parseInt(progressElement.style.width || '0') > 0 && 
-                              parseInt(progressElement.style.width || '0') < 100;
+      console.log('Form submit event intercepted');
       
-      if (uploadInProgress && !videoIdInput.value) {
+      // Get the current upload progress
+      const currentProgress = progressElement ? 
+        parseInt(progressElement.style.width || '0') : 0;
+      
+      // CASE 1: Upload in active progress (not yet complete)
+      const uploadInProgress = progressElement && 
+                              currentProgress > 0 && 
+                              currentProgress < 100;
+      
+      // CASE 2: No video selected or required
+      const noVideoSelected = !document.getElementById('video') || 
+                              !document.getElementById('video').files || 
+                              document.getElementById('video').files.length === 0;
+      
+      // CASE 3: Upload completed but no video ID (processing failure)
+      const uploadCompletedNoId = progressElement && 
+                                 currentProgress === 100 && 
+                                 (!videoIdInput || !videoIdInput.value);
+      
+      if (uploadInProgress) {
+        // Only block submission if upload is actively in progress
         event.preventDefault();
         alert('Please wait for the video upload to complete before submitting.');
+        console.log('Form submission prevented - upload in progress');
         return false;
       } else {
-        console.log('Form submission allowed - either no upload in progress or upload completed');
-        console.log('Video ID at submission time:', videoIdInput ? videoIdInput.value : 'no input element');
+        // Allow submission in all other cases
+        console.log('Form submission allowed:', 
+          noVideoSelected ? 'No video selected' : 
+          uploadCompletedNoId ? 'Upload completed but no ID (continuing anyway)' : 
+          'Upload completed with ID');
+        
+        // Log the video ID if we have it
+        if (videoIdInput) {
+          console.log('Video ID at submission time:', videoIdInput.value || 'empty');
+        }
         
         // Force set form submit button to enabled state to ensure submission works
         if (submitButton) {
