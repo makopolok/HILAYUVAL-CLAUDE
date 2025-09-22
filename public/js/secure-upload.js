@@ -10,13 +10,17 @@ class SecureUploader {
       onError: null,
       ...options
     };
+    console.log('SecureUploader initialized with options:', options);
   }
 
   async uploadVideo(file, title) {
     const { onProgress, onComplete, onError } = this.options;
     
     try {
+      console.log('Starting secure upload process for file:', file.name, 'size:', file.size);
+      
       // Step 1: Get a secure upload session from our server
+      console.log('Requesting secure upload session from server...');
       const sessionResponse = await fetch('/api/secure-upload/create', {
         method: 'POST',
         headers: {
@@ -27,8 +31,11 @@ class SecureUploader {
         })
       });
       
+      console.log('Session response status:', sessionResponse.status);
+      
       if (!sessionResponse.ok) {
         const error = await sessionResponse.json();
+        console.error('Failed to create upload session:', error);
         throw new Error(error.message || 'Failed to create upload session');
       }
       
@@ -36,6 +43,7 @@ class SecureUploader {
       console.log('Created upload session:', uploadSession);
       
       // Step 2: Upload the file through our secure proxy
+      console.log('Starting file upload to', uploadSession.uploadUrl);
       const xhr = new XMLHttpRequest();
       
       // Handle progress events
@@ -43,6 +51,7 @@ class SecureUploader {
         xhr.upload.onprogress = (event) => {
           if (event.lengthComputable) {
             const percentComplete = Math.round((event.loaded / event.total) * 100);
+            console.log(`Upload progress: ${percentComplete}%`);
             onProgress(percentComplete, uploadSession);
           }
         };
@@ -50,10 +59,14 @@ class SecureUploader {
       
       // Handle response
       xhr.onload = async () => {
+        console.log('Upload request completed with status:', xhr.status);
+        console.log('Response:', xhr.responseText);
+        
         if (xhr.status >= 200 && xhr.status < 300) {
           console.log('Upload completed successfully');
           
           // Start polling for video processing status
+          console.log('Starting processing status polling for video:', uploadSession.guid);
           this._pollProcessingStatus(uploadSession.guid, onComplete);
         } else {
           const errorMessage = `Upload failed with status ${xhr.status}`;
@@ -63,9 +76,9 @@ class SecureUploader {
       };
       
       // Handle errors
-      xhr.onerror = () => {
+      xhr.onerror = (error) => {
         const errorMessage = 'Network error during upload';
-        console.error(errorMessage);
+        console.error(errorMessage, error);
         if (onError) onError(new Error(errorMessage));
       };
       
@@ -73,7 +86,10 @@ class SecureUploader {
       xhr.open('PUT', uploadSession.uploadUrl);
       xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
       xhr.setRequestHeader('X-Upload-Token', uploadSession.uploadToken);
+      
+      console.log('Sending file to secure proxy with token:', uploadSession.uploadToken);
       xhr.send(file);
+      console.log('File upload request initiated');
       
       return uploadSession.guid;
     } catch (error) {
