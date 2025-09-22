@@ -76,7 +76,7 @@
     </div>
     <div class="mb-3">
       <label for="phone" class="form-label">Phone Number</label>
-      <input type="tel" class="form-control" id="phone" name="phone" pattern="[0-9\-+() ]{7,}" required>
+      <input type="tel" class="form-control" id="phone" name="phone" required>
       <div class="invalid-feedback">Please enter a valid phone number.</div>
     </div>
     <div class="mb-3">
@@ -703,6 +703,24 @@ function initializeSecureUploader() {
 function enhanceFormSubmission() {
   const form = document.querySelector('.needs-validation');
   
+  // Add custom validation for phone number
+  const phoneInput = document.getElementById('phone');
+  if (phoneInput) {
+    phoneInput.addEventListener('input', function(e) {
+      const value = e.target.value;
+      // Basic phone validation - allow digits, spaces, dashes, plus, and parentheses
+      if (value && value.length >= 7 && /^[0-9\-+() ]{7,}$/.test(value)) {
+        e.target.classList.remove('is-invalid');
+        e.target.classList.add('is-valid');
+        e.target.setCustomValidity('');
+      } else {
+        e.target.classList.remove('is-valid');
+        e.target.classList.add('is-invalid');
+        e.target.setCustomValidity('Please enter a valid phone number with at least 7 digits');
+      }
+    });
+  }
+  
   // Add a function to bypass validation and force submission
   window.forceFormSubmission = function() {
     console.log('Forcing form submission bypassing validation');
@@ -722,18 +740,37 @@ function enhanceFormSubmission() {
   };
   
   form.addEventListener('submit', function(event) {
-    console.log('Form submit event triggered with video_url:', document.getElementById('video_url').value);
+    // For debugging: log all form data
+    const formData = new FormData(form);
+    const formDataObj = {};
+    for (let [key, value] of formData.entries()) {
+      formDataObj[key] = value;
+    }
+    console.log('Form data being submitted:', formDataObj);
     
     // Get video file input status
     const videoInput = document.getElementById('video');
     const hasVideoFile = videoInput && videoInput.files && videoInput.files.length > 0;
     const hasVideoId = document.getElementById('video_url') && document.getElementById('video_url').value;
+    const videoUrl = document.getElementById('video_url') ? document.getElementById('video_url').value : 'not found';
     
     console.log('Form submission state:', { 
       hasVideoFile, 
       hasVideoId, 
+      videoUrl,
       uploaderInitialized: window.uploaderInitialized || false 
     });
+    
+    // Perform custom phone validation
+    const phoneInput = document.getElementById('phone');
+    if (phoneInput) {
+      const value = phoneInput.value;
+      if (value && value.length >= 7 && /^[0-9\-+() ]{7,}$/.test(value)) {
+        phoneInput.setCustomValidity('');
+      } else {
+        phoneInput.setCustomValidity('Please enter a valid phone number with at least 7 digits');
+      }
+    }
     
     // CASE 1: User selected video but didn't wait for upload (handled by secure-upload.js)
     
@@ -744,19 +781,43 @@ function enhanceFormSubmission() {
         event.preventDefault();
         event.stopPropagation();
         form.classList.add('was-validated');
+        
+        // Highlight invalid fields for better visibility
+        const invalidFields = form.querySelectorAll(':invalid');
+        invalidFields.forEach(field => {
+          console.log(`Invalid field: ${field.id || field.name} - ${field.validationMessage}`);
+        });
+        
         return;
       }
       return true; // Allow submission
     }
     
-    // CASE 3: User has video ID - allow submission regardless
+    // CASE 3: User has video ID - allow submission with final validation check
     if (hasVideoId) {
-      console.log('Video ID present, allowing submission regardless of validation');
+      console.log('Video ID present, allowing submission with validation');
+      
+      // Still run validation, but don't check for video
+      if (!form.checkValidity()) {
+        event.preventDefault();
+        event.stopPropagation();
+        form.classList.add('was-validated');
+        
+        // Highlight invalid fields for better visibility
+        const invalidFields = form.querySelectorAll(':invalid');
+        invalidFields.forEach(field => {
+          console.log(`Invalid field: ${field.id || field.name} - ${field.validationMessage}`);
+        });
+        
+        return;
+      }
+      
+      // Show submission in progress UI
+      showSubmissionInProgress();
       return true; // Allow submission
     }
     
     // CASE 4: User selected video file but no ID yet (upload completed but processing failed)
-    // We'll allow submission anyway as long as they're not in the middle of an upload
     console.log('Video selected but no ID, checking if upload is still in progress');
     
     const progressElement = document.getElementById('upload-progress');
@@ -766,56 +827,64 @@ function enhanceFormSubmission() {
     
     if (uploadInProgress) {
       console.log('Upload still in progress, secure-upload.js will handle this');
-      // Let secure-upload.js handle this case
-      return;
+      event.preventDefault();
+      event.stopPropagation();
+      alert('Please wait for the video upload to complete before submitting.');
+      return false;
     }
     
     // Otherwise run normal validation
-      // Run original validation first
-      if (!form.checkValidity()) {
-        event.preventDefault();
-        event.stopPropagation();
-        form.classList.add('was-validated');
-        return;
-      }
-
-      // Check for file validation errors
-      const fileErrors = form.querySelectorAll('.file-error');
-      if (fileErrors.length > 0) {
-        event.preventDefault();
-        event.stopPropagation();
-        return;
-      }
-
-      // Only show loading overlay for form submission with profile pictures
-      // (video is handled by secure uploader)
-      const profileFiles = document.getElementById('profile_pictures').files;
+    // Run original validation first
+    if (!form.checkValidity()) {
+      event.preventDefault();
+      event.stopPropagation();
+      form.classList.add('was-validated');
       
-      let totalSize = 0;
-      if (profileFiles) {
-        Array.from(profileFiles).forEach(file => totalSize += file.size);
-      }
-
-      // Update loading message based on file sizes
-      if (totalSize > 0) {
-        if (totalSize > 100 * 1024 * 1024) { // > 100MB
-          updateLoadingMessage('Large files detected. This may take several minutes...', totalSize);
-        } else if (totalSize > 10 * 1024 * 1024) { // > 10MB
-          updateLoadingMessage('Uploading files. Please wait...', totalSize);
-        }
-
-        // Show loading overlay
-        document.getElementById('loading-overlay').classList.remove('d-none');
-      }
+      // Highlight invalid fields for better visibility
+      const invalidFields = form.querySelectorAll(':invalid');
+      invalidFields.forEach(field => {
+        console.log(`Invalid field: ${field.id || field.name} - ${field.validationMessage}`);
+      });
       
-      document.getElementById('submit-text').classList.add('d-none');
-      document.getElementById('submit-spinner').classList.remove('d-none');
-      document.getElementById('submit-btn').disabled = true;
-
-      // Prevent multiple submissions
-      form.querySelector('button[type="submit"]').style.pointerEvents = 'none';
+      return;
     }
+
+    // Check for file validation errors
+    const fileErrors = form.querySelectorAll('.file-error');
+    if (fileErrors.length > 0) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+
+    // Only show loading overlay for form submission with profile pictures
+    // (video is handled by secure uploader)
+    const profileFiles = document.getElementById('profile_pictures').files;
+    
+    let totalSize = 0;
+    if (profileFiles) {
+      Array.from(profileFiles).forEach(file => totalSize += file.size);
+    }
+
+    // Update loading message based on file sizes
+    if (totalSize > 0) {
+      if (totalSize > 100 * 1024 * 1024) { // > 100MB
+        updateLoadingMessage('Large files detected. This may take several minutes...', totalSize);
+      } else if (totalSize > 10 * 1024 * 1024) { // > 10MB
+        updateLoadingMessage('Uploading files. Please wait...', totalSize);
+      }
+
+      // Show loading overlay
+      document.getElementById('loading-overlay').classList.remove('d-none');
+    }
+    
+    // Show submission in progress UI
+    showSubmissionInProgress();
+
+    // Prevent multiple submissions
+    form.querySelector('button[type="submit"]').style.pointerEvents = 'none';
   });
+}
 }
 
 function updateLoadingMessage(message, totalSize) {
