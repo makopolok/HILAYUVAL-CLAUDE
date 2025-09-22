@@ -2,6 +2,7 @@ require('dotenv').config(); // Load environment variables
 const { google } = require('googleapis');
 const fs = require('fs');
 const path = require('path');
+const axios = require('axios'); // Required for proxy requests
 const nodemailer = require('nodemailer'); // Added nodemailer import
 
 const express = require('express');
@@ -222,19 +223,25 @@ app.post('/api/videos', async (req, res) => {
 // Create a secure upload session with temporary token
 app.post('/api/secure-upload/create', async (req, res) => {
   try {
+    console.log('Secure upload session creation request received');
     const title = (req.body?.title || '').toString().slice(0, 200) || `upload_${Date.now()}`;
+    console.log(`Creating secure upload session with title: ${title}`);
     
     // Create the secure upload session via our service
     const session = await secureUploadService.createSecureUploadSession(title);
+    console.log(`Secure upload session created successfully, GUID: ${session.guid}`);
     
     // Return only what the client needs (no API keys)
-    res.json({
+    const response = {
       guid: session.guid,
       title: session.title,
       uploadUrl: `/api/secure-upload/${session.guid}`,
       uploadToken: session.uploadToken,
       expires: session.tokenExpires
-    });
+    };
+    
+    console.log(`Returning secure upload session to client: ${JSON.stringify(response)}`);
+    res.json(response);
   } catch (error) {
     console.error('Create secure upload session error:', error);
     res.status(500).json({ 
@@ -1308,6 +1315,14 @@ app.post('/audition/:projectId', auditionUpload.fields([
         finalVideoUrl = null;
         videoType = null;
       }
+      
+      // Debug the form contents to diagnose submission issues
+      console.log('Form contents:', {
+        body: body,
+        videoUrl: body.video_url,
+        videoFile: videoFile ? 'Present' : 'Absent',
+        files: req.files ? Object.keys(req.files) : 'No files'
+      });
     }
 
     const audition = {
