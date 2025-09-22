@@ -185,6 +185,7 @@ function initSecureUploader(options) {
       
       if (videoIdInput && videoData.guid) {
         videoIdInput.value = videoData.guid;
+        console.log('Video ID set to:', videoData.guid);
       }
       
       if (submitButton) {
@@ -193,11 +194,33 @@ function initSecureUploader(options) {
       
       console.log('Video upload and processing complete:', videoData);
       
-      // Auto-submit the form once the video is ready
-      if (form && videoIdInput && videoIdInput.value) {
-        console.log('Auto-submitting form after successful video upload');
-        form.submit();
-      }
+      // Use a timeout to ensure the videoId is properly set before submitting
+      setTimeout(() => {
+        if (form && videoIdInput && videoIdInput.value) {
+          console.log('Auto-submitting form after successful video upload with delay');
+          
+          // Create and dispatch a submit event to trigger any attached handlers
+          const submitEvent = new Event('submit', {
+            bubbles: true,
+            cancelable: true
+          });
+          
+          // Dispatch the event first to run any handlers
+          const eventResult = form.dispatchEvent(submitEvent);
+          
+          // If the event wasn't prevented, submit the form directly
+          if (eventResult) {
+            console.log('Submit event not prevented, submitting form directly');
+            form.submit();
+          } else {
+            console.log('Submit event was prevented, not submitting form');
+            // If prevented, we should show a message or enable manual submission
+            if (statusElement) {
+              statusElement.textContent = 'Video ready! Click Submit to continue.';
+            }
+          }
+        }
+      }, 1000); // Wait 1 second to ensure everything is ready
     },
     onError: (error) => {
       if (statusElement) {
@@ -255,8 +278,27 @@ function initSecureUploader(options) {
       if (uploadInProgress && !videoIdInput.value) {
         event.preventDefault();
         alert('Please wait for the video upload to complete before submitting.');
+        return false;
       } else {
         console.log('Form submission allowed - either no upload in progress or upload completed');
+        console.log('Video ID at submission time:', videoIdInput ? videoIdInput.value : 'no input element');
+        
+        // Force set form submit button to enabled state to ensure submission works
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.removeAttribute('disabled');
+        }
+        
+        // Show submit spinner to indicate form is being submitted
+        const submitText = document.getElementById('submit-text');
+        const submitSpinner = document.getElementById('submit-spinner');
+        
+        if (submitText && submitSpinner) {
+          submitText.classList.add('d-none');
+          submitSpinner.classList.remove('d-none');
+        }
+        
+        return true;
       }
     });
   }

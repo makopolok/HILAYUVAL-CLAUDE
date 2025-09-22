@@ -479,6 +479,8 @@ function enhanceFormSubmission() {
   const form = document.querySelector('.needs-validation');
   
   form.addEventListener('submit', function(event) {
+    console.log('Form submit event triggered with video_url:', document.getElementById('video_url').value);
+    
     // Only run this validation if we're not already handling video upload via the secure uploader
     if (!document.getElementById('video_url').value) {
       // Run original validation first
