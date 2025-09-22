@@ -192,6 +192,12 @@ function initSecureUploader(options) {
       }
       
       console.log('Video upload and processing complete:', videoData);
+      
+      // Auto-submit the form once the video is ready
+      if (form && videoIdInput && videoIdInput.value) {
+        console.log('Auto-submitting form after successful video upload');
+        form.submit();
+      }
     },
     onError: (error) => {
       if (statusElement) {
@@ -238,12 +244,19 @@ function initSecureUploader(options) {
     }
   });
   
-  // Prevent form submission until upload is complete
+  // Only prevent form submission if upload is in progress
   if (form && submitButton) {
     form.addEventListener('submit', (event) => {
-      if (!videoIdInput.value) {
+      // If video upload is in progress (not completed) and we don't have a video ID yet
+      const uploadInProgress = progressElement && 
+                              parseInt(progressElement.style.width || '0') > 0 && 
+                              parseInt(progressElement.style.width || '0') < 100;
+      
+      if (uploadInProgress && !videoIdInput.value) {
         event.preventDefault();
         alert('Please wait for the video upload to complete before submitting.');
+      } else {
+        console.log('Form submission allowed - either no upload in progress or upload completed');
       }
     });
   }
