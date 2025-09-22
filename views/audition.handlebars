@@ -208,11 +208,15 @@
                     <i class="fas fa-cloud-arrow-up me-2 text-success"></i>
                     <strong>Direct upload to Bunny.net</strong>
                   </div>
-                  <progress id="upload-progress" max="100" value="0" style="width:100%;"></progress>
+                  <div class="progress" style="height: 15px;">
+                    <div id="upload-progress-bar" class="progress-bar bg-success progress-bar-striped progress-bar-animated" 
+                         role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                  </div>
+                  <progress id="upload-progress" max="100" value="0" style="width:100%; display: none;"></progress>
                   <div class="small text-muted mt-1">Progress: <span id="upload-progress-text">0%</span></div>
                   
                   <!-- Upload status messages -->
-                  <div id="upload-status" class="mt-2">
+                  <div id="upload-status" class="mt-3">
                     <div id="upload-status-uploading" class="d-flex align-items-center">
                       <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
                         <span class="visually-hidden">Loading...</span>
@@ -225,11 +229,17 @@
                       </div>
                       <span>Processing video (this may take a moment)...</span>
                     </div>
-                    <div id="upload-status-complete" class="d-none text-success">
-                      <i class="fas fa-check-circle me-2"></i>
-                      <span>Video ready!</span>
+                    <div id="upload-status-complete" class="d-none alert alert-success mt-3 mb-0">
+                      <div class="d-flex align-items-center mb-2">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <span class="fw-bold">Video Ready!</span>
+                      </div>
+                      <p class="mb-3">Your video has been successfully uploaded and processed.</p>
+                      <button id="continue-submit-btn" type="button" class="btn btn-success w-100">
+                        <i class="fas fa-check-circle me-2"></i>Continue with Submission
+                      </button>
                     </div>
-                    <div id="upload-status-error" class="d-none text-danger">
+                    <div id="upload-status-error" class="d-none alert alert-danger">
                       <i class="fas fa-exclamation-triangle me-2"></i>
                       <span>Error processing video.</span>
                     </div>
@@ -499,6 +509,26 @@ function clearVideoSelection() {
   document.getElementById('video-preview').classList.add('d-none');
   document.getElementById('video_url').value = ''; // Clear the hidden input for video URL
   clearFileError('video');
+  
+  // Also hide any upload UI elements
+  const directUploadUI = document.getElementById('direct-upload-ui');
+  if (directUploadUI) {
+    directUploadUI.classList.add('d-none');
+  }
+  
+  // Reset progress indicators
+  const progressBar = document.getElementById('upload-progress-bar');
+  if (progressBar) {
+    progressBar.style.width = '0%';
+    progressBar.setAttribute('aria-valuenow', 0);
+    progressBar.classList.add('progress-bar-striped', 'progress-bar-animated');
+  }
+  
+  // Reset status messages
+  document.getElementById('upload-status-uploading').classList.remove('d-none');
+  document.getElementById('upload-status-processing').classList.add('d-none');
+  document.getElementById('upload-status-complete').classList.add('d-none');
+  document.getElementById('upload-status-error').classList.add('d-none');
 }
 
 // Initialize secure uploader
@@ -523,55 +553,73 @@ function initializeSecureUploader() {
     
     // Define all callbacks in the initial options object
     onProgress: (percent) => {
-    console.log('Upload progress update:', percent);
-    
-    // Update all progress indicators
-    const elementsToUpdate = [
-      // Main progress bar in form
-      { id: 'upload-progress', type: 'value', value: percent },
-      { id: 'upload-progress-text', type: 'text', value: `${percent}%` },
+      console.log('Upload progress update:', percent);
       
-      // Loading overlay indicators
-      { id: 'overlay-upload-progress-bar', type: 'width', value: `${percent}%` },
-      { id: 'overlay-upload-progress-text', type: 'text', value: `${percent}%` }
-    ];
-    
-    elementsToUpdate.forEach(element => {
-      const el = document.getElementById(element.id);
-      if (el) {
-        if (element.type === 'value') {
-          el.value = element.value;
-        } else if (element.type === 'width') {
-          el.style.width = element.value;
-        } else if (element.type === 'text') {
-          el.textContent = element.value;
+      // Update all progress indicators
+      // Update progress bar
+      const progressBar = document.getElementById('upload-progress-bar');
+      if (progressBar) {
+        progressBar.style.width = `${percent}%`;
+        progressBar.setAttribute('aria-valuenow', percent);
+      }
+      
+      // Update hidden native progress element (used for internal logic)
+      const progressElement = document.getElementById('upload-progress');
+      if (progressElement) {
+        progressElement.value = percent;
+      }
+      
+      // Update text indicators
+      const progressText = document.getElementById('upload-progress-text');
+      if (progressText) {
+        progressText.textContent = `${percent}%`;
+      }
+      
+      // Update overlay progress if present
+      const overlayBar = document.getElementById('overlay-upload-progress-bar');
+      const overlayText = document.getElementById('overlay-upload-progress-text');
+      if (overlayBar) overlayBar.style.width = `${percent}%`;
+      if (overlayText) overlayText.textContent = `${percent}%`;
+      
+      // Show loading overlay for uploads
+      const loadingOverlay = document.getElementById('loading-overlay');
+      if (loadingOverlay) {
+        if (percent > 0 && percent < 100) {
+          // Show overlay during active upload
+          loadingOverlay.classList.remove('d-none');
+        } else if (percent === 100) {
+          // Hide overlay when upload completes
+          setTimeout(() => {
+            loadingOverlay.classList.add('d-none');
+          }, 1000); // Hide after 1 second to show completion
         }
       }
-    });
-    
-    // Show loading overlay for uploads
-    const loadingOverlay = document.getElementById('loading-overlay');
-    if (loadingOverlay) {
-      if (percent > 0 && percent < 100) {
-        // Show overlay during active upload
-        loadingOverlay.classList.remove('d-none');
-      } else if (percent === 100) {
-        // Hide overlay when upload completes
-        setTimeout(() => {
-          loadingOverlay.classList.add('d-none');
-        }, 1000); // Hide after 1 second to show completion
+      
+      // Show the direct upload UI when upload starts
+      if (percent > 0) {
+        document.getElementById('direct-upload-ui').classList.remove('d-none');
       }
-    }
-    
-    // Show the direct upload UI when upload starts
-    if (percent > 0) {
-      document.getElementById('direct-upload-ui').classList.remove('d-none');
-    }
+      
+      // Update button state
+      const submitButton = document.getElementById('submit-btn');
+      if (submitButton) {
+        if (percent < 100) {
+          // Disable during active upload
+          submitButton.disabled = true;
+        }
+      }
     },
     
     // Handle upload completion
     onComplete: (videoData) => {
       console.log('Upload complete callback with video data:', videoData);
+      
+      // Store video ID for submission
+      const videoIdInput = document.getElementById('video_url');
+      if (videoIdInput && videoData.guid) {
+        videoIdInput.value = videoData.guid;
+        console.log('Video ID set to:', videoData.guid);
+      }
       
       // Hide loading overlay when processing completes
       const loadingOverlay = document.getElementById('loading-overlay');
@@ -587,23 +635,38 @@ function initializeSecureUploader() {
         progressText.style.fontWeight = 'bold';
       }
       
+      // Update progress bar style for completion
+      const progressBar = document.getElementById('upload-progress-bar');
+      if (progressBar) {
+        progressBar.classList.remove('progress-bar-animated');
+        progressBar.classList.remove('progress-bar-striped');
+      }
+      
       // Update status messages
       document.getElementById('upload-status-uploading').classList.add('d-none');
       document.getElementById('upload-status-processing').classList.add('d-none');
       document.getElementById('upload-status-complete').classList.remove('d-none');
       
-      // Show a "Continue with submission" button
-      const continueButton = document.createElement('button');
-      continueButton.type = 'button';
-      continueButton.className = 'btn btn-success btn-block mt-3';
-      continueButton.innerHTML = '<i class="fas fa-check-circle me-2"></i>Continue with submission';
-      continueButton.onclick = () => {
-        document.getElementById('audition-form').submit();
-      };
+      // Enable submit button
+      const submitButton = document.getElementById('submit-btn');
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.classList.remove('btn-secondary');
+        submitButton.classList.add('btn-primary');
+      }
       
-      const uploadStatus = document.getElementById('upload-status');
-      if (uploadStatus) {
-        uploadStatus.appendChild(continueButton);
+      // Add event listener to the continue button
+      const continueButton = document.getElementById('continue-submit-btn');
+      if (continueButton) {
+        continueButton.addEventListener('click', function() {
+          const form = document.getElementById('audition-form');
+          if (form) {
+            // Show submission in progress
+            showSubmissionInProgress();
+            // Submit the form
+            form.submit();
+          }
+        });
       }
     },
     
@@ -762,6 +825,40 @@ function updateLoadingMessage(message, totalSize) {
   }
 }
 
+// Function to show submission in progress UI
+function showSubmissionInProgress() {
+  // Show a full-page loading overlay during submission
+  const loadingOverlay = document.getElementById('loading-overlay');
+  if (loadingOverlay) {
+    // Update overlay message
+    const overlayTitle = loadingOverlay.querySelector('h4');
+    if (overlayTitle) {
+      overlayTitle.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Submitting Your Audition...';
+    }
+    
+    const overlayMessage = loadingOverlay.querySelector('p');
+    if (overlayMessage) {
+      overlayMessage.textContent = 'Please wait while we submit your audition. This will only take a moment.';
+    }
+    
+    // Hide progress bar since we don't need it during submission
+    const progressContainer = loadingOverlay.querySelector('.progress');
+    if (progressContainer) {
+      progressContainer.style.display = 'none';
+    }
+    
+    // Show the overlay
+    loadingOverlay.classList.remove('d-none');
+  }
+  
+  // Disable the submit button
+  const submitButton = document.getElementById('submit-btn');
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Submitting...';
+  }
+}
+
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
   // Initialize the secure uploader
@@ -775,13 +872,33 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Enhance form submission
   enhanceFormSubmission();
+  
+  // Add event listener to form submission
+  const form = document.getElementById('audition-form');
+  const submitButton = document.getElementById('submit-btn');
+  
+  if (form && submitButton) {
+    submitButton.addEventListener('click', function(event) {
+      // If the form is valid and about to be submitted, show loading UI
+      if (form.checkValidity() && !event.defaultPrevented) {
+        showSubmissionInProgress();
+      }
+    });
+  }
 
   // Bootstrap validation for client-side feedback
   (function () {
     'use strict';
     var forms = document.querySelectorAll('.needs-validation');
     Array.prototype.slice.call(forms).forEach(function (form) {
-      form.classList.add('was-validated');
+      form.addEventListener('submit', function(event) {
+        // Prevent the HTML validation error from showing before our custom validation
+        if (!this.checkValidity()) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+      });
     });
   })();
 });
