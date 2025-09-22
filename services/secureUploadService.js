@@ -113,6 +113,13 @@ module.exports = {
     const uploadUrl = `https://video.bunnycdn.com/library/${BUNNY_STREAM_LIBRARY_ID}/videos/${videoGuid}`;
     
     try {
+      console.log(`Proxying chunk upload for video ${videoGuid}`);
+      
+      // Log headers to help with debugging
+      if (headers.contentRange) {
+        console.log(`Upload Content-Range: ${headers.contentRange}`);
+      }
+      
       // Forward the request to Bunny.net with our server's API key
       const response = await axios({
         method: 'PUT',
@@ -125,16 +132,43 @@ module.exports = {
           ...(headers.contentRange && { 'Content-Range': headers.contentRange })
         },
         maxContentLength: Infinity,
-        maxBodyLength: Infinity
+        maxBodyLength: Infinity,
+        // Make sure axios doesn't time out on large files
+        timeout: 0
       });
+      
+      let logMessage = `Chunk upload successful: Status ${response.status}`;
+      if (headers.contentRange) {
+        logMessage += `, Range: ${headers.contentRange}`;
+      }
+      console.log(logMessage);
       
       return {
         status: response.status,
         data: response.data
       };
     } catch (error) {
-      console.error('Proxy upload error:', error.message);
-      throw new Error('Failed to proxy upload to Bunny.net');
+      // Enhanced error logging for chunked uploads
+      let errorDetails = 'Proxy upload error: ';
+      
+      if (error.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        errorDetails += `Server error ${error.response.status}: ${JSON.stringify(error.response.data)}`;
+      } else if (error.request) {
+        // The request was made but no response was received
+        errorDetails += 'No response received from server';
+      } else {
+        // Something happened in setting up the request
+        errorDetails += error.message;
+      }
+      
+      if (headers.contentRange) {
+        errorDetails += `, Range: ${headers.contentRange}`;
+      }
+      
+      console.error(errorDetails);
+      throw new Error(`Failed to proxy upload to Bunny.net: ${error.message}`);
     }
   },
 

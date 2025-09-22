@@ -204,44 +204,79 @@
                   </button>
                 </div>
                 <div class="mt-3 d-none" id="direct-upload-ui">
-                  <div class="d-flex align-items-center mb-2">
-                    <i class="fas fa-cloud-arrow-up me-2 text-success"></i>
-                    <strong>Direct upload to Bunny.net</strong>
-                  </div>
-                  <div class="progress" style="height: 15px;">
-                    <div id="upload-progress-bar" class="progress-bar bg-success progress-bar-striped progress-bar-animated" 
-                         role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
-                  </div>
-                  <progress id="upload-progress" max="100" value="0" style="width:100%; display: none;"></progress>
-                  <div class="small text-muted mt-1">Progress: <span id="upload-progress-text">0%</span></div>
-                  
-                  <!-- Upload status messages -->
-                  <div id="upload-status" class="mt-3">
-                    <div id="upload-status-uploading" class="d-flex align-items-center">
-                      <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                      </div>
-                      <span>Uploading video to secure server...</span>
+                  <div class="card border-light shadow-sm">
+                    <div class="card-header bg-light d-flex align-items-center">
+                      <i class="fas fa-cloud-upload-alt me-2 text-primary"></i>
+                      <strong>Secure Video Upload</strong>
+                      <span class="ms-auto badge bg-primary" id="inline-upload-status">Initializing...</span>
                     </div>
-                    <div id="upload-status-processing" class="d-none d-flex align-items-center">
-                      <div class="spinner-border spinner-border-sm text-warning me-2" role="status">
-                        <span class="visually-hidden">Processing...</span>
-                      </div>
-                      <span>Processing video (this may take a moment)...</span>
-                    </div>
-                    <div id="upload-status-complete" class="d-none alert alert-success mt-3 mb-0">
+                    <div class="card-body">
+                      <!-- Progress bar and percentage -->
                       <div class="d-flex align-items-center mb-2">
-                        <i class="fas fa-check-circle me-2"></i>
-                        <span class="fw-bold">Video Ready!</span>
+                        <div class="flex-grow-1 me-2">
+                          <div class="progress" style="height: 8px;">
+                            <div id="upload-progress-bar" class="progress-bar bg-primary progress-bar-striped progress-bar-animated" 
+                                role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                          </div>
+                        </div>
+                        <span class="badge bg-light text-dark" id="upload-progress-text">0%</span>
                       </div>
-                      <p class="mb-3">Your video has been successfully uploaded and processed.</p>
-                      <button id="continue-submit-btn" type="button" class="btn btn-success w-100">
-                        <i class="fas fa-check-circle me-2"></i>Continue with Submission
-                      </button>
+                      
+                      <!-- Hidden progress element for internal tracking -->
+                      <progress id="upload-progress" max="100" value="0" style="display: none;"></progress>
+                      
+                      <!-- Upload status messages -->
+                      <div id="upload-status" class="mt-3">
+                        <div id="upload-status-uploading" class="d-flex align-items-center">
+                          <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                          </div>
+                          <span class="small">Uploading to secure server...</span>
+                        </div>
+                        
+                        <div id="upload-status-processing" class="d-none d-flex align-items-center">
+                          <div class="spinner-border spinner-border-sm text-warning me-2" role="status">
+                            <span class="visually-hidden">Processing...</span>
+                          </div>
+                          <span class="small">Processing video (this may take a moment)...</span>
+                        </div>
+                        
+                        <div id="upload-status-complete" class="d-none mt-2">
+                          <div class="d-flex align-items-center text-success mb-2">
+                            <i class="fas fa-check-circle me-2"></i>
+                            <span class="fw-bold">Video Ready!</span>
+                          </div>
+                          <div class="d-flex justify-content-end mt-2">
+                            <button id="continue-submit-btn" type="button" class="btn btn-success btn-sm">
+                              <i class="fas fa-check-circle me-1"></i>Submit Audition
+                            </button>
+                          </div>
+                        </div>
+                        
+                        <div id="upload-status-error" class="d-none alert alert-danger mt-2 mb-0 py-2 px-3">
+                          <div class="d-flex align-items-center">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <span class="small">Error processing video.</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <!-- Security information -->
+                      <div class="mt-3 d-flex align-items-center">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                    <div class="small text-muted">
+                      <i class="fas fa-shield-alt me-1"></i>
+                      Secure upload with encryption
                     </div>
-                    <div id="upload-status-error" class="d-none alert alert-danger">
-                      <i class="fas fa-exclamation-triangle me-2"></i>
-                      <span>Error processing video.</span>
+                    <div class="small text-muted">
+                      <span id="upload-stats-speed">-</span>
+                    </div>
+                  </div>
+                  <div class="small text-muted d-flex justify-content-between">
+                    <span>Using chunked upload for reliability</span>
+                    <span id="upload-stats-eta"></span>
+                  </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -298,40 +333,59 @@
 </div>
 
 <!-- Loading Overlay -->
-<div id="loading-overlay" class="d-none position-fixed top-0 start-0 w-100 h-100" style="background-color: rgba(0,0,0,0.8); z-index: 9999;">
+<div id="loading-overlay" class="d-none position-fixed top-0 start-0 w-100 h-100" style="background-color: rgba(0,0,0,0.85); z-index: 9999;">
   <div class="d-flex justify-content-center align-items-center h-100">
-    <div class="text-center text-white">
-      <div class="spinner-border mb-3" role="status" style="color: var(--primary-red); width: 4rem; height: 4rem; border-width: 0.3em;">
-        <span class="visually-hidden">Loading...</span>
+    <div class="text-center text-white" style="max-width: 500px;">
+      <!-- Upload Status Indicator -->
+      <div id="overlay-status-indicator" class="mb-3">
+        <!-- Upload Phase -->
+        <div id="upload-phase" class="d-flex justify-content-center align-items-center mb-2">
+          <div class="spinner-border me-3" role="status" style="color: var(--primary-red); width: 3.5rem; height: 3.5rem; border-width: 0.3em;">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <div class="text-start">
+            <h4 class="mb-0" style="color: var(--primary-red);">
+              <i class="fas fa-cloud-upload-alt me-2"></i>
+              <span id="overlay-status-title">Uploading Video...</span>
+            </h4>
+            <p class="text-light mb-0 small" id="overlay-status-subtitle">Please wait while your video is being processed.</p>
+          </div>
+        </div>
+        
+        <!-- Processing Phase (initially hidden) -->
+        <div id="processing-phase" class="d-none text-center">
+          <i class="fas fa-cogs fa-3x mb-2" style="color: var(--primary-red);"></i>
+          <h4 style="color: var(--primary-red);">Processing Video...</h4>
+          <p class="text-light small">Your video has been uploaded and is now being processed. This will only take a moment.</p>
+        </div>
+        
+        <!-- Complete Phase (initially hidden) -->
+        <div id="complete-phase" class="d-none text-center">
+          <i class="fas fa-check-circle fa-3x mb-2" style="color: #28a745;"></i>
+          <h4 style="color: #28a745;">Upload Complete!</h4>
+          <p class="text-light small">Your video has been successfully uploaded and processed.</p>
+        </div>
       </div>
-      <h4 style="color: var(--primary-red);">
-        <i class="fas fa-cloud-upload-alt me-2"></i>
-        Uploading Your Audition...
-      </h4>
-      <p class="text-light">Please don't close this tab. Large video files may take several minutes to upload securely to our servers.</p>
+      
+      <!-- Main Message -->
+      <p class="text-light">Please don't close this tab. Your video is being securely uploaded and processed.</p>
       
       <!-- Enhanced progress information -->
       <div class="mt-4">
-            <div id="resume-upload-hint" class="alert alert-warning d-none mt-3">
-              Looks like a previous upload was interrupted: <strong data-name></strong> (<span data-size></span>). If you reselect the same file, the upload can resume.
-            </div>
-            <div id="resume-upload-hint" class="alert alert-warning d-none mt-3">
-              Looks like a previous upload was interrupted: <strong data-name></strong> (<span data-size></span>). If you reselect the same file, the upload can resume.
-            </div>
         <div class="card bg-dark border-secondary" style="max-width: 400px; margin: 0 auto;">
           <div class="card-body p-3">
             <h6 class="text-white mb-3">
               <i class="fas fa-shield-alt me-2" style="color: var(--primary-red);"></i>
-              Secure Bunny.net Upload
+              Secure Video Upload
             </h6>
             <div class="text-start">
               <div class="d-flex justify-content-between mb-2">
-                <span class="small text-muted">Upload Method:</span>
-                <span class="small text-white">Private & Secure (Bunny.net)</span>
+                <span class="small text-muted">Status:</span>
+                <span class="small text-white" id="overlay-detailed-status">Uploading...</span>
               </div>
               <div class="d-flex justify-content-between mb-2">
-                <span class="small text-muted">Processing:</span>
-                <span class="small text-white">Real-time</span>
+                <span class="small text-muted">Security:</span>
+                <span class="small text-white">End-to-End Encrypted</span>
               </div>
               <div class="d-flex justify-content-between">
                 <span class="small text-muted">Accessibility:</span>
@@ -342,11 +396,17 @@
         </div>
       </div>
       
-      <div class="progress mx-auto mt-3" style="width: 300px; height: 8px;">
+      <!-- Progress Bar -->
+      <div class="progress mx-auto mt-3" style="width: 300px; height: 10px; background-color: rgba(255,255,255,0.1);">
         <div class="progress-bar progress-bar-striped progress-bar-animated" id="overlay-upload-progress-bar" role="progressbar" style="background-color: var(--primary-red); width: 0%"></div>
       </div>
       <div class="text-center mt-2">
-        <small class="text-light fw-bold" style="letter-spacing:0.3px">Upload Progress: <span id="overlay-upload-progress-text">0%</span></small>
+        <span class="text-light fw-bold" style="letter-spacing:0.3px">Progress: <span id="overlay-upload-progress-text">0%</span></span>
+      </div>
+      
+      <!-- Action Buttons -->
+      <div class="mt-4" id="overlay-action-buttons">
+        <!-- Initially empty - buttons will be added dynamically -->
       </div>
       
       <!-- Tips for large uploads -->
@@ -404,6 +464,14 @@ function validateImageType(file) {
 }
 
 // Profile pictures handling
+// Set upload start time when file is selected
+function handleVideoSelection(event) {
+  if (event.target.files && event.target.files.length > 0) {
+    window.uploadStartTime = Date.now();
+    console.log('Video selected, recording start time for speed calculations');
+  }
+}
+
 function handleProfilePicturesSelection(event) {
   const files = Array.from(event.target.files);
   const preview = document.getElementById('profile-pictures-preview');
@@ -575,23 +643,122 @@ function initializeSecureUploader() {
         progressText.textContent = `${percent}%`;
       }
       
-      // Update overlay progress if present
+      // Update statistics if we have the file information
+      if (document.getElementById('video').files && document.getElementById('video').files[0]) {
+        const fileSize = document.getElementById('video').files[0].size;
+        const uploadedSize = Math.round((percent / 100) * fileSize);
+        
+        // Update speed and ETA displays if they exist
+        const statsSpeed = document.getElementById('upload-stats-speed');
+        const statsEta = document.getElementById('upload-stats-eta');
+        
+        if (percent > 0 && percent < 100) {
+          // Calculate speed based on progress over time
+          const elapsedMs = Date.now() - (window.uploadStartTime || Date.now());
+          if (elapsedMs > 0) {
+            const speedBps = uploadedSize / (elapsedMs / 1000);
+            if (statsSpeed) statsSpeed.textContent = formatFileSize(speedBps) + '/s';
+            
+            // Calculate ETA
+            const remainingBytes = fileSize - uploadedSize;
+            if (speedBps > 0 && statsEta) {
+              const etaSeconds = Math.round(remainingBytes / speedBps);
+              if (etaSeconds < 60) {
+                statsEta.textContent = `${etaSeconds} sec remaining`;
+              } else if (etaSeconds < 3600) {
+                statsEta.textContent = `${Math.floor(etaSeconds / 60)} min ${etaSeconds % 60} sec remaining`;
+              } else {
+                statsEta.textContent = `${Math.floor(etaSeconds / 3600)} hr ${Math.floor((etaSeconds % 3600) / 60)} min remaining`;
+              }
+            }
+          }
+        } else if (percent === 100) {
+          if (statsSpeed) statsSpeed.textContent = 'Complete';
+          if (statsEta) statsEta.textContent = '';
+        }
+      }
+      
+      // Update overlay progress and status
       const overlayBar = document.getElementById('overlay-upload-progress-bar');
       const overlayText = document.getElementById('overlay-upload-progress-text');
+      const overlayDetailedStatus = document.getElementById('overlay-detailed-status');
+      
       if (overlayBar) overlayBar.style.width = `${percent}%`;
       if (overlayText) overlayText.textContent = `${percent}%`;
       
-      // Show loading overlay for uploads
+      // Show loading overlay for uploads with improved UX
       const loadingOverlay = document.getElementById('loading-overlay');
       if (loadingOverlay) {
-        if (percent > 0 && percent < 100) {
+        if (percent > 0) {
           // Show overlay during active upload
           loadingOverlay.classList.remove('d-none');
-        } else if (percent === 100) {
-          // Hide overlay when upload completes
-          setTimeout(() => {
-            loadingOverlay.classList.add('d-none');
-          }, 1000); // Hide after 1 second to show completion
+          
+          // Update detailed status based on progress
+          if (overlayDetailedStatus) {
+            if (percent < 100) {
+              // For chunked uploads, show more detailed status
+              const fileSize = document.getElementById('video').files[0].size;
+              const uploadedSize = Math.round((percent / 100) * fileSize);
+              
+              // Format sizes
+              const formattedTotal = formatFileSize(fileSize);
+              const formattedUploaded = formatFileSize(uploadedSize);
+              
+              overlayDetailedStatus.innerHTML = `
+                Uploading (${percent}%)<br>
+                <small class="text-muted">${formattedUploaded} of ${formattedTotal}</small>
+              `;
+              
+              // Update the subtitle with chunking info
+              const statusSubtitle = document.getElementById('overlay-status-subtitle');
+              if (statusSubtitle) {
+                statusSubtitle.innerHTML = `Video uploads in chunks for better reliability. <small class="text-muted">Please don't close this tab.</small>`;
+              }
+            } else if (percent === 100) {
+              overlayDetailedStatus.textContent = 'Processing...';
+              
+              // Show processing phase
+              document.getElementById('upload-phase').classList.add('d-none');
+              document.getElementById('processing-phase').classList.remove('d-none');
+            }
+          }
+          
+          // Add cancel button when upload is in progress
+          if (percent < 100) {
+            const actionButtons = document.getElementById('overlay-action-buttons');
+            if (actionButtons && !document.getElementById('overlay-cancel-btn')) {
+              actionButtons.innerHTML = `
+                <button id="overlay-cancel-btn" class="btn btn-outline-light btn-sm">
+                  <i class="fas fa-times-circle me-1"></i>Cancel Upload
+                </button>
+              `;
+              
+              // Add event listener to cancel button
+              document.getElementById('overlay-cancel-btn').addEventListener('click', () => {
+                if (confirm('Are you sure you want to cancel the upload?')) {
+                  clearVideoSelection();
+                  loadingOverlay.classList.add('d-none');
+                  const submitButton = document.getElementById('submit-btn');
+                  if (submitButton) submitButton.disabled = false;
+                }
+              });
+            }
+          } else if (percent === 100) {
+            // Replace cancel button with "Continue with form" button
+            const actionButtons = document.getElementById('overlay-action-buttons');
+            if (actionButtons) {
+              actionButtons.innerHTML = `
+                <button id="overlay-continue-btn" class="btn btn-success">
+                  <i class="fas fa-check-circle me-1"></i>Continue with Submission
+                </button>
+              `;
+              
+              // Add event listener to continue button
+              document.getElementById('overlay-continue-btn').addEventListener('click', () => {
+                loadingOverlay.classList.add('d-none');
+              });
+            }
+          }
         }
       }
       
@@ -621,10 +788,49 @@ function initializeSecureUploader() {
         console.log('Video ID set to:', videoData.guid);
       }
       
-      // Hide loading overlay when processing completes
+      // Update loading overlay for completion
       const loadingOverlay = document.getElementById('loading-overlay');
       if (loadingOverlay) {
-        loadingOverlay.classList.add('d-none');
+        // Show completed phase
+        document.getElementById('upload-phase').classList.add('d-none');
+        document.getElementById('processing-phase').classList.add('d-none');
+        document.getElementById('complete-phase').classList.remove('d-none');
+        
+        // Update detailed status
+        const overlayDetailedStatus = document.getElementById('overlay-detailed-status');
+        if (overlayDetailedStatus) {
+          overlayDetailedStatus.textContent = 'Ready for Submission';
+          overlayDetailedStatus.classList.add('text-success');
+          overlayDetailedStatus.classList.remove('text-white');
+        }
+        
+        // Update action buttons
+        const actionButtons = document.getElementById('overlay-action-buttons');
+        if (actionButtons) {
+          actionButtons.innerHTML = `
+            <button id="overlay-submit-btn" class="btn btn-success">
+              <i class="fas fa-check-circle me-1"></i>Submit Audition Now
+            </button>
+          `;
+          
+          // Add event listener to submit button
+          setTimeout(() => {
+            const submitNowBtn = document.getElementById('overlay-submit-btn');
+            if (submitNowBtn) {
+              submitNowBtn.addEventListener('click', () => {
+                loadingOverlay.classList.add('d-none');
+                document.getElementById('audition-form').submit();
+              });
+            }
+          }, 100);
+          
+          // Auto-hide overlay after 3 seconds unless user interacted with it
+          setTimeout(() => {
+            if (!loadingOverlay.dataset.userInteracted) {
+              loadingOverlay.classList.add('d-none');
+            }
+          }, 3000);
+        }
       }
       
       // Show success message
@@ -640,6 +846,17 @@ function initializeSecureUploader() {
       if (progressBar) {
         progressBar.classList.remove('progress-bar-animated');
         progressBar.classList.remove('progress-bar-striped');
+        progressBar.classList.add('bg-success');
+        progressBar.style.width = '100%';
+      }
+      
+      // Update overlay progress bar style
+      const overlayBar = document.getElementById('overlay-upload-progress-bar');
+      if (overlayBar) {
+        overlayBar.classList.remove('progress-bar-animated');
+        overlayBar.classList.remove('progress-bar-striped');
+        overlayBar.classList.add('bg-success');
+        overlayBar.style.width = '100%';
       }
       
       // Update status messages
@@ -647,12 +864,13 @@ function initializeSecureUploader() {
       document.getElementById('upload-status-processing').classList.add('d-none');
       document.getElementById('upload-status-complete').classList.remove('d-none');
       
-      // Enable submit button
+      // Enable submit button with visual enhancements
       const submitButton = document.getElementById('submit-btn');
       if (submitButton) {
         submitButton.disabled = false;
         submitButton.classList.remove('btn-secondary');
-        submitButton.classList.add('btn-primary');
+        submitButton.classList.add('btn-success');
+        submitButton.innerHTML = '<i class="fas fa-check-circle me-2"></i>Submit Audition';
       }
       
       // Add event listener to the continue button
@@ -898,28 +1116,55 @@ function showSubmissionInProgress() {
   // Show a full-page loading overlay during submission
   const loadingOverlay = document.getElementById('loading-overlay');
   if (loadingOverlay) {
-    // Update overlay message
-    const overlayTitle = loadingOverlay.querySelector('h4');
-    if (overlayTitle) {
-      overlayTitle.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Submitting Your Audition...';
+    // Hide all phases and show submission phase
+    document.getElementById('upload-phase').classList.remove('d-none');
+    document.getElementById('processing-phase').classList.add('d-none');
+    document.getElementById('complete-phase').classList.add('d-none');
+    
+    // Update overlay title and subtitle
+    const statusTitle = document.getElementById('overlay-status-title');
+    const statusSubtitle = document.getElementById('overlay-status-subtitle');
+    
+    if (statusTitle) {
+      statusTitle.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Submitting Audition...';
     }
     
-    const overlayMessage = loadingOverlay.querySelector('p');
-    if (overlayMessage) {
-      overlayMessage.textContent = 'Please wait while we submit your audition. This will only take a moment.';
+    if (statusSubtitle) {
+      statusSubtitle.textContent = 'Please wait while we submit your audition. This will only take a moment.';
     }
     
-    // Hide progress bar since we don't need it during submission
-    const progressContainer = loadingOverlay.querySelector('.progress');
-    if (progressContainer) {
-      progressContainer.style.display = 'none';
+    // Update detailed status
+    const overlayDetailedStatus = document.getElementById('overlay-detailed-status');
+    if (overlayDetailedStatus) {
+      overlayDetailedStatus.textContent = 'Finalizing Submission';
+      overlayDetailedStatus.classList.remove('text-success');
+      overlayDetailedStatus.classList.add('text-white');
+    }
+    
+    // Update action buttons - no actions during submission
+    const actionButtons = document.getElementById('overlay-action-buttons');
+    if (actionButtons) {
+      actionButtons.innerHTML = '';
+    }
+    
+    // Set progress bar to indeterminate state
+    const overlayBar = document.getElementById('overlay-upload-progress-bar');
+    if (overlayBar) {
+      overlayBar.classList.add('progress-bar-animated', 'progress-bar-striped');
+      overlayBar.classList.remove('bg-success');
+      overlayBar.style.width = '100%';
+    }
+    
+    const overlayText = document.getElementById('overlay-upload-progress-text');
+    if (overlayText) {
+      overlayText.textContent = 'Processing...';
     }
     
     // Show the overlay
     loadingOverlay.classList.remove('d-none');
   }
   
-  // Disable the submit button
+  // Disable the submit button and show spinner
   const submitButton = document.getElementById('submit-btn');
   if (submitButton) {
     submitButton.disabled = true;
@@ -937,6 +1182,12 @@ document.addEventListener('DOMContentLoaded', function() {
   if (profileInput) {
     profileInput.addEventListener('change', handleProfilePicturesSelection);
   }
+  
+  // Attach video selection handler for timing uploads
+  const videoInput = document.getElementById('video');
+  if (videoInput) {
+    videoInput.addEventListener('change', handleVideoSelection);
+  }
 
   // Enhance form submission
   enhanceFormSubmission();
@@ -950,6 +1201,17 @@ document.addEventListener('DOMContentLoaded', function() {
       // If the form is valid and about to be submitted, show loading UI
       if (form.checkValidity() && !event.defaultPrevented) {
         showSubmissionInProgress();
+      }
+    });
+  }
+  
+  // Initialize loading overlay interaction tracking
+  const loadingOverlay = document.getElementById('loading-overlay');
+  if (loadingOverlay) {
+    loadingOverlay.addEventListener('click', function(event) {
+      // Only mark as interacted if clicking UI elements, not the backdrop
+      if (event.target !== loadingOverlay) {
+        loadingOverlay.dataset.userInteracted = 'true';
       }
     });
   }

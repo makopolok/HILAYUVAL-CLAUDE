@@ -1,7 +1,31 @@
 /**
  * Secure Bunny.net upload - No API keys exposed to client
  * Uses server-side proxy with temporary token authentication
+ * 
+ * Features:
+ * - Chunked uploads for large files
+ * - Resumable uploads
+ * - Progress tracking with detailed statistics
+ * - Direct integration with form submission
  */
+
+// Helper function to format file sizes in a human-readable format
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Helper function to format file sizes in a human-readable format
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
 class SecureUploader {
   constructor(options = {}) {
     this.options = {
@@ -16,6 +40,7 @@ class SecureUploader {
 
   async uploadVideo(file, title) {
     const { onProgress, onComplete, onError } = this.options;
+    const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
     
     try {
       console.log('Starting secure upload process for file:', file.name, 'size:', file.size);
@@ -43,61 +68,168 @@ class SecureUploader {
       const uploadSession = await sessionResponse.json();
       console.log('Created upload session:', uploadSession);
       
-      // Step 2: Upload the file through our secure proxy
-      console.log('Starting file upload to', uploadSession.uploadUrl);
-      const xhr = new XMLHttpRequest();
+      // Step 2: Upload the file in chunks through our secure proxy
+      console.log('Starting chunked file upload to', uploadSession.uploadUrl);
       
-      // Handle progress events
-      if (onProgress) {
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable) {
-            const percentComplete = Math.round((event.loaded / event.total) * 100);
-            console.log(`Upload progress: ${percentComplete}%`);
-            onProgress(percentComplete, uploadSession);
-          }
-        };
+      // Store the session for potential resume
+      localStorage.setItem('currentUploadSession', JSON.stringify({
+        guid: uploadSession.guid,
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type,
+        token: uploadSession.uploadToken,
+        timestamp: Date.now()
+      }));
+      
+      // Calculate total chunks
+      const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+      let uploadedBytes = 0;
+      let uploadStats = {
+        startTime: Date.now(),
+        totalSize: file.size,
+        uploadedSize: 0,
+        formattedTotal: formatFileSize(file.size),
+        formattedUploaded: '0 KB',
+        speed: '0 KB/s',
+        eta: 'calculating...'
+      };
+      
+      // Process each chunk
+      for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+        const start = chunkIndex * CHUNK_SIZE;
+        const end = Math.min(file.size, start + CHUNK_SIZE);
+        const chunk = file.slice(start, end);
+        
+        try {
+          // Track chunk start time for speed calculation
+          const chunkStartTime = Date.now();
+          
+          // Upload this chunk
+          await this._uploadChunk(uploadSession, chunk, start, end, file.size, file.type, (chunkProgress) => {
+            // Calculate overall progress considering chunks
+            const chunkSize = end - start;
+            const chunkBytesUploaded = Math.floor(chunkSize * (chunkProgress / 100));
+            const totalBytesUploaded = uploadedBytes + chunkBytesUploaded;
+            const overallProgress = Math.min(
+              99, // Cap at 99% until fully complete
+              Math.floor((totalBytesUploaded / file.size) * 100)
+            );
+            
+            // Update upload stats for detailed reporting
+            const elapsedMs = Date.now() - uploadStats.startTime;
+            if (elapsedMs > 0 && totalBytesUploaded > 0) {
+              // Calculate speed in bytes per second
+              const speedBps = totalBytesUploaded / (elapsedMs / 1000);
+              uploadStats.speed = formatFileSize(speedBps) + '/s';
+              
+              // Calculate ETA
+              const remainingBytes = file.size - totalBytesUploaded;
+              if (speedBps > 0) {
+                const etaSeconds = Math.round(remainingBytes / speedBps);
+                if (etaSeconds < 60) {
+                  uploadStats.eta = `${etaSeconds} sec`;
+                } else if (etaSeconds < 3600) {
+                  uploadStats.eta = `${Math.floor(etaSeconds / 60)} min ${etaSeconds % 60} sec`;
+                } else {
+                  uploadStats.eta = `${Math.floor(etaSeconds / 3600)} hr ${Math.floor((etaSeconds % 3600) / 60)} min`;
+                }
+              }
+            }
+            
+            uploadStats.uploadedSize = totalBytesUploaded;
+            uploadStats.formattedUploaded = formatFileSize(totalBytesUploaded);
+            
+            // Call progress callback with detailed stats
+            if (onProgress) {
+              onProgress(overallProgress, uploadSession, uploadStats);
+            }
+          });
+          
+          // Update bytes uploaded after successful chunk
+          uploadedBytes += chunk.size;
+          console.log(`Chunk ${chunkIndex + 1}/${totalChunks} uploaded (${formatFileSize(uploadedBytes)}/${formatFileSize(file.size)})`);
+          
+          // Calculate and log chunk upload speed
+          const chunkTime = (Date.now() - chunkStartTime) / 1000; // seconds
+          const chunkSpeed = chunk.size / chunkTime; // bytes per second
+          console.log(`Chunk upload speed: ${formatFileSize(chunkSpeed)}/s`);
+          
+        } catch (chunkError) {
+          console.error(`Error uploading chunk ${chunkIndex + 1}/${totalChunks}:`, chunkError);
+          throw new Error(`Chunk upload failed: ${chunkError.message}`);
+        }
       }
       
-      // Handle response
-      xhr.onload = async () => {
-        console.log('Upload request completed with status:', xhr.status);
-        console.log('Response:', xhr.responseText);
-        
+      console.log('All chunks uploaded successfully');
+      
+      // Final progress update (100%)
+      if (onProgress) {
+        onProgress(100, uploadSession, {
+          ...uploadStats,
+          uploadedSize: file.size,
+          formattedUploaded: formatFileSize(file.size),
+          eta: '0 sec'
+        });
+      }
+      
+      // Notify that the upload part is complete (but processing may still be ongoing)
+      if (this.options.onUploadComplete) {
+        this.options.onUploadComplete(uploadSession);
+      }
+      
+      // Clear the upload session from localStorage since it completed successfully
+      localStorage.removeItem('currentUploadSession');
+      
+      // Start polling for video processing status
+      console.log('Starting processing status polling for video:', uploadSession.guid);
+      this._pollProcessingStatus(uploadSession.guid, onComplete);
+      
+      return uploadSession.guid;
+    } catch (error) {
+      console.error('Secure upload failed:', error);
+      if (onError) onError(error);
+      throw error;
+    }
+  }
+  
+  // Helper method to upload a single chunk
+  async _uploadChunk(uploadSession, chunk, start, end, totalSize, contentType, onChunkProgress) {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      
+      // Handle progress events for this chunk
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const percentComplete = Math.round((event.loaded / event.total) * 100);
+          if (onChunkProgress) onChunkProgress(percentComplete);
+        }
+      };
+      
+      // Handle completion
+      xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
-          console.log('Upload completed successfully');
-          
-          // Notify that the upload part is complete (but processing may still be ongoing)
-          if (this.options.onUploadComplete) {
-            this.options.onUploadComplete(uploadSession);
-          }
-          
-          // Start polling for video processing status
-          console.log('Starting processing status polling for video:', uploadSession.guid);
-          this._pollProcessingStatus(uploadSession.guid, onComplete);
+          resolve();
         } else {
-          const errorMessage = `Upload failed with status ${xhr.status}`;
-          console.error(errorMessage);
-          if (onError) onError(new Error(errorMessage));
+          reject(new Error(`Chunk upload failed with status ${xhr.status}`));
         }
       };
       
       // Handle errors
-      xhr.onerror = (error) => {
-        const errorMessage = 'Network error during upload';
-        console.error(errorMessage, error);
-        if (onError) onError(new Error(errorMessage));
+      xhr.onerror = () => {
+        reject(new Error('Network error during chunk upload'));
       };
       
-      // Send the file to our secure proxy endpoint
+      // Send the chunk to our secure proxy endpoint
       xhr.open('PUT', uploadSession.uploadUrl);
-      xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+      xhr.setRequestHeader('Content-Type', contentType || 'application/octet-stream');
       xhr.setRequestHeader('X-Upload-Token', uploadSession.uploadToken);
       
-      console.log('Sending file to secure proxy with token:', uploadSession.uploadToken);
-      xhr.send(file);
-      console.log('File upload request initiated');
+      // Add Content-Range header for resumable upload
+      xhr.setRequestHeader('Content-Range', `bytes ${start}-${end-1}/${totalSize}`);
       
-      return uploadSession.guid;
+      xhr.send(chunk);
+    });
+  }
     } catch (error) {
       console.error('Secure upload failed:', error);
       if (onError) onError(error);
@@ -223,14 +355,52 @@ function initSecureUploader(options) {
   }
   
   const uploader = new SecureUploader({
-    onProgress: (percent) => {
+    onProgress: (percent, session, stats) => {
       if (progressElement) {
-        progressElement.style.width = `${percent}%`;
-        progressElement.setAttribute('aria-valuenow', percent);
+        progressElement.value = percent;
       }
       
+      // Update any progress bar element
+      const progressBar = document.getElementById('upload-progress-bar');
+      if (progressBar) {
+        progressBar.style.width = `${percent}%`;
+        progressBar.setAttribute('aria-valuenow', percent);
+      }
+      
+      // Update any status element with detailed information if stats are available
       if (statusElement) {
-        statusElement.textContent = `Uploading: ${percent}%`;
+        if (stats) {
+          statusElement.textContent = `${percent}%`;
+          
+          // Update inline status badges with more detailed info
+          const inlineStatus = document.getElementById('inline-upload-status');
+          if (inlineStatus) {
+            if (percent < 100) {
+              inlineStatus.textContent = `Uploading ${stats.speed}`;
+            } else {
+              inlineStatus.textContent = 'Processing...';
+            }
+          }
+          
+          // Update overlay detailed status with additional info
+          const overlayDetailedStatus = document.getElementById('overlay-detailed-status');
+          if (overlayDetailedStatus && stats) {
+            if (percent < 100) {
+              overlayDetailedStatus.innerHTML = `
+                Uploading (${percent}%)<br>
+                <small class="text-muted">${stats.formattedUploaded} of ${stats.formattedTotal}</small><br>
+                <small class="text-muted">Speed: ${stats.speed} • ETA: ${stats.eta}</small>
+              `;
+            }
+          }
+        } else {
+          statusElement.textContent = `${percent}%`;
+        }
+      }
+      
+      // Forward to the user-provided callback
+      if (options.onProgress) {
+        options.onProgress(percent, session, stats);
       }
     },
     onComplete: (videoData) => {

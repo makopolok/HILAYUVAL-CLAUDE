@@ -258,11 +258,17 @@ app.put('/api/secure-upload/:guid', async (req, res) => {
     const token = req.headers['x-upload-token'];
     const contentType = req.headers['content-type'] || 'application/octet-stream';
     const contentLength = req.headers['content-length'];
-    const range = req.headers['content-range'];
+    const contentRange = req.headers['content-range'];
+    
+    console.log(`Secure upload request for GUID: ${guid}`);
+    if (contentRange) {
+      console.log(`Content-Range: ${contentRange}`);
+    }
     
     // Verify the upload token is valid for this GUID
     const isValid = await secureUploadService.verifyUploadToken(guid, token);
     if (!isValid) {
+      console.error(`Invalid token for GUID: ${guid}`);
       return res.status(401).json({ error: 'Invalid or expired upload token' });
     }
     
@@ -270,10 +276,21 @@ app.put('/api/secure-upload/:guid', async (req, res) => {
     const result = await secureUploadService.proxyUpload(guid, req, {
       contentType,
       contentLength,
-      contentRange: range
+      contentRange
     });
     
-    // Return the result to the client
+    // For chunked uploads, return appropriate status codes
+    if (contentRange) {
+      // If this is a partial content upload
+      console.log(`Chunk upload successful for ${guid}, range: ${contentRange}`);
+      return res.status(result.status || 200).json({
+        message: 'Chunk uploaded successfully',
+        ...result.data
+      });
+    }
+    
+    // For complete uploads or final chunks
+    console.log(`Full upload successful for ${guid}`);
     res.status(result.status || 200).json(result.data || {});
   } catch (error) {
     console.error('Secure upload proxy error:', error);
