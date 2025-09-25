@@ -2,6 +2,14 @@
 {{> header}}
 <div class="container mt-5">
   <h1 class="display-4 mb-4">Projects</h1>
+  {{#if deploymentInfo}}
+  <div class="alert alert-info small mb-3">
+    <strong>Version Info:</strong> 
+    Commit: {{deploymentInfo.commit}} | 
+    Version: {{deploymentInfo.version}} | 
+    Deployed: {{deploymentInfo.deployDate}}
+  </div>
+  {{/if}}
   <a href="/projects/create" class="btn btn-outline-success mb-3">Create New Project</a>
   <form class="row g-3 mb-4" method="GET" action="">
     <div class="col-md-4">

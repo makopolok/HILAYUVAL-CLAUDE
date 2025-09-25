@@ -336,6 +336,30 @@ app.get('/oauth2callback', async (req, res) => {
 });
 // --- End YouTube OAuth Routes ---
 
+// Route to display all projects with version information
+app.get('/projects', async (req, res) => {
+  try {
+    const projects = await projectService.getAllProjects();
+    
+    // Add version and deployment information
+    const deploymentInfo = {
+      commit: '7c4ea99', // Current commit hash
+      version: 'stable-working-version', // Version name
+      deployDate: new Date().toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }) // Current deployment date
+    };
+    
+    res.render('projects', {
+      title: 'Projects',
+      projects,
+      query: req.query,
+      deploymentInfo
+    });
+  } catch (error) {
+    console.error('[App.js GET /projects] Error fetching projects:', error);
+    res.status(500).render('error/500', { error });
+  }
+});
+
 // Route to render the create project form
 app.get('/projects/create', (req, res) => {
   res.render('createProject');
