@@ -345,7 +345,7 @@ app.get('/projects', async (req, res) => {
     const deploymentInfo = {
       commit: '7c4ea99', // Current commit hash
       version: 'stable-working-version', // Version name
-      branch: process.env.HEROKU_SLUG_COMMIT ? 'main (production)' : 'stable-working-version (local)', // Branch name
+      branch: 'main (Heroku production)', // Since the app is only run on Heroku
       deployDate: new Date().toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }) // Current deployment date
     };
     
