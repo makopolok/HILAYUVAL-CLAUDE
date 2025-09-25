@@ -343,7 +343,7 @@ app.get('/projects', async (req, res) => {
     
     // Add version and deployment information
     const deploymentInfo = {
-      commit: '7c4ea99', // Current commit hash
+      commit: '6566f27', // Current commit hash
       version: 'development', // Version name
       branch: 'main (Heroku production)', // Since the app is only run on Heroku
       deployDate: new Date().toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }) // Current deployment date
