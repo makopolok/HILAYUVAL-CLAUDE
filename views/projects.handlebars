@@ -1,14 +1,7 @@
 {{!-- views/projects.handlebars --}}
 {{> header}}
 <div class="container mt-5">
-  <h1 class="display-4 mb-4">Projects - Version Control Test</h1>
-  <div class="alert alert-info small mb-3">
-    <strong>Version Info:</strong> 
-    Commit: 7c4ea99 | 
-    Version: stable-working-version | 
-    Branch: main (Heroku production) | 
-    Deployed: {{deploymentInfo.deployDate}}
-  </div>
+  <h1 class="display-4 mb-4">Projects</h1>
   <a href="/projects/create" class="btn btn-outline-success mb-3">Create New Project</a>
   <form class="row g-3 mb-4" method="GET" action="">
     <div class="col-md-4">
@@ -56,5 +49,14 @@
   {{else}}
     <p>No projects found.</p>
   {{/if}}
+  
+  <hr class="my-4">
+  <div class="alert alert-info small mb-3">
+    <strong>Version Info:</strong> 
+    Commit: 7c4ea99 | 
+    Version: stable-working-version | 
+    Branch: main (Heroku production) | 
+    Deployed: {{deploymentInfo.deployDate}}
+  </div>
 </div>
 {{> footer}}
