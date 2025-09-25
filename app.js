@@ -341,10 +341,24 @@ app.get('/projects', async (req, res) => {
   try {
     const projects = await projectService.getAllProjects();
     
+    // Get current Git commit hash and branch dynamically
+    let currentCommit = 'unknown';
+    let currentBranch = 'development';
+    try {
+      const { execSync } = require('child_process');
+      currentCommit = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
+      currentBranch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf8' }).trim();
+    } catch (error) {
+      console.warn('Could not get Git information:', error.message);
+      // Fallback: try reading from environment variable (useful for deployed environments)
+      currentCommit = process.env.HEROKU_SLUG_COMMIT ? process.env.HEROKU_SLUG_COMMIT.substring(0, 7) : 'unknown';
+      // For Heroku, we can't easily get branch name, so keep it as configured
+    }
+    
     // Add version and deployment information
     const deploymentInfo = {
-      commit: '6566f27', // Current commit hash
-      version: 'development', // Version name
+      commit: currentCommit, // Dynamic commit hash
+      version: currentBranch, // Dynamic branch/version name
       branch: 'main (Heroku production)', // Since the app is only run on Heroku
       deployDate: new Date().toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }) // Current deployment date
     };

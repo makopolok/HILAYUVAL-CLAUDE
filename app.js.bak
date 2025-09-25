@@ -1,0 +1,224 @@
+// Updated app.js - Modularized version
+require('dotenv').config(); // Load environment variables
+const express = require('express');
+const path = require('path');
+const { engine } = require('express-handlebars');
+const { Pool } = require('pg');
+const session = require('express-session');
+const flash = require('connect-flash');
+const customHelpers = require('./helpers/handlebarsHelpers');
+const errorHandler = require('./middleware/errorHandler');
+const config = require('./config/config');
+
+// Import route modules
+const portfolioRoutes = require('./routes/portfolio');
+const auditionRoutes = require('./routes/auditionRoutes');
+const projectRoutes = require('./routes/projectRoutes');
+const apiRoutes = require('./routes/apiRoutes');
+
+// Add a version log at the top for deployment verification
+console.log('INFO: app.js version 2025-06-23_1800_RESTRUCTURED running');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Database connection
+const pool = new Pool({
+    connectionString: config.database.url,
+    ssl: config.database.ssl
+});
+
+// Canonical domain enforcement
+if (config.server.primaryDomain) {
+    const primary = config.server.primaryDomain.toLowerCase();
+    app.use((req, res, next) => {
+        const host = (req.headers.host || '').toLowerCase();
+        // Allow localhost & primary & www.primary; redirect everything else to primary.
+        const isLocal = host.startsWith('localhost') || host.startsWith('127.0.0.1');
+        const isPrimary = host === primary;
+        const isWwwPrimary = host === 'www.' + primary;
+        if (!isLocal && !isPrimary && !isWwwPrimary) {
+            const target = `https://${primary}${req.originalUrl}`;
+            return res.redirect(301, target);
+        }
+        // Optionally collapse www to root
+        if (isWwwPrimary) {
+            return res.redirect(301, `https://${primary}${req.originalUrl}`);
+        }
+        return next();
+    });
+}
+
+// Handlebars setup
+app.engine('handlebars', engine({
+    helpers: customHelpers
+}));
+app.set('view engine', 'handlebars');
+app.set('views', './views');
+
+// Middleware - Configure for large file uploads
+app.use(express.json({ 
+    limit: '10mb' // Increase JSON payload limit
+}));
+app.use(express.urlencoded({ 
+    extended: true, 
+    limit: '10mb' // Increase URL-encoded payload limit
+}));
+
+// Serve static files from the "public" directory with cache control
+app.use(express.static(path.join(__dirname, 'public'), {
+    maxAge: '1h', // Cache static assets for 1 hour
+    setHeaders: (res, path) => {
+        if (path.endsWith('.js') || path.endsWith('.css')) {
+            res.setHeader('Cache-Control', 'public, max-age=3600'); // 1 hour
+        }
+    }
+}));
+
+// Sessions + flash messages
+app.use(session({
+    secret: config.server.sessionSecret,
+    resave: false,
+    saveUninitialized: false,
+    cookie: { sameSite: 'lax' }
+}));
+app.use(flash());
+app.use((req, res, next) => {
+    res.locals.flash = {
+        success: req.flash('success'),
+        error: req.flash('error'),
+        info: req.flash('info')
+    };
+    next();
+});
+
+// Proxy-serving uploaded images from Bunny Storage when no CDN is configured
+app.get('/images/:file', async (req, res) => {
+    try {
+        const file = (req.params.file || '').replace(/[^A-Za-z0-9._-]/g, '');
+        if (!file) return res.status(400).send('Bad file name');
+        
+        const zone = config.bunny.storageZone;
+        const key = config.bunny.apiKey;
+        const cdnBase = config.bunny.cdnBaseUrl;
+        
+        // If a CDN base is configured, redirect to the CDN URL (faster + cached)
+        if (cdnBase) {
+            const url = `${cdnBase.replace(/\/$/, '')}/images/${file}`;
+            return res.redirect(302, url);
+        }
+        
+        if (!zone || !key) return res.status(404).send('Not found');
+        
+        const axios = require('axios');
+        const upstream = `https://storage.bunnycdn.com/${zone}/images/${file}`;
+        const upstreamResp = await axios.get(upstream, {
+            responseType: 'stream',
+            headers: { 'AccessKey': key },
+            validateStatus: () => true,
+        });
+        
+        if (upstreamResp.status !== 200) {
+            return res.status(404).send('Not found');
+        }
+        
+        // Pass through content-type if provided
+        const contentType = upstreamResp.headers['content-type'] || 'application/octet-stream';
+        res.setHeader('Content-Type', contentType);
+        
+        // Cache for 7 days at edge and browser
+        res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+        upstreamResp.data.pipe(res);
+    } catch (e) {
+        console.error('IMAGE_PROXY_ERROR:', e.message);
+        res.status(500).send('Server error');
+    }
+});
+
+// Import debug routes
+const debugRoutes = require('./routes/debugRoutes');
+
+// Basic DB health route (lightweight) for debugging connectivity
+app.get('/health/db', async (req, res) => {
+    try {
+        const client = await pool.connect();
+        await client.query('SELECT 1');
+        client.release();
+        
+        res.status(200).json({
+            service: 'database',
+            hasConnectionString: !!config.database.url,
+            status: 'up',
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        res.status(500).json({
+            service: 'database',
+            hasConnectionString: !!config.database.url,
+            status: 'down',
+            error: error.message,
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
+// Mount route modules
+app.use('/', projectRoutes); // Home route and project routes
+app.use('/audition', auditionRoutes);
+app.use('/api', apiRoutes);
+app.use('/', portfolioRoutes); // Portfolio routes
+app.use('/debug', debugRoutes); // Debug routes
+
+// Error handling
+app.use((req, res) => {
+    res.status(404).render('error/404');
+});
+
+// Add error handler middleware
+app.use(errorHandler);
+
+// Verify critical environment variables on startup
+function verifyEnvironment() {
+    const criticalVars = [
+        { name: 'DATABASE_URL', value: config.database.url },
+        { name: 'BUNNY_STREAM_LIBRARY_ID', value: config.bunny.streamLibraryId },
+        { name: 'BUNNY_VIDEO_API_KEY', value: config.bunny.videoApiKey }
+    ];
+    
+    const missing = criticalVars.filter(v => !v.value);
+    
+    if (missing.length > 0) {
+        console.warn(`WARNING: Missing critical environment variables: ${missing.map(v => v.name).join(', ')}`);
+        console.warn('Application may not function correctly without these variables.');
+    } else {
+        console.log('INFO: All critical environment variables are set.');
+    }
+}
+
+// Start the server
+const server = app.listen(PORT, () => {
+    console.log(`INFO: Server attempting to run on port ${PORT}. Heroku process.env.PORT: ${process.env.PORT}. Timestamp: ${new Date().toISOString()}`);
+    verifyEnvironment();
+});
+
+server.on('listening', () => {
+    console.log(`INFO: Server successfully listening on port ${PORT}. Timestamp: ${new Date().toISOString()}`);
+});
+
+server.on('error', (error) => {
+    console.error(`FATAL_SERVER_ERROR: Failed to start/run server on port ${PORT}. Code: ${error.code}, Syscall: ${error.syscall}. Timestamp: ${new Date().toISOString()}`, error);
+    if (error.syscall !== 'listen') {
+        switch (error.code) {
+            case 'EACCES':
+                console.error(`FATAL_PERMISSIONS: Port ${PORT} requires elevated privileges.`);
+                process.exit(1);
+                break;
+            case 'EADDRINUSE':
+                console.error(`FATAL_PORT_IN_USE: Port ${PORT} is already in use.`);
+                process.exit(1);
+                break;
+        }
+    }
+});
+
+module.exports = app;

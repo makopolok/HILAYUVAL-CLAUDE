@@ -1,0 +1,25 @@
+# Files to exclude from Heroku slug (deployment package)
+*.md
+README.md
+.git/
+.gitignore
+.DS_Store
+.env.example
+.env.test
+*.backup
+*.bak
+*.new
+/pyton_imdb/
+/archives/
+/tests/
+app.js.backup
+app.js.bak
+app.js.new
+VIDEO_PROCESSING_IMPROVEMENTS.md
+app-workflow-diagram.md
+deploy-fix.ps1
+deploy-fix.sh
+deploy-to-heroku.bat
+temp_audit_check.js
+/data/*.pdf
+/data/*.md
