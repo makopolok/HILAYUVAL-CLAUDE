@@ -20,42 +20,6 @@
 				if (e.lengthComputable && typeof onProgress === 'function') {
 					onProgress(Math.round((e.loaded / e.total) * 100), e.loaded, e.total);
 				}
-
-					function useTusIfAvailable() {
-						return typeof window.tus !== 'undefined' && window.tus && typeof window.tus.Upload === 'function';
-					}
-
-					async function uploadWithTus({ file, uploadUrl, accessKey, onProgress }) {
-							return new Promise((resolve, reject) => {
-								if (!useTusIfAvailable()) return reject(new Error('tus not available'));
-								// Using the resource URL; Bunny may accept PATCH via override
-								const options = {
-									endpoint: uploadUrl,
-									chunkSize: 5 * 1024 * 1024,
-									retryDelays: [0, 1000, 3000, 5000, 10000, 20000],
-									removeFingerprintOnSuccess: true,
-									overridePatchMethod: true,
-									headers: {
-										'AccessKey': accessKey,
-										'Content-Type': file.type || 'application/octet-stream'
-									},
-									metadata: { filename: file.name, filetype: file.type || 'application/octet-stream' },
-									onError: (error) => reject(error),
-									onProgress: (bytesUploaded, bytesTotal) => {
-										if (typeof onProgress === 'function' && bytesTotal > 0) {
-											const pct = Math.floor((bytesUploaded / bytesTotal) * 100);
-											onProgress(pct, bytesUploaded, bytesTotal);
-										}
-									},
-									onSuccess: () => resolve()
-								};
-								try {
-									window.__currentTusOptions = { file, uploadUrl, accessKey, onProgress };
-									window.__currentTus = new window.tus.Upload(file, options);
-									window.__currentTus.start();
-								} catch (e) { reject(e); }
-							});
-					}
 			};
 			xhr.onload = () => {
 				if (xhr.status >= 200 && xhr.status < 300) return resolve();
@@ -66,7 +30,41 @@
 		});
 	}
 
-	// Enhance audition form if present and project upload method is Bunny Stream
+	function useTusIfAvailable() {
+		return typeof window.tus !== 'undefined' && window.tus && typeof window.tus.Upload === 'function';
+	}
+
+	async function uploadWithTus({ file, uploadUrl, accessKey, onProgress }) {
+		return new Promise((resolve, reject) => {
+			if (!useTusIfAvailable()) return reject(new Error('tus not available'));
+			// Using the resource URL; Bunny may accept PATCH via override
+			const options = {
+				endpoint: uploadUrl,
+				chunkSize: 5 * 1024 * 1024,
+				retryDelays: [0, 1000, 3000, 5000, 10000, 20000],
+				removeFingerprintOnSuccess: true,
+				overridePatchMethod: true,
+				headers: {
+					'AccessKey': accessKey,
+					'Content-Type': file.type || 'application/octet-stream'
+				},
+				metadata: { filename: file.name, filetype: file.type || 'application/octet-stream' },
+				onError: (error) => reject(error),
+				onProgress: (bytesUploaded, bytesTotal) => {
+					if (typeof onProgress === 'function' && bytesTotal > 0) {
+						const pct = Math.floor((bytesUploaded / bytesTotal) * 100);
+						onProgress(pct, bytesUploaded, bytesTotal);
+					}
+				},
+				onSuccess: () => resolve()
+			};
+			try {
+				window.__currentTusOptions = { file, uploadUrl, accessKey, onProgress };
+				window.__currentTus = new window.tus.Upload(file, options);
+				window.__currentTus.start();
+			} catch (e) { reject(e); }
+		});
+	}	// Enhance audition form if present and project upload method is Bunny Stream
 	document.addEventListener('DOMContentLoaded', () => {
 		const form = document.querySelector('form#audition-form');
 		const videoInput = document.querySelector('input[type="file"][name="video"]');
