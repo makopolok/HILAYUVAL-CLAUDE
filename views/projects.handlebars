@@ -54,7 +54,8 @@
   {{! Debug: Show raw deploymentInfo object }}
   {{#if deploymentInfo}}
   <div class="alert alert-warning small mb-2">
-    <strong>DEBUG - Raw data:</strong> {{json deploymentInfo}}
+    <strong>DEBUG - Raw data:</strong> 
+    Commit: {{deploymentInfo.commit}}, Version: {{deploymentInfo.version}}, Branch: {{deploymentInfo.branch}}, Date: {{deploymentInfo.deployDate}}
   </div>
   {{else}}
   <div class="alert alert-danger small mb-2">

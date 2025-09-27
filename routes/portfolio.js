@@ -29,6 +29,12 @@ router.get('/projects', async (req, res) => {
         // Get current Git commit hash and branch dynamically
         let currentCommit = 'unknown';
         let currentBranch = 'development';
+        
+        console.log('[VERSION_DEBUG] Environment variables check:');
+        console.log('[VERSION_DEBUG] HEROKU_SLUG_COMMIT:', process.env.HEROKU_SLUG_COMMIT);
+        console.log('[VERSION_DEBUG] SOURCE_VERSION:', process.env.SOURCE_VERSION);
+        console.log('[VERSION_DEBUG] HEROKU_RELEASE_VERSION:', process.env.HEROKU_RELEASE_VERSION);
+        
         try {
             const { execSync } = require('child_process');
             currentCommit = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
