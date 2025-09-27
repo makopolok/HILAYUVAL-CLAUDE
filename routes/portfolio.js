@@ -25,10 +25,44 @@ router.get('/projects', async (req, res) => {
             upload_method: p.upload_method,
             roles: Array.isArray(p.roles) ? p.roles : []
         }));
+
+        // Get current Git commit hash and branch dynamically
+        let currentCommit = 'unknown';
+        let currentBranch = 'development';
+        try {
+            const { execSync } = require('child_process');
+            currentCommit = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
+            currentBranch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf8' }).trim();
+            console.log('[VERSION_DEBUG] Git commands succeeded:', { currentCommit, currentBranch });
+        } catch (error) {
+            console.warn('[VERSION_DEBUG] Could not get Git information:', error.message);
+            // Fallback: try reading from environment variable (useful for deployed environments)
+            if (process.env.HEROKU_SLUG_COMMIT) {
+                currentCommit = process.env.HEROKU_SLUG_COMMIT.substring(0, 7);
+                console.log('[VERSION_DEBUG] Using HEROKU_SLUG_COMMIT:', currentCommit);
+            } else if (process.env.SOURCE_VERSION) {
+                currentCommit = process.env.SOURCE_VERSION.substring(0, 7);
+                console.log('[VERSION_DEBUG] Using SOURCE_VERSION:', currentCommit);
+            } else {
+                console.warn('[VERSION_DEBUG] No environment fallback available');
+            }
+        }
+        
+        // Add version and deployment information
+        const deploymentInfo = {
+            commit: currentCommit, // Dynamic commit hash
+            version: currentBranch, // Dynamic branch/version name
+            branch: 'main (Heroku production)', // Since the app is only run on Heroku
+            deployDate: new Date().toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }) // Current deployment date
+        };
+        
+        console.log('[VERSION_DEBUG] Final deploymentInfo:', deploymentInfo);
+
         res.render('projects', {
             title: 'Projects - Hila Yuval Casting',
             projects,
-            query: req.query || {}
+            query: req.query || {},
+            deploymentInfo
         });
     } catch (err) {
         console.error('PROJECTS_ROUTE_ERROR:', err);
