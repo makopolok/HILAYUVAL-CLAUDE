@@ -7,7 +7,7 @@
     "start": "node app.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "heroku-prebuild": "echo 'Running pre-build optimizations'",
-    "heroku-postbuild": "node -e \"const fs=require('fs');const {execSync}=require('child_process');let commit='unknown',branch='development';try{commit=execSync('git rev-parse --short HEAD',{encoding:'utf8'}).trim();branch=execSync('git rev-parse --abbrev-ref HEAD',{encoding:'utf8'}).trim()}catch(e){commit=process.env.SOURCE_VERSION?process.env.SOURCE_VERSION.substring(0,7):'unknown'}fs.writeFileSync('.version.json',JSON.stringify({commit,branch,buildTime:new Date().toISOString()}));console.log('Version info saved:',{commit,branch});\""
+    "heroku-postbuild": "echo 'Post-build complete'"
   },
   "keywords": [],
   "author": "",

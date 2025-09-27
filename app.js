@@ -344,34 +344,14 @@ app.get('/projects', async (req, res) => {
     // Get current Git commit hash and branch dynamically
     let currentCommit = 'unknown';
     let currentBranch = 'development';
-    
-    // First try to read from build-time generated version file
     try {
-      const fs = require('fs');
-      const versionData = JSON.parse(fs.readFileSync('.version.json', 'utf8'));
-      currentCommit = versionData.commit;
-      currentBranch = versionData.branch;
-      console.log('Version info loaded from .version.json:', versionData);
+      const { execSync } = require('child_process');
+      currentCommit = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
+      currentBranch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf8' }).trim();
     } catch (error) {
-      console.warn('Could not read .version.json, trying Git commands:', error.message);
-      
-      // Fallback: Try to get Git info directly (works locally)
-      try {
-        const { execSync } = require('child_process');
-        currentCommit = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
-        currentBranch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf8' }).trim();
-        console.log('Version info from git commands:', { currentCommit, currentBranch });
-      } catch (gitError) {
-        console.warn('Git commands also failed:', gitError.message);
-        
-        // Final fallback: Use Heroku environment variables
-        if (process.env.HEROKU_SLUG_COMMIT) {
-          currentCommit = process.env.HEROKU_SLUG_COMMIT.substring(0, 7);
-        } else if (process.env.SOURCE_VERSION) {
-          currentCommit = process.env.SOURCE_VERSION.substring(0, 7);
-        }
-        console.log('Using environment fallback:', { currentCommit, currentBranch });
-      }
+      console.warn('Could not get Git information:', error.message);
+      // Fallback: try reading from environment variable (useful for deployed environments)
+      currentCommit = process.env.HEROKU_SLUG_COMMIT ? process.env.HEROKU_SLUG_COMMIT.substring(0, 7) : 'unknown';
     }
     
     // Add version and deployment information
