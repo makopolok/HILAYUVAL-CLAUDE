@@ -367,10 +367,10 @@ app.get('/projects', async (req, res) => {
     
     // Add version and deployment information
     const deploymentInfo = {
-      commit: currentCommit, // Dynamic commit hash
-      version: currentBranch, // Dynamic branch/version name
+      commit: 'test123', // Test hardcoded value
+      version: 'development-test', // Test hardcoded value
       branch: 'main (Heroku production)', // Since the app is only run on Heroku
-      deployDate: new Date().toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }) // Current deployment date
+      deployDate: 'test-date-' + new Date().getTime() // Test timestamp
     };
     
     console.log('DEBUG: deploymentInfo object:', deploymentInfo);
