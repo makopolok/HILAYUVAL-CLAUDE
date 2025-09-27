@@ -344,36 +344,34 @@ app.get('/projects', async (req, res) => {
     // Get current Git commit hash and branch dynamically
     let currentCommit = 'unknown';
     let currentBranch = 'development';
-    
-    console.log('DEBUG: Starting version info collection...');
-    
     try {
       const { execSync } = require('child_process');
       currentCommit = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
       currentBranch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf8' }).trim();
-      console.log('DEBUG: Git commands successful:', { currentCommit, currentBranch });
+      console.log('[VERSION_DEBUG] Git commands succeeded:', { currentCommit, currentBranch });
     } catch (error) {
-      console.warn('Could not get Git information:', error.message);
+      console.warn('[VERSION_DEBUG] Could not get Git information:', error.message);
       // Fallback: try reading from environment variable (useful for deployed environments)
       if (process.env.HEROKU_SLUG_COMMIT) {
         currentCommit = process.env.HEROKU_SLUG_COMMIT.substring(0, 7);
-        console.log('DEBUG: Using HEROKU_SLUG_COMMIT:', currentCommit);
+        console.log('[VERSION_DEBUG] Using HEROKU_SLUG_COMMIT:', currentCommit);
+      } else if (process.env.SOURCE_VERSION) {
+        currentCommit = process.env.SOURCE_VERSION.substring(0, 7);
+        console.log('[VERSION_DEBUG] Using SOURCE_VERSION:', currentCommit);
       } else {
-        console.log('DEBUG: No HEROKU_SLUG_COMMIT found');
+        console.warn('[VERSION_DEBUG] No environment fallback available');
       }
     }
     
-    console.log('DEBUG: Final version info:', { currentCommit, currentBranch });
-    
     // Add version and deployment information
     const deploymentInfo = {
-      commit: 'test123', // Test hardcoded value
-      version: 'development-test', // Test hardcoded value
+      commit: currentCommit, // Dynamic commit hash
+      version: currentBranch, // Dynamic branch/version name
       branch: 'main (Heroku production)', // Since the app is only run on Heroku
-      deployDate: 'test-date-' + new Date().getTime() // Test timestamp
+      deployDate: new Date().toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }) // Current deployment date
     };
     
-    console.log('DEBUG: deploymentInfo object:', deploymentInfo);
+    console.log('[VERSION_DEBUG] Final deploymentInfo:', deploymentInfo);
     
     res.render('projects', {
       title: 'Projects',
