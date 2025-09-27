@@ -344,15 +344,26 @@ app.get('/projects', async (req, res) => {
     // Get current Git commit hash and branch dynamically
     let currentCommit = 'unknown';
     let currentBranch = 'development';
+    
+    console.log('DEBUG: Starting version info collection...');
+    
     try {
       const { execSync } = require('child_process');
       currentCommit = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
       currentBranch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf8' }).trim();
+      console.log('DEBUG: Git commands successful:', { currentCommit, currentBranch });
     } catch (error) {
       console.warn('Could not get Git information:', error.message);
       // Fallback: try reading from environment variable (useful for deployed environments)
-      currentCommit = process.env.HEROKU_SLUG_COMMIT ? process.env.HEROKU_SLUG_COMMIT.substring(0, 7) : 'unknown';
+      if (process.env.HEROKU_SLUG_COMMIT) {
+        currentCommit = process.env.HEROKU_SLUG_COMMIT.substring(0, 7);
+        console.log('DEBUG: Using HEROKU_SLUG_COMMIT:', currentCommit);
+      } else {
+        console.log('DEBUG: No HEROKU_SLUG_COMMIT found');
+      }
     }
+    
+    console.log('DEBUG: Final version info:', { currentCommit, currentBranch });
     
     // Add version and deployment information
     const deploymentInfo = {
@@ -361,6 +372,8 @@ app.get('/projects', async (req, res) => {
       branch: 'main (Heroku production)', // Since the app is only run on Heroku
       deployDate: new Date().toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }) // Current deployment date
     };
+    
+    console.log('DEBUG: deploymentInfo object:', deploymentInfo);
     
     res.render('projects', {
       title: 'Projects',
