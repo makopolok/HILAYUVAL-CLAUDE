@@ -341,34 +341,32 @@ app.get('/projects', async (req, res) => {
   try {
     const projects = await projectService.getAllProjects();
     
-    // Get current Git commit hash and branch dynamically
-    let currentCommit = 'unknown';
-    let currentBranch = 'development';
-    try {
-      const { execSync } = require('child_process');
-      currentCommit = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
-      currentBranch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf8' }).trim();
-      console.log('[VERSION_DEBUG] Git commands succeeded:', { currentCommit, currentBranch });
-    } catch (error) {
-      console.warn('[VERSION_DEBUG] Could not get Git information:', error.message);
-      // Fallback: try reading from environment variable (useful for deployed environments)
-      if (process.env.HEROKU_SLUG_COMMIT) {
-        currentCommit = process.env.HEROKU_SLUG_COMMIT.substring(0, 7);
-        console.log('[VERSION_DEBUG] Using HEROKU_SLUG_COMMIT:', currentCommit);
-      } else if (process.env.SOURCE_VERSION) {
-        currentCommit = process.env.SOURCE_VERSION.substring(0, 7);
-        console.log('[VERSION_DEBUG] Using SOURCE_VERSION:', currentCommit);
-      } else {
-        console.warn('[VERSION_DEBUG] No environment fallback available');
-      }
+    // Resolve deployment metadata from environment variables (Heroku-safe)
+    const shortHash = (value) => (value && value.trim ? value.trim().substring(0, 7) : null);
+
+    const currentCommit =
+      shortHash(process.env.HEROKU_BUILD_COMMIT) ||
+      shortHash(process.env.SOURCE_VERSION) ||
+      shortHash(process.env.HEROKU_SLUG_COMMIT) ||
+      'unknown';
+
+    if (currentCommit !== 'unknown') {
+      console.log('[VERSION_DEBUG] Commit resolved from environment:', currentCommit);
+    } else {
+      console.warn('[VERSION_DEBUG] Commit hash unavailable. Ensure HEROKU_BUILD_COMMIT or SOURCE_VERSION is set.');
     }
-    
+
+    const releaseVersion = process.env.HEROKU_RELEASE_VERSION || process.env.NODE_ENV || 'development';
+    const branchLabel = process.env.HEROKU_APP_NAME
+      ? `${process.env.HEROKU_APP_NAME} (Heroku app)`
+      : 'local environment';
+
     // Add version and deployment information
     const deploymentInfo = {
-      commit: currentCommit, // Dynamic commit hash
-      version: currentBranch, // Dynamic branch/version name
-      branch: 'main (Heroku production)', // Since the app is only run on Heroku
-      deployDate: new Date().toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }) // Current deployment date
+      commit: currentCommit,
+      version: releaseVersion,
+      branch: branchLabel,
+      deployDate: new Date().toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' })
     };
     
     console.log('[VERSION_DEBUG] Final deploymentInfo:', deploymentInfo);
