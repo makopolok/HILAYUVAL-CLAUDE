@@ -25,6 +25,20 @@ const flash = require('connect-flash');
 // Add a version log at the top for deployment verification
 console.log('INFO: app.js version 2025-06-08_2100_DEBUG running');
 
+const BUILD_INFO_PATH = path.join(__dirname, 'build-info.json');
+const getBuildInfo = () => {
+  try {
+    if (fs.existsSync(BUILD_INFO_PATH)) {
+      const raw = fs.readFileSync(BUILD_INFO_PATH, 'utf8');
+      const parsed = JSON.parse(raw);
+      return parsed;
+    }
+  } catch (error) {
+    console.warn('[VERSION_DEBUG] Failed to read build-info.json:', error.message);
+  }
+  return null;
+};
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -342,31 +356,63 @@ app.get('/projects', async (req, res) => {
     const projects = await projectService.getAllProjects();
     
     // Resolve deployment metadata from environment variables (Heroku-safe)
-    const shortHash = (value) => (value && value.trim ? value.trim().substring(0, 7) : null);
+    const shortHash = (value) => (value && typeof value === 'string' ? value.trim().substring(0, 7) : null);
 
-    const currentCommit =
+    const buildInfo = getBuildInfo();
+    if (buildInfo) {
+      console.log('[VERSION_DEBUG] Loaded build info file:', buildInfo);
+    } else {
+      console.warn('[VERSION_DEBUG] build-info.json not present or unreadable.');
+    }
+
+    let currentCommit =
       shortHash(process.env.HEROKU_BUILD_COMMIT) ||
       shortHash(process.env.SOURCE_VERSION) ||
       shortHash(process.env.HEROKU_SLUG_COMMIT) ||
-      'unknown';
+      null;
 
-    if (currentCommit !== 'unknown') {
-      console.log('[VERSION_DEBUG] Commit resolved from environment:', currentCommit);
-    } else {
-      console.warn('[VERSION_DEBUG] Commit hash unavailable. Ensure HEROKU_BUILD_COMMIT or SOURCE_VERSION is set.');
+    if (!currentCommit && buildInfo?.commit) {
+      currentCommit = buildInfo.commit;
+      console.log('[VERSION_DEBUG] Commit derived from build-info.json:', currentCommit);
     }
 
-    const releaseVersion = process.env.HEROKU_RELEASE_VERSION || process.env.NODE_ENV || 'development';
+    if (!currentCommit) {
+      currentCommit = 'unknown';
+      console.warn('[VERSION_DEBUG] Commit hash unavailable from env or build-info.');
+    } else {
+      console.log('[VERSION_DEBUG] Commit resolved:', currentCommit);
+    }
+
+    let releaseVersion = process.env.HEROKU_RELEASE_VERSION || buildInfo?.release || null;
+    if (!releaseVersion) {
+      releaseVersion = process.env.NODE_ENV || 'development';
+    }
+
     const branchLabel = process.env.HEROKU_APP_NAME
       ? `${process.env.HEROKU_APP_NAME} (Heroku app)`
-      : 'local environment';
+      : buildInfo?.branch
+        ? `${buildInfo.branch} (build info)`
+        : 'local environment';
+
+    let deploymentTimestamp = buildInfo?.releaseCreatedAt || buildInfo?.generatedAt || null;
+    let deployDate;
+    try {
+      if (deploymentTimestamp) {
+        deployDate = new Date(deploymentTimestamp).toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' });
+      }
+    } catch (error) {
+      console.warn('[VERSION_DEBUG] Unable to format deployment timestamp:', error.message);
+    }
+    if (!deployDate) {
+      deployDate = new Date().toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' });
+    }
 
     // Add version and deployment information
     const deploymentInfo = {
       commit: currentCommit,
       version: releaseVersion,
       branch: branchLabel,
-      deployDate: new Date().toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' })
+      deployDate
     };
     
     console.log('[VERSION_DEBUG] Final deploymentInfo:', deploymentInfo);

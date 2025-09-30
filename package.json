@@ -6,8 +6,9 @@
   "scripts": {
     "start": "node app.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "heroku-prebuild": "echo 'Running pre-build optimizations'",
-    "heroku-postbuild": "echo 'Post-build complete'"
+  "heroku-prebuild": "echo 'Running pre-build optimizations'",
+  "heroku-postbuild": "node scripts/write-build-info.js",
+  "build-info": "node scripts/write-build-info.js"
   },
   "keywords": [],
   "author": "",
