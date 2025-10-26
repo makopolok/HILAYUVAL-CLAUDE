@@ -21,17 +21,14 @@ CREATE TABLE auditions (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   search_full_name TEXT GENERATED ALWAYS AS (
-    trim(
-      concat_ws(' ',
-        COALESCE(
-          NULLIF(regexp_replace(COALESCE(first_name_en, ''), '\\s+', ' ', 'g'), ''),
-          NULLIF(regexp_replace(COALESCE(first_name_he, ''), '\\s+', ' ', 'g'), '')
-        ),
-        COALESCE(
-          NULLIF(regexp_replace(COALESCE(last_name_en, ''), '\\s+', ' ', 'g'), ''),
-          NULLIF(regexp_replace(COALESCE(last_name_he, ''), '\\s+', ' ', 'g'), '')
+    NULLIF(
+      btrim(
+        concat_ws(' ',
+          COALESCE(NULLIF(btrim(first_name_en), ''), NULLIF(btrim(first_name_he), '')),
+          COALESCE(NULLIF(btrim(last_name_en), ''), NULLIF(btrim(last_name_he), ''))
         )
-      )
+      ),
+      ''
     )
   ) STORED
 );
