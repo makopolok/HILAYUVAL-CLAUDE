@@ -35,6 +35,8 @@ pool.on('error', (err) => {
   });
 });
 
+const NAME_SEARCH_SQL = "COALESCE(first_name_en,'') || ' ' || COALESCE(last_name_en,'') || ' ' || COALESCE(first_name_he,'') || ' ' || COALESCE(last_name_he,'')";
+
 async function insertAudition(audition) {
   const query = `
     INSERT INTO auditions (
@@ -71,8 +73,8 @@ async function insertAudition(audition) {
 
 function applyNameFilters(tokens, params, clauses) {
   tokens.forEach((token) => {
-    params.push(`%${token}%`);
-    clauses.push(`search_full_name ILIKE $${params.length}`);
+    params.push(`%${token.toLowerCase()}%`);
+    clauses.push(`LOWER(${NAME_SEARCH_SQL}) LIKE $${params.length}`);
   });
 }
 
@@ -135,7 +137,8 @@ async function searchAuditions(filters = {}) {
   }
 
   const baseSql = `
-    SELECT a.*, p.name AS project_name
+    SELECT a.*, p.name AS project_name,
+           ${NAME_SEARCH_SQL} AS search_name_expr
     FROM auditions a
     JOIN projects p ON p.id = a.project_id
     WHERE ${whereClauses.join(' AND ')}
