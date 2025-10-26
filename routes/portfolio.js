@@ -2,7 +2,8 @@ const express = require('express');
 const router = express.Router();
 const portfolioService = require('../services/portfolioService');
 const projectService = require('../services/projectService');
-const { pool } = require('../services/auditionService');
+const auditionService = require('../services/auditionService');
+const { pool } = auditionService;
 
 router.get('/', async (req, res) => {
     const projects = await portfolioService.getAllProjects();
@@ -64,11 +65,60 @@ router.get('/projects', async (req, res) => {
         
         console.log('[VERSION_DEBUG] Final deploymentInfo:', deploymentInfo);
 
+        const trimmedName = (req.query.name || '').toString().trim();
+        const trimmedEmail = (req.query.email || '').toString().trim();
+        const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 200);
+        const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+
+        let searchResults = [];
+        let searchError = null;
+        let searchPerformed = false;
+        if (trimmedName || trimmedEmail) {
+            searchPerformed = true;
+            try {
+                const rawResults = await auditionService.searchAuditions({
+                    name: trimmedName,
+                    email: trimmedEmail,
+                    limit,
+                    offset,
+                });
+                const formatOpts = { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' };
+                searchResults = rawResults.map((row) => {
+                    const enName = [row.first_name_en, row.last_name_en].filter(Boolean).join(' ').trim();
+                    const heName = [row.first_name_he, row.last_name_he].filter(Boolean).join(' ').trim();
+                    const displayName = [heName, enName].filter(Boolean).join(' ') || 'Unknown performer';
+                    const createdAtFormatted = row.created_at ? new Date(row.created_at).toLocaleString('en-IL', formatOpts) : '';
+                    return {
+                        id: row.id,
+                        project_id: row.project_id,
+                        project_name: row.project_name,
+                        role: row.role,
+                        email: row.email,
+                        phone: row.phone,
+                        display_name: displayName,
+                        created_at: row.created_at,
+                        created_at_formatted: createdAtFormatted,
+                    };
+                });
+            } catch (searchErr) {
+                console.error('[PROJECTS_ROUTE_SEARCH_ERROR]', searchErr);
+                searchError = searchErr.message || 'Search failed';
+            }
+        }
+
         res.render('projects', {
             title: 'Projects - Hila Yuval Casting',
             projects,
-            query: req.query || {},
-            deploymentInfo
+            query: {
+                name: trimmedName,
+                email: trimmedEmail,
+                limit,
+                offset,
+            },
+            deploymentInfo,
+            searchResults,
+            searchPerformed,
+            searchError,
         });
     } catch (err) {
         console.error('PROJECTS_ROUTE_ERROR:', err);
