@@ -23,10 +23,8 @@ CREATE TABLE auditions (
   search_full_name TEXT GENERATED ALWAYS AS (
     NULLIF(
       btrim(
-        concat_ws(' ',
-          COALESCE(NULLIF(btrim(first_name_en), ''), NULLIF(btrim(first_name_he), '')),
-          COALESCE(NULLIF(btrim(last_name_en), ''), NULLIF(btrim(last_name_he), ''))
-        )
+        COALESCE(btrim(first_name_en), btrim(first_name_he), '') || ' ' ||
+        COALESCE(btrim(last_name_en), btrim(last_name_he), '')
       ),
       ''
     )
