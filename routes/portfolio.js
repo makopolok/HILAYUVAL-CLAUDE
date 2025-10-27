@@ -65,8 +65,20 @@ router.get('/projects', async (req, res) => {
         
         console.log('[VERSION_DEBUG] Final deploymentInfo:', deploymentInfo);
 
-        const trimmedName = (req.query.name || '').toString().trim();
-        const trimmedEmail = (req.query.email || '').toString().trim();
+        let trimmedName = (req.query.name || '').toString().trim();
+        let trimmedEmail = (req.query.email || '').toString().trim();
+        const rawTerm = (req.query.term || '').toString().trim();
+
+        if (rawTerm) {
+            if (rawTerm.includes('@')) {
+                trimmedEmail = rawTerm;
+                trimmedName = '';
+            } else {
+                trimmedName = rawTerm;
+            }
+        }
+
+        const searchTerm = rawTerm || trimmedName || trimmedEmail;
         const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 200);
         const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
 
@@ -110,6 +122,7 @@ router.get('/projects', async (req, res) => {
             title: 'Projects - Hila Yuval Casting',
             projects,
             query: {
+                term: searchTerm,
                 name: trimmedName,
                 email: trimmedEmail,
                 limit,

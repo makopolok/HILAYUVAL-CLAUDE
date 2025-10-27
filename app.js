@@ -1496,17 +1496,28 @@ app.get('/projects/:projectId/auditions', async (req, res) => {
 // API route: search auditions globally by performer name
 app.get('/api/auditions/search', async (req, res, next) => {
   try {
-    const name = (req.query.name || '').trim();
-    const email = (req.query.email || '').trim();
-    if (!name && !email) {
-      return res.status(400).json({ error: 'Provide "name" or "email" query parameter.' });
+    const term = (req.query.term || '').trim();
+    let name = (req.query.name || '').trim();
+    let email = (req.query.email || '').trim();
+
+    if (!name && !email && term) {
+      if (term.includes('@')) {
+        email = term;
+      } else {
+        name = term;
+      }
     }
+
+    if (!name && !email) {
+      return res.status(400).json({ error: 'Provide a "term", "name", or "email" query parameter.' });
+    }
+
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 25, 1), 200);
     const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
 
     const results = await auditionService.searchAuditions({ name, email, limit, offset });
     res.json({
-      query: { name, email },
+      query: { term, name, email },
       limit,
       offset,
       count: results.length,
