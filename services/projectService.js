@@ -11,10 +11,18 @@ async function addProject(project) {
   try {
     await client.query('BEGIN');
     // Let DB generate primary key (SERIAL/BIGSERIAL). Return id.
+    const normalizedMethod = (project.uploadMethod || '').toString().trim().toLowerCase();
+    const uploadMethod = ({
+      bunny: 'bunny_stream',
+      bunnystream: 'bunny_stream',
+      bunny_stream: 'bunny_stream',
+      cloudflare: 'cloudflare',
+      youtube: 'youtube'
+    })[normalizedMethod] || 'bunny_stream';
     const insertRes = await client.query(
       `INSERT INTO projects (name, description, upload_method, created_at, director, production_company)
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-      [project.name, project.description, project.uploadMethod, project.createdAt, project.director, project.production_company]
+      [project.name, project.description, uploadMethod, project.createdAt, project.director, project.production_company]
     );
     const newProjectId = insertRes.rows[0].id;
     // Insert roles referencing generated id
@@ -118,8 +126,11 @@ async function renameRole(projectId, roleId, newName) {
     }
     // Update role name
     await client.query('UPDATE roles SET name=$1 WHERE id=$2 AND project_id=$3', [newName, roleId, projectId]);
-    // Cascade rename in auditions for consistency
-    await client.query('UPDATE auditions SET role=$1 WHERE project_id=$2 AND role=$3', [newName, projectId, current.name]);
+    // Cascade rename in auditions for consistency (trigger also handles this)
+    await client.query(
+      'UPDATE auditions SET role=$1, role_locked_name=$1 WHERE project_id=$2 AND role_id=$3',
+      [newName, projectId, roleId]
+    );
     await client.query('COMMIT');
     return { oldName: current.name, newName };
   } catch (err) {

@@ -16,7 +16,7 @@ const pool = new Pool({
     const projectRes = await pool.query(
       `INSERT INTO projects (name, description, upload_method, director, production_company)
        VALUES ($1,$2,$3,$4,$5) RETURNING id`,
-  ['Sample Project', 'Demo seeded project', 'bunny', 'Demo Director', 'Demo Company']
+  ['Sample Project', 'Demo seeded project', 'bunny_stream', 'Demo Director', 'Demo Company']
     );
     const pid = projectRes.rows[0].id;
     await pool.query(`INSERT INTO roles (project_id, name) VALUES ($1,$2), ($1,$3)`, [pid, 'Lead', 'Support']);

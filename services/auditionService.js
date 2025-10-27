@@ -35,40 +35,80 @@ pool.on('error', (err) => {
   });
 });
 
-const NAME_SEARCH_SQL = "COALESCE(first_name_en,'') || ' ' || COALESCE(last_name_en,'') || ' ' || COALESCE(first_name_he,'') || ' ' || COALESCE(last_name_he,'')";
+const NAME_SEARCH_SQL = `COALESCE(
+  a.search_full_name,
+  CONCAT_WS(' ',
+    NULLIF(BTRIM(COALESCE(a.first_name_en, a.first_name_he, '')), ''),
+    NULLIF(BTRIM(COALESCE(a.last_name_en, a.last_name_he, '')), '')
+  )
+)`;
 
 async function insertAudition(audition) {
-  const query = `
-    INSERT INTO auditions (
-      project_id, role, first_name_he, last_name_he, first_name_en, last_name_en,
-      phone, email, agency, age, height, profile_pictures, showreel_url, video_url, video_type
-    ) VALUES (
-      $1, $2, $3, $4, $5, $6,
-      $7, $8, $9, $10, $11, $12::jsonb, $13, $14, $15
-    ) RETURNING *;
-  `;
+  const client = await pool.connect();
   const profilePictures = Array.isArray(audition.profile_pictures)
     ? audition.profile_pictures
     : (audition.profile_pictures || []);
-  const values = [
-    audition.project_id,
-    audition.role,
-    audition.first_name_he,
-    audition.last_name_he,
-    audition.first_name_en,
-    audition.last_name_en,
-    audition.phone,
-    audition.email,
-    audition.agency,
-    audition.age ? parseInt(audition.age, 10) : null,
-    audition.height ? parseInt(audition.height, 10) : null,
-    JSON.stringify(profilePictures),
-    audition.showreel_url,
-    audition.video_url,
-    audition.video_type
-  ];
-  const result = await pool.query(query, values);
-  return result.rows[0];
+  const ageVal = audition.age ? parseInt(audition.age, 10) : null;
+  const heightVal = audition.height ? parseInt(audition.height, 10) : null;
+
+  try {
+    await client.query('BEGIN');
+
+    const insertAuditionQuery = `
+      INSERT INTO auditions (
+        project_id, role_id, role,
+        first_name_he, last_name_he,
+        first_name_en, last_name_en,
+        age, height,
+        profile_pictures, showreel_url, video_url, video_type
+      ) VALUES (
+        $1, $2, $3,
+        $4, $5,
+        $6, $7,
+        $8, $9,
+        $10::jsonb, $11, $12, $13
+      )
+      RETURNING *;
+    `;
+
+    const auditionValues = [
+      audition.project_id,
+      audition.role_id || null,
+      audition.role,
+      audition.first_name_he,
+      audition.last_name_he,
+      audition.first_name_en,
+      audition.last_name_en,
+      ageVal,
+      heightVal,
+      JSON.stringify(profilePictures),
+      audition.showreel_url,
+      audition.video_url,
+      audition.video_type
+    ];
+
+    const insertedAudition = await client.query(insertAuditionQuery, auditionValues);
+    const row = insertedAudition.rows[0];
+
+    await client.query(
+      `INSERT INTO audition_contacts (audition_id, email, phone, agency)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (audition_id) DO UPDATE
+       SET email = EXCLUDED.email,
+           phone = EXCLUDED.phone,
+           agency = EXCLUDED.agency,
+           updated_at = NOW()`,
+      [row.id, audition.email, audition.phone, audition.agency]
+    );
+
+    await client.query('COMMIT');
+    return { ...row, email: audition.email, phone: audition.phone, agency: audition.agency };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 function applyNameFilters(tokens, params, clauses) {
@@ -80,17 +120,22 @@ function applyNameFilters(tokens, params, clauses) {
 
 // Fetch auditions for a given project with optional filters
 async function getAuditionsByProjectId(projectId, query = {}) {
-  const where = ['project_id = $1'];
+  const where = ['a.project_id = $1'];
   const params = [projectId];
 
   if (query.role) {
     params.push(query.role);
-    where.push(`role = $${params.length}`);
+    where.push(`a.role = $${params.length}`);
+  }
+
+  if (query.role_id) {
+    params.push(parseInt(query.role_id, 10));
+    where.push(`a.role_id = $${params.length}`);
   }
 
   if (query.email) {
     params.push(`%${query.email}%`);
-    where.push(`email ILIKE $${params.length}`);
+    where.push(`ac.email ILIKE $${params.length}`);
   }
 
   const nameTokens = (query.name || '')
@@ -102,7 +147,14 @@ async function getAuditionsByProjectId(projectId, query = {}) {
     applyNameFilters(nameTokens, params, where);
   }
 
-  const sql = `SELECT * FROM auditions WHERE ${where.join(' AND ')} ORDER BY created_at DESC`;
+  const sql = `
+    SELECT a.*, ac.email, ac.phone, ac.agency, r.name AS role_name
+    FROM auditions a
+    LEFT JOIN audition_contacts ac ON ac.audition_id = a.id
+    LEFT JOIN roles r ON r.id = a.role_id
+    WHERE ${where.join(' AND ')}
+    ORDER BY a.created_at DESC
+  `;
   const { rows } = await pool.query(sql, params);
   return rows;
 }
@@ -128,7 +180,7 @@ async function searchAuditions(filters = {}) {
 
   if (email) {
     params.push(`%${email.toLowerCase()}%`);
-    whereClauses.push(`LOWER(email) LIKE $${params.length}`);
+    whereClauses.push(`LOWER(ac.email) LIKE $${params.length}`);
   }
 
   if (whereClauses.length === 0) {
@@ -138,9 +190,13 @@ async function searchAuditions(filters = {}) {
 
   const baseSql = `
     SELECT a.*, p.name AS project_name,
+           ac.email, ac.phone, ac.agency,
+           r.name AS role_name,
            ${NAME_SEARCH_SQL} AS search_name_expr
     FROM auditions a
     JOIN projects p ON p.id = a.project_id
+    LEFT JOIN audition_contacts ac ON ac.audition_id = a.id
+    LEFT JOIN roles r ON r.id = a.role_id
     WHERE ${whereClauses.join(' AND ')}
     ORDER BY a.created_at DESC
     LIMIT $${params.length + 1}

@@ -231,7 +231,7 @@ app.get('/audition', (req, res) => {
   const expose = process.env.DIRECT_UPLOAD_EXPOSE_KEY === '1';
   res.render('audition', {
     bunny_stream_library_id: libId,
-  upload_method: 'bunny',
+  upload_method: 'bunny_stream',
     bunny_video_access_key: expose ? (process.env.BUNNY_VIDEO_API_KEY || '') : null,
     direct_upload_exposed: expose
   });
@@ -438,7 +438,14 @@ app.get('/projects/create', (req, res) => {
 app.post('/projects/create', async (req, res, next) => { // Added next
   try { // Added try
   const { name, description, uploadMethod: projectUploadMethod } = req.body;
-  const effectiveUploadMethod = projectUploadMethod || 'bunny'; // Default to bunny
+  const normalizedMethod = (projectUploadMethod || '').toString().trim().toLowerCase();
+  const effectiveUploadMethod = ({
+    bunny: 'bunny_stream',
+    bunny_stream: 'bunny_stream',
+    bunnystream: 'bunny_stream',
+    cloudflare: 'cloudflare',
+    youtube: 'youtube'
+  })[normalizedMethod] || 'bunny_stream';
 
     let rolesInput = req.body.roles;
     if (!name || !rolesInput) {
@@ -614,7 +621,7 @@ app.get('/audition/:projectId', async (req, res) => {
   res.render('audition', { 
     project,
     bunny_stream_library_id: libId,
-  upload_method: project && project.uploadMethod ? project.uploadMethod : 'bunny',
+  upload_method: project && project.uploadMethod ? project.uploadMethod : 'bunny_stream',
     bunny_video_access_key: expose ? (process.env.BUNNY_VIDEO_API_KEY || '') : null,
   direct_upload_exposed: expose
   });
@@ -1311,8 +1318,9 @@ app.post('/audition/:projectId', auditionUpload.fields([
     }
 
     const audition = {
-      project_id: project.id, 
-      role: body.role,
+      project_id: project.id,
+      role_id: selectedRole ? selectedRole.id : null,
+  role: selectedRole ? selectedRole.name : body.role,
       first_name_he: body.first_name_he,
       last_name_he: body.last_name_he,
       first_name_en: body.first_name_en,
@@ -1460,12 +1468,15 @@ app.get('/projects/:projectId/auditions', async (req, res) => {
         }
       }
     }
-    const rolesWithAuditions = project.roles.map(role => {
-      return {
-        ...role,
-        auditions: auditions.filter(a => a.role === role.name)
-      };
-    });
+    const rolesWithAuditions = project.roles.map(role => ({
+      ...role,
+      auditions: auditions.filter(a => {
+        if (a.role_id) {
+          return a.role_id === role.id;
+        }
+        return a.role === role.name;
+      })
+    }));
 
   // Casting director page: simplify to global flag only (no per-viewer toggle)
   const disableInlineEffective = process.env.DISABLE_INLINE_PLAYER === '1' ? true : false;

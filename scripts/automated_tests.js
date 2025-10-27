@@ -118,7 +118,7 @@ async function main() {
   const cfProjectData = {
     name: 'Automated Test Bunny Project',
     description: 'Test project for Bunny uploads (automated)',
-    uploadMethod: 'bunny', // Explicitly 'bunny'
+  uploadMethod: 'bunny_stream', // Explicitly Bunny Stream
     roles: JSON.stringify([{ name: 'Lead Bunny Role' }, { name: 'Support Bunny Role' }]), // Ensure roles are stringified if sending as x-www-form-urlencoded
     director: 'Auto Test Director',
     production_company: 'Auto Test Prod Co'
