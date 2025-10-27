@@ -93,10 +93,12 @@ BEGIN
   IF NEW.role_id IS NOT NULL THEN
     SELECT name INTO role_name FROM roles WHERE id = NEW.role_id;
     IF role_name IS NULL THEN
-      RAISE EXCEPTION 'Role ' || NEW.role_id || ' not found for audition ' || NEW.id;
+      -- Role was deleted; keep legacy text and clear broken reference
+      NEW.role_id := NULL;
+    ELSE
+      NEW.role := role_name;
+      NEW.role_locked_name := role_name;
     END IF;
-    NEW.role := role_name;
-    NEW.role_locked_name := role_name;
   ELSE
     NEW.role := COALESCE(NULLIF(BTRIM(NEW.role), ''), NEW.role_locked_name);
     NEW.role_locked_name := NEW.role;
