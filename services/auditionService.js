@@ -36,11 +36,21 @@ pool.on('error', (err) => {
 });
 
 const NAME_SEARCH_SQL = `COALESCE(
-  a.search_full_name,
-  CONCAT_WS(' ',
-    NULLIF(BTRIM(COALESCE(a.first_name_en, a.first_name_he, '')), ''),
-    NULLIF(BTRIM(COALESCE(a.last_name_en, a.last_name_he, '')), '')
-  )
+  TRIM(
+    REGEXP_REPLACE(
+      CONCAT_WS(' ',
+        NULLIF(BTRIM(a.search_full_name), ''),
+        NULLIF(BTRIM(a.first_name_he), ''),
+        NULLIF(BTRIM(a.last_name_he), ''),
+        NULLIF(BTRIM(a.role_locked_name), ''),
+        NULLIF(BTRIM(a.role), '')
+      ),
+      '\\s+',
+      ' ',
+      'g'
+    )
+  ),
+  ''
 )`;
 
 async function insertAudition(audition) {
