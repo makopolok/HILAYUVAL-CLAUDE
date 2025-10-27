@@ -93,7 +93,7 @@ BEGIN
   IF NEW.role_id IS NOT NULL THEN
     SELECT name INTO role_name FROM roles WHERE id = NEW.role_id;
     IF role_name IS NULL THEN
-      RAISE EXCEPTION 'Role % not found for audition %', NEW.role_id, NEW.id;
+      RAISE EXCEPTION 'Role ' || NEW.role_id || ' not found for audition ' || NEW.id;
     END IF;
     NEW.role := role_name;
     NEW.role_locked_name := role_name;
