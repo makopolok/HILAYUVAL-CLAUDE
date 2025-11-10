@@ -1437,22 +1437,50 @@ app.get('/projects/:projectId/auditions', async (req, res) => {
     const libId = process.env.BUNNY_STREAM_LIBRARY_ID;
     const signingKey = process.env.BUNNY_STREAM_SIGNING_KEY;
     let ttl = null, expires = null;
-  if (signingKey && libId) {
+    if (signingKey && libId) {
       ttl = Math.min(Math.max(parseInt(process.env.BUNNY_STREAM_TOKEN_TTL || '3600', 10) || 3600, 60), 86400);
       expires = Math.floor(Date.now()/1000) + ttl;
       const crypto = require('crypto');
       for (const a of auditions) {
-        if (a && a.video_type === 'bunny_stream' && a.video_url && a.video_url.length > 10) {
+        if (!a || !a.video_url) continue;
+        if (a.video_type === 'bunny_stream' && a.video_url.length > 10) {
           const pathForToken = `/embed/${libId}/${a.video_url}`;
           const token = crypto.createHash('md5').update(signingKey + pathForToken + expires).digest('hex');
-      a.embed_url = `https://iframe.mediadelivery.net/embed/${libId}/${a.video_url}?token=${token}&expires=${expires}&autoplay=false`;
+          a.embed_url = `https://iframe.mediadelivery.net/embed/${libId}/${a.video_url}?token=${token}&expires=${expires}&autoplay=false`;
         }
       }
     } else if (libId) {
       for (const a of auditions) {
         if (a && a.video_type === 'bunny_stream' && a.video_url && a.video_url.length > 10) {
-      a.embed_url = `https://iframe.mediadelivery.net/embed/${libId}/${a.video_url}?autoplay=false`;
+          a.embed_url = `https://iframe.mediadelivery.net/embed/${libId}/${a.video_url}?autoplay=false`;
         }
+      }
+    }
+
+    // Prepare display metadata for YouTube submissions
+    for (const a of auditions) {
+      if (!a || !a.video_url || a.video_type !== 'youtube') continue;
+      let videoId = null;
+      try {
+        const parsed = new URL(a.video_url.startsWith('http') ? a.video_url : `https://${a.video_url}`);
+        videoId = parsed.searchParams.get('v');
+        if (!videoId && parsed.pathname) {
+          const parts = parsed.pathname.split('/').filter(Boolean);
+          if (parts.length > 0) {
+            videoId = parts[parts.length - 1];
+          }
+        }
+      } catch (_) {
+        const match = a.video_url.match(/[?&]v=([^&]+)/);
+        if (match) {
+          videoId = match[1];
+        }
+      }
+      if (videoId) {
+        a.embed_url = `https://www.youtube.com/embed/${videoId}`;
+        a.video_watch_url = `https://www.youtube.com/watch?v=${videoId}`;
+      } else {
+        a.video_watch_url = a.video_url;
       }
     }
     
