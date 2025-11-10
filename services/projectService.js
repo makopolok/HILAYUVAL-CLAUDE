@@ -49,8 +49,9 @@ async function getAllProjects() {
     const rolesRes = await pool.query('SELECT * FROM roles WHERE COALESCE(is_deleted, FALSE) = FALSE');
     console.log('PROJECT_SERVICE_GET_ALL_PROJECTS:', { projects: projectsRes.rows, roles: rolesRes.rows });
     return projectsRes.rows.map(project => ({
-        ...project,
-        roles: rolesRes.rows.filter(role => role.project_id === project.id)
+      ...project,
+      uploadMethod: project.upload_method,
+      roles: rolesRes.rows.filter(role => role.project_id === project.id)
     }));
 }
 
@@ -66,6 +67,7 @@ const getProjectById = async (id) => {
 
           const rolesResult = await pool.query('SELECT * FROM roles WHERE project_id = $1 AND COALESCE(is_deleted, FALSE) = FALSE', [id]);
           project.roles = rolesResult.rows;
+          project.uploadMethod = project.upload_method;
           console.log(`PROJECT_SERVICE_GET_BY_ID_ROLES_FETCHED: Roles for project ${id}: ${JSON.stringify(project.roles)}. Roles count: ${project.roles.length}. IsArray: ${Array.isArray(project.roles)}`);
           
           // Ensure roles is always an array, even if empty, to prevent .find issues later

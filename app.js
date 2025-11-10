@@ -618,12 +618,13 @@ app.get('/audition/:projectId', async (req, res) => {
   }
   const libId = process.env.BUNNY_STREAM_LIBRARY_ID || '';
   const expose = process.env.DIRECT_UPLOAD_EXPOSE_KEY === '1';
-  res.render('audition', { 
+  const viewUploadMethod = project ? (project.uploadMethod || project.upload_method || 'bunny_stream') : 'bunny_stream';
+  res.render('audition', {
     project,
     bunny_stream_library_id: libId,
-  upload_method: project && project.uploadMethod ? project.uploadMethod : 'bunny_stream',
+    upload_method: viewUploadMethod,
     bunny_video_access_key: expose ? (process.env.BUNNY_VIDEO_API_KEY || '') : null,
-  direct_upload_exposed: expose
+    direct_upload_exposed: expose
   });
 });
 
