@@ -128,6 +128,34 @@ function applyNameFilters(tokens, params, clauses) {
   });
 }
 
+async function getAuditionById(auditionId) {
+  const sql = `
+    SELECT a.*, ac.email, ac.phone, ac.agency,
+           p.name AS project_name,
+           r.name AS role_name
+    FROM auditions a
+    JOIN projects p ON p.id = a.project_id
+    LEFT JOIN audition_contacts ac ON ac.audition_id = a.id
+    LEFT JOIN roles r ON r.id = a.role_id
+    WHERE a.id = $1
+    LIMIT 1
+  `;
+  const { rows } = await pool.query(sql, [auditionId]);
+  return rows[0] || null;
+}
+
+async function updateAuditionYoutubeData(auditionId, { youtubeVideoId, youtubeVideoUrl }) {
+  const sql = `
+    UPDATE auditions
+    SET youtube_video_id = $2,
+        youtube_video_url = $3,
+        youtube_synced_at = NOW(),
+        updated_at = NOW()
+    WHERE id = $1
+  `;
+  await pool.query(sql, [auditionId, youtubeVideoId || null, youtubeVideoUrl || null]);
+}
+
 // Fetch auditions for a given project with optional filters
 async function getAuditionsByProjectId(projectId, query = {}) {
   const where = ['a.project_id = $1'];
@@ -224,4 +252,6 @@ module.exports = {
   checkDbConnection,
   getAuditionsByProjectId,
   searchAuditions,
+  getAuditionById,
+  updateAuditionYoutubeData,
 };

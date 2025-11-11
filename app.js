@@ -1423,6 +1423,101 @@ app.post('/audition/:projectId', auditionUpload.fields([
 });
 
 
+// Promote an existing Bunny audition to YouTube
+app.post('/projects/:projectId/auditions/:auditionId/upload-to-youtube', async (req, res) => {
+  const { projectId, auditionId } = req.params;
+  const redirectRaw = (req.body.redirect || '').toString();
+  const redirectTarget = redirectRaw.startsWith('/') ? redirectRaw : `/projects/${projectId}/auditions`;
+
+  if (!process.env.GOOGLE_REFRESH_TOKEN) {
+    req.flash('error', 'YouTube integration is not configured on the server.');
+    return res.redirect(redirectTarget);
+  }
+
+  let tempDownloadPath = null;
+  try {
+    const project = await projectService.getProjectById(projectId);
+    if (!project) {
+      req.flash('error', 'Project not found.');
+      return res.redirect('/projects');
+    }
+
+    const audition = await auditionService.getAuditionById(auditionId);
+    if (!audition || Number(audition.project_id) !== Number(projectId)) {
+      req.flash('error', 'Audition not found for this project.');
+      return res.redirect(redirectTarget);
+    }
+
+    if (!audition.video_url || audition.video_type !== 'bunny_stream') {
+      req.flash('error', 'Only Bunny-hosted auditions can be copied to YouTube.');
+      return res.redirect(redirectTarget);
+    }
+
+    if (audition.youtube_video_url) {
+      req.flash('info', 'This audition is already available on YouTube.');
+      return res.redirect(redirectTarget);
+    }
+
+    // Download from Bunny to a temporary file
+    const download = await bunnyUploadService.downloadVideoToTemp(audition.video_url);
+    tempDownloadPath = download.path;
+
+    oauth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
+    const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
+
+    const performerName = [audition.first_name_en, audition.last_name_en, audition.first_name_he, audition.last_name_he]
+      .filter(Boolean)
+      .join(' ') || 'Audition Performer';
+
+    const title = `${performerName} - ${audition.role_name || audition.role || 'Audition'}`;
+    const description = [
+      `Audition submitted for project: ${audition.project_name || project.name}`,
+      audition.role_name ? `Role: ${audition.role_name}` : null,
+      audition.email ? `Email: ${audition.email}` : null,
+      audition.phone ? `Phone: ${audition.phone}` : null,
+    ].filter(Boolean).join('\n');
+
+    const uploadResponse = await youtube.videos.insert({
+      part: ['snippet', 'status'],
+      requestBody: {
+        snippet: {
+          title,
+          description,
+        },
+        status: {
+          privacyStatus: 'unlisted',
+        },
+      },
+      media: {
+        body: fs.createReadStream(tempDownloadPath),
+      },
+    });
+
+    const youtubeVideoId = uploadResponse?.data?.id;
+    if (!youtubeVideoId) {
+      throw new Error('YouTube did not return a video ID.');
+    }
+    const youtubeUrl = `https://www.youtube.com/watch?v=${youtubeVideoId}`;
+
+    await auditionService.updateAuditionYoutubeData(audition.id, {
+      youtubeVideoId,
+      youtubeVideoUrl: youtubeUrl,
+    });
+
+    req.flash('success', 'Audition uploaded to YouTube successfully.');
+  } catch (error) {
+    console.error(`[App.js POST /projects/${projectId}/auditions/${auditionId}/upload-to-youtube]`, error);
+    req.flash('error', `Failed to upload to YouTube: ${error.message}`);
+  } finally {
+    if (tempDownloadPath) {
+      fs.promises.unlink(tempDownloadPath).catch(() => undefined);
+    }
+  }
+
+  return res.redirect(redirectTarget);
+});
+
+
 // Route to view all auditions for a specific project
 app.get('/projects/:projectId/auditions', async (req, res) => {
   try {
@@ -1432,11 +1527,12 @@ app.get('/projects/:projectId/auditions', async (req, res) => {
       return res.status(404).render('error/404', { message: 'Project not found.' });
     }
 
-  const auditions = await auditionService.getAuditionsByProjectId(projectId, req.query);
+    const auditions = await auditionService.getAuditionsByProjectId(projectId, req.query);
     // If Bunny Stream is used, pre-compute signed embed URLs for each audition video
     const libId = process.env.BUNNY_STREAM_LIBRARY_ID;
     const signingKey = process.env.BUNNY_STREAM_SIGNING_KEY;
-    let ttl = null, expires = null;
+    let ttl = null;
+    let expires = null;
     if (signingKey && libId) {
       ttl = Math.min(Math.max(parseInt(process.env.BUNNY_STREAM_TOKEN_TTL || '3600', 10) || 3600, 60), 86400);
       expires = Math.floor(Date.now()/1000) + ttl;
@@ -1483,7 +1579,7 @@ app.get('/projects/:projectId/auditions', async (req, res) => {
         a.video_watch_url = a.video_url;
       }
     }
-    
+
     // Format timestamps to Tel Aviv time and group auditions by role for structured display
     for (const a of auditions) {
       if (a && a.created_at) {
@@ -1507,14 +1603,17 @@ app.get('/projects/:projectId/auditions', async (req, res) => {
       })
     }));
 
-  // Casting director page: simplify to global flag only (no per-viewer toggle)
-  const disableInlineEffective = process.env.DISABLE_INLINE_PLAYER === '1' ? true : false;
+    // Casting director page: simplify to global flag only (no per-viewer toggle)
+    const disableInlineEffective = process.env.DISABLE_INLINE_PLAYER === '1';
+    const youtubeReady = !!process.env.GOOGLE_REFRESH_TOKEN;
 
-    res.render('auditions', { 
+    res.render('auditions', {
       project: { ...project, roles: rolesWithAuditions },
       query: req.query,
       bunny_stream_library_id: process.env.BUNNY_STREAM_LIBRARY_ID, // Pass library ID to the template
-      disable_inline_player: disableInlineEffective
+      disable_inline_player: disableInlineEffective,
+      youtube_ready: youtubeReady,
+      redirect_to: req.originalUrl,
     });
   } catch (error) {
     console.error(`[App.js GET /projects/:projectId/auditions] Error fetching auditions:`, error);

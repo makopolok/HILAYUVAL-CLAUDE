@@ -111,6 +111,19 @@
                           </div>
                         </div>
                         {{/if}}
+                        {{#if youtube_video_url}}
+                        <div class="alert alert-info small py-2 mb-3" role="alert">
+                          <i class="fab fa-youtube me-1"></i>
+                          Also available on YouTube: <a href="{{youtube_video_url}}" target="_blank" rel="noopener">open</a>
+                        </div>
+                        {{else if ../../youtube_ready}}
+                        <form method="POST" action="/projects/{{../../project.id}}/auditions/{{id}}/upload-to-youtube" class="mt-2">
+                          <input type="hidden" name="redirect" value="{{../../redirect_to}}">
+                          <button type="submit" class="btn btn-outline-danger btn-sm w-100">
+                            <i class="fab fa-youtube me-1"></i>Upload to YouTube
+                          </button>
+                        </form>
+                        {{/if}}
                         {{else}}
                         <div class="text-center p-3 mb-3" style="background-color: #f8f9fa; border-radius: 8px;">
                           <i class="fas fa-video-slash text-muted mb-2"></i>

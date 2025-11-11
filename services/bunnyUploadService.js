@@ -6,6 +6,11 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const FormData = require('form-data');
+const os = require('os');
+const { promisify } = require('util');
+const stream = require('stream');
+
+const pipeline = promisify(stream.pipeline);
 
 const BUNNY_API_KEY = process.env.BUNNY_API_KEY;
 const BUNNY_STORAGE_ZONE = process.env.BUNNY_STORAGE_ZONE;
@@ -145,6 +150,50 @@ module.exports = {
       }
     } catch (error) {
       console.error('Error checking video status:', error.message);
+      throw error;
+    }
+  },
+  async downloadVideoToTemp(guid) {
+    if (!guid) {
+      throw new Error('Video GUID is required to download from Bunny.net.');
+    }
+    if (!BUNNY_STREAM_LIBRARY_ID || !BUNNY_VIDEO_API_KEY) {
+      throw new Error('Bunny.net Stream credentials not configured.');
+    }
+
+    const guidValue = guid.toString().trim();
+    const baseGuid = guidValue.split('?')[0];
+    const parts = baseGuid.split('/').filter(Boolean);
+    const normalizedGuid = parts.length > 0 ? parts[parts.length - 1] : baseGuid;
+    if (!normalizedGuid) {
+      throw new Error('Unable to determine Bunny.net video GUID.');
+    }
+
+    const downloadUrl = `https://video.bunnycdn.com/library/${BUNNY_STREAM_LIBRARY_ID}/videos/${normalizedGuid}`;
+    const tempPath = path.join(os.tmpdir(), `${normalizedGuid}-${Date.now()}.mp4`);
+
+    try {
+      const response = await axios.get(downloadUrl, {
+        headers: {
+          'AccessKey': BUNNY_VIDEO_API_KEY,
+        },
+        params: { download: 1 },
+        responseType: 'stream',
+        timeout: 60000,
+        maxContentLength: Infinity,
+        maxBodyLength: Infinity,
+      });
+
+      await pipeline(response.data, fs.createWriteStream(tempPath));
+
+      return {
+        path: tempPath,
+        contentType: response.headers['content-type'] || 'video/mp4',
+      };
+    } catch (error) {
+      if (fs.existsSync(tempPath)) {
+        try { fs.unlinkSync(tempPath); } catch (_) { /* ignore cleanup errors */ }
+      }
       throw error;
     }
   },
