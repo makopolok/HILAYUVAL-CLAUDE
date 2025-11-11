@@ -4,6 +4,7 @@ const portfolioService = require('../services/portfolioService');
 const projectService = require('../services/projectService');
 const auditionService = require('../services/auditionService');
 const { pool } = auditionService;
+const { requireAdmin } = require('../middleware/auth');
 
 router.get('/', async (req, res) => {
     const projects = await portfolioService.getAllProjects();
@@ -12,6 +13,8 @@ router.get('/', async (req, res) => {
         projects 
     });
 });
+
+router.use('/projects', requireAdmin);
 
 router.get('/projects', async (req, res) => {
     try {

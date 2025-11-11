@@ -1,0 +1,18 @@
+<nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom mb-3">
+	<div class="container-fluid">
+		<a class="navbar-brand" href="/">Hila Yuval Casting</a>
+		<div class="d-flex align-items-center gap-2">
+			{{#if isAdmin}}
+				<span class="text-muted small d-none d-md-inline">Signed in as {{adminUser.email}}</span>
+				<form method="POST" action="/admin/logout" class="d-inline">
+					{{#if currentPath}}
+					<input type="hidden" name="returnTo" value="{{currentPath}}">
+					{{/if}}
+					<button type="submit" class="btn btn-outline-secondary btn-sm">Log Out</button>
+				</form>
+			{{else}}
+				<a class="btn btn-outline-primary btn-sm" href="/admin/login">Admin Login</a>
+			{{/if}}
+		</div>
+	</div>
+</nav>

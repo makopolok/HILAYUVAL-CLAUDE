@@ -1,6 +1,5 @@
 {{! views/audition.handlebars }}
 {{!-- audition.handlebars: Project-specific or generic audition submission form --}}
-{{> header}}
 <div class="container mt-5">
   <h1 class="display-4 mb-4">
     {{!-- Show project name if present, otherwise generic heading --}}
@@ -288,7 +287,6 @@
   </div>
 </div>
 
-{{> footer}}
 <script>
 // File size constants (matching backend limits)
 const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB

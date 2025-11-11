@@ -22,6 +22,8 @@ const { checkDbConnection } = require('./services/auditionService');
 const bunnyService = require('./services/bunnyUploadService');
 const session = require('express-session');
 const flash = require('connect-flash');
+const adminRoutes = require('./routes/adminRoutes');
+const { attachAdminToLocals, requireAdmin } = require('./middleware/auth');
 const { closePool } = require('./utils/database');
 
 // Add a version log at the top for deployment verification
@@ -124,6 +126,7 @@ app.use((req, res, next) => {
   };
   next();
 });
+app.use(attachAdminToLocals);
 
 // Proxy-serving uploaded images from Bunny Storage when no CDN is configured
 // This allows using relative URLs like /images/<filename> for uploaded profile pictures.
@@ -195,6 +198,7 @@ const multerConfig = {
 const generalAuditionUpload = multer(multerConfig);
 
 // Routes
+app.use('/admin', adminRoutes);
 app.use('/', portfolioRoutes);
 
 // Basic DB health route (lightweight) for debugging connectivity
@@ -405,7 +409,7 @@ app.get('/oauth2callback', async (req, res) => {
 // --- End YouTube OAuth Routes ---
 
 // Route to display all projects with version information
-app.get('/projects', async (req, res) => {
+app.get('/projects', requireAdmin, async (req, res) => {
   try {
     const projects = await projectService.getAllProjects();
     
@@ -484,12 +488,12 @@ app.get('/projects', async (req, res) => {
 });
 
 // Route to render the create project form
-app.get('/projects/create', (req, res) => {
+app.get('/projects/create', requireAdmin, (req, res) => {
   res.render('createProject');
 });
 
 // Route to handle project creation
-app.post('/projects/create', async (req, res, next) => { // Added next
+app.post('/projects/create', requireAdmin, async (req, res, next) => { // Added next
   try { // Added try
   const { name, description, uploadMethod: projectUploadMethod } = req.body;
   const normalizedMethod = (projectUploadMethod || '').toString().trim().toLowerCase();
@@ -1505,7 +1509,7 @@ app.post('/audition/:projectId', auditionUpload.fields([
 
 
 // Promote an existing Bunny audition to YouTube
-app.post('/projects/:projectId/auditions/:auditionId/upload-to-youtube', async (req, res) => {
+app.post('/projects/:projectId/auditions/:auditionId/upload-to-youtube', requireAdmin, async (req, res) => {
   const { projectId, auditionId } = req.params;
   const redirectRaw = (req.body.redirect || '').toString();
   const redirectTarget = redirectRaw.startsWith('/') ? redirectRaw : `/projects/${projectId}/auditions`;
@@ -1600,7 +1604,7 @@ app.post('/projects/:projectId/auditions/:auditionId/upload-to-youtube', async (
 
 
 // Route to view all auditions for a specific project
-app.get('/projects/:projectId/auditions', async (req, res) => {
+app.get('/projects/:projectId/auditions', requireAdmin, async (req, res) => {
   try {
     const projectId = req.params.projectId;
     const project = await projectService.getProjectById(projectId);
