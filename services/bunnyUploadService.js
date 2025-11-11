@@ -169,26 +169,50 @@ module.exports = {
       throw new Error('Unable to determine Bunny.net video GUID.');
     }
 
-    const downloadUrl = `https://video.bunnycdn.com/library/${BUNNY_STREAM_LIBRARY_ID}/videos/${normalizedGuid}`;
+    const playEndpoint = `https://video.bunnycdn.com/library/${BUNNY_STREAM_LIBRARY_ID}/videos/${normalizedGuid}/play`;
     const tempPath = path.join(os.tmpdir(), `${normalizedGuid}-${Date.now()}.mp4`);
+    let downloadSource = null;
+    let fallbackResolution = null;
 
     try {
-      const response = await axios.get(downloadUrl, {
+      const playResponse = await axios.get(playEndpoint, {
         headers: {
-          'AccessKey': BUNNY_VIDEO_API_KEY,
+          AccessKey: BUNNY_VIDEO_API_KEY,
         },
-        params: { download: 1 },
+        timeout: 20000,
+      });
+
+      const playData = playResponse?.data || {};
+      if (playData.originalUrl) {
+        downloadSource = playData.originalUrl;
+      } else if (playData.fallbackUrl) {
+        const resolutions = (playData?.video?.availableResolutions || '')
+          .split(',')
+          .map((r) => r.trim())
+          .filter(Boolean)
+          .sort((a, b) => parseInt(b, 10) - parseInt(a, 10));
+        fallbackResolution = resolutions.length > 0 ? resolutions[0] : '720p';
+        downloadSource = `${playData.fallbackUrl}${fallbackResolution}.mp4`;
+      }
+
+      if (!downloadSource) {
+        throw new Error('Bunny.net did not provide a downloadable URL.');
+      }
+
+      const downloadResponse = await axios.get(downloadSource, {
         responseType: 'stream',
-        timeout: 60000,
+        timeout: 120000,
         maxContentLength: Infinity,
         maxBodyLength: Infinity,
       });
-
-      await pipeline(response.data, fs.createWriteStream(tempPath));
+      const contentType = downloadResponse.headers['content-type'] || 'application/octet-stream';
+      await pipeline(downloadResponse.data, fs.createWriteStream(tempPath));
 
       return {
         path: tempPath,
-        contentType: response.headers['content-type'] || 'video/mp4',
+        contentType,
+        source: downloadSource,
+        resolution: fallbackResolution,
       };
     } catch (error) {
       if (fs.existsSync(tempPath)) {
