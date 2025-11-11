@@ -1,8 +1,6 @@
 // scripts/check_db_connection.js
 // Lightweight diagnostic to verify PostgreSQL connectivity & basic structure.
-
-require('dotenv').config();
-const { Pool } = require('pg');
+const { getPool, closePool, registerPoolShutdown } = require('../utils/database');
 
 if (!process.env.DATABASE_URL) {
   console.error('ERROR: DATABASE_URL not set in environment.');
@@ -21,16 +19,17 @@ function maskConnectionString(cs) {
   }
 }
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL.includes('localhost') ? false : { rejectUnauthorized: false }
-});
+const pool = getPool();
+registerPoolShutdown({ exitOnFinish: true });
 
 (async () => {
   const start = Date.now();
+  let exitCode = 0;
+
   console.log('=== DB CONNECTION DIAGNOSTIC ===');
   console.log('Timestamp:', new Date().toISOString());
   console.log('Connection String (masked):', maskConnectionString(process.env.DATABASE_URL));
+
   try {
     const nowRes = await pool.query('SELECT NOW() as now, current_database() as db, version() as version');
     const row = nowRes.rows[0];
@@ -42,20 +41,20 @@ const pool = new Pool({
     // List public tables
     const tablesRes = await pool.query(`SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_name`);
     console.log(`\n📋 Tables (${tablesRes.rows.length}):`);
-    tablesRes.rows.forEach(t => console.log(' -', t.table_name));
+    tablesRes.rows.forEach((t) => console.log(' -', t.table_name));
 
     // Attempt to introspect expected tables
-    const expected = ['projects','roles','auditions'];
+    const expected = ['projects', 'roles', 'auditions'];
     for (const t of expected) {
       const colRes = await pool.query(`SELECT column_name, data_type FROM information_schema.columns WHERE table_schema='public' AND table_name=$1 ORDER BY ordinal_position`, [t]);
       if (colRes.rows.length === 0) {
         console.log(`\n❌ Missing table: ${t}`);
       } else {
         console.log(`\n✅ ${t} (${colRes.rows.length} cols)`);
-        console.log('   Columns:', colRes.rows.map(c => `${c.column_name}:${c.data_type}`).join(', '));
+        console.log('   Columns:', colRes.rows.map((c) => `${c.column_name}:${c.data_type}`).join(', '));
         try {
           const countRes = await pool.query(`SELECT COUNT(*)::int AS count FROM ${t}`);
-            console.log(`   Rows: ${countRes.rows[0].count}`);
+          console.log(`   Rows: ${countRes.rows[0].count}`);
         } catch (e) {
           console.log('   (Count query failed:', e.message, ')');
         }
@@ -64,12 +63,12 @@ const pool = new Pool({
 
     console.log(`\n⏱  Total latency: ${Date.now() - start} ms`);
     console.log('\nDone.');
-    process.exit(0);
   } catch (err) {
     console.error('\n❌ Connection / query error:', err.message);
     console.error('Code:', err.code);
-    process.exit(1);
+    exitCode = 1;
   } finally {
-    await pool.end();
+    await closePool('check_db_connection:cleanup');
+    process.exit(exitCode);
   }
 })();

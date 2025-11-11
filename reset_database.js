@@ -1,11 +1,8 @@
 // Fresh database setup - drops everything and recreates from scratch
-const { Pool } = require('pg');
-require('dotenv').config();
+const { getPool, closePool, registerPoolShutdown } = require('./utils/database');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-});
+const pool = getPool();
+registerPoolShutdown({ exitOnFinish: true });
 
 async function resetDatabase() {
   console.log('=== FRESH DATABASE SETUP ===');
@@ -107,7 +104,7 @@ async function resetDatabase() {
     console.error('❌ Database setup failed:', error.message);
     throw error;
   } finally {
-    await pool.end();
+    await closePool('reset_database:cleanup');
   }
 }
 

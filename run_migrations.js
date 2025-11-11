@@ -1,13 +1,10 @@
 // Simple migration runner for Heroku PostgreSQL
-const { Pool } = require('pg');
 const fs = require('fs');
 const path = require('path');
-require('dotenv').config();
+const { getPool, closePool, registerPoolShutdown } = require('./utils/database');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-});
+const pool = getPool();
+registerPoolShutdown({ exitOnFinish: true });
 
 async function runMigrations() {
   console.log('=== RUNNING DATABASE MIGRATIONS ===');
@@ -55,9 +52,9 @@ async function runMigrations() {
 
   } catch (error) {
     console.error('❌ Migration failed:', error.message);
- console.error(error.stack); // Log the full error stack
+    console.error(error.stack); // Log the full error stack
   } finally {
-    await pool.end();
+    await closePool('run_migrations:cleanup');
   }
 }
 runMigrations();
