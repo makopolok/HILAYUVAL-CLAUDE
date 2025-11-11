@@ -1,13 +1,9 @@
 // scripts/create_auditions_table_if_missing.js
 // Safely create 'auditions' table with integer project_id FK if it does not exist.
+const { getPool, closePool, registerPoolShutdown } = require('../utils/database');
 
-require('dotenv').config();
-const { Pool } = require('pg');
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL && process.env.DATABASE_URL.includes('localhost') ? false : { rejectUnauthorized: false }
-});
+const pool = getPool();
+registerPoolShutdown({ exitOnFinish: true });
 
 (async () => {
   console.log('Checking for auditions table...');
@@ -45,6 +41,6 @@ const pool = new Pool({
     console.error('Error ensuring auditions table exists:', err.message);
     process.exitCode = 1;
   } finally {
-    await pool.end();
+    await closePool('create_auditions_table_if_missing:cleanup');
   }
 })();

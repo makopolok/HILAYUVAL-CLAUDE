@@ -13,6 +13,7 @@ const projectService = require('./services/projectService');
 const auditionService = require('./services/auditionService');
 const bunnyUploadService = require('./services/bunnyUploadService'); // MODIFIED - Correctly import the service
 const errorHandler = require('./middleware/errorHandler');
+const { buildTokenMeta, clampTtl } = require('./helpers/bunnyToken');
 const handlebarsHelpers = require('./helpers/handlebarsHelpers');
 const rateLimit = require('express-rate-limit');
 const portfolioRoutes = require('./routes/portfolio'); // Define portfolioRoutes
@@ -21,6 +22,7 @@ const { checkDbConnection } = require('./services/auditionService');
 const bunnyService = require('./services/bunnyUploadService');
 const session = require('express-session');
 const flash = require('connect-flash');
+const { closePool } = require('./utils/database');
 
 // Add a version log at the top for deployment verification
 console.log('INFO: app.js version 2025-06-08_2100_DEBUG running');
@@ -225,15 +227,67 @@ app.post('/api/videos', async (req, res) => {
   }
 });
 
+// Proxy upload endpoint so the client never sees the Bunny AccessKey
+app.put('/api/videos/:guid/upload', async (req, res) => {
+  const guid = (req.params.guid || '').trim();
+  const libId = process.env.BUNNY_STREAM_LIBRARY_ID;
+  const accessKey = process.env.BUNNY_VIDEO_API_KEY;
+
+  if (!guid || !/^[a-f0-9-]{10,}$/i.test(guid)) {
+    return res.status(400).json({ error: 'Invalid or missing video guid' });
+  }
+  if (!libId || !accessKey) {
+    return res.status(503).json({ error: 'Direct upload is not configured on the server' });
+  }
+
+  try {
+    const headers = {
+      AccessKey: accessKey,
+      'Content-Type': req.headers['content-type'] || 'application/octet-stream'
+    };
+    if (req.headers['content-length']) {
+      headers['Content-Length'] = req.headers['content-length'];
+    }
+
+    const controller = new AbortController();
+    req.on('aborted', () => controller.abort());
+
+    const targetUrl = `https://video.bunnycdn.com/library/${libId}/videos/${guid}`;
+    const bunnyRes = await fetch(targetUrl, {
+      method: 'PUT',
+      headers,
+      body: req,
+      duplex: 'half',
+      signal: controller.signal
+    });
+
+    const responseText = await bunnyRes.text();
+
+    if (bunnyRes.ok) {
+      return res.status(200).json({ ok: true });
+    }
+
+    console.error('ERROR: Bunny upload proxy failed', {
+      status: bunnyRes.status,
+      bodyPreview: responseText ? responseText.slice(0, 500) : null
+    });
+    return res.status(502).json({ error: 'Bunny upload failed', status: bunnyRes.status });
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      console.warn('WARN: Client aborted upload before completion.');
+      return; // Client disconnected; nothing else to do
+    }
+    console.error('ERROR: Proxy upload unexpected failure', error);
+    return res.status(500).json({ error: 'Failed to proxy upload' });
+  }
+});
+
 // Route to render audition submission form
 app.get('/audition', (req, res) => {
   const libId = process.env.BUNNY_STREAM_LIBRARY_ID || '';
-  const expose = process.env.DIRECT_UPLOAD_EXPOSE_KEY === '1';
   res.render('audition', {
     bunny_stream_library_id: libId,
-  upload_method: 'bunny_stream',
-    bunny_video_access_key: expose ? (process.env.BUNNY_VIDEO_API_KEY || '') : null,
-    direct_upload_exposed: expose
+    upload_method: 'bunny_stream'
   });
 });
 
@@ -617,14 +671,11 @@ app.get('/audition/:projectId', async (req, res) => {
     return res.status(404).send('Project not found.');
   }
   const libId = process.env.BUNNY_STREAM_LIBRARY_ID || '';
-  const expose = process.env.DIRECT_UPLOAD_EXPOSE_KEY === '1';
   const viewUploadMethod = project ? (project.uploadMethod || project.upload_method || 'bunny_stream') : 'bunny_stream';
   res.render('audition', {
     project,
     bunny_stream_library_id: libId,
-    upload_method: viewUploadMethod,
-    bunny_video_access_key: expose ? (process.env.BUNNY_VIDEO_API_KEY || '') : null,
-    direct_upload_exposed: expose
+    upload_method: viewUploadMethod
   });
 });
 
@@ -644,14 +695,13 @@ app.get('/debug/video/:guid', async (req, res) => {
   const guid = req.params.guid;
   const libId = process.env.BUNNY_STREAM_LIBRARY_ID;
   if (!guid || !libId) return res.status(400).json({ error: 'Missing guid or library id' });
-  const ttl = Math.min(Math.max(parseInt(process.env.BUNNY_STREAM_TOKEN_TTL || '3600', 10) || 3600, 60), 86400);
-  const expires = Math.floor(Date.now()/1000) + ttl;
   const pathForToken = `/embed/${libId}/${guid}`;
-  let token = null;
-  if (process.env.BUNNY_STREAM_SIGNING_KEY) {
-    const crypto = require('crypto');
-    token = crypto.createHash('md5').update(process.env.BUNNY_STREAM_SIGNING_KEY + pathForToken + expires).digest('hex');
-  }
+  const tokenDetails = buildTokenMeta({
+    signingKey: process.env.BUNNY_STREAM_SIGNING_KEY,
+    path: pathForToken,
+    ttlSeconds: process.env.BUNNY_STREAM_TOKEN_TTL
+  });
+  const token = tokenDetails.token;
   // Get status via service
   let status = null;
   try {
@@ -663,8 +713,8 @@ app.get('/debug/video/:guid', async (req, res) => {
     guid,
     library: libId,
     tokenPresent: !!token,
-  suggestedEmbed: token ? `https://iframe.mediadelivery.net/embed/${libId}/${guid}?token=${token}&expires=${expires}&autoplay=false` : `https://iframe.mediadelivery.net/embed/${libId}/${guid}?autoplay=false`,
-    tokenMeta: token ? { expires, ttl, path: pathForToken } : null,
+    suggestedEmbed: token ? `https://iframe.mediadelivery.net/embed/${libId}/${guid}?token=${token}&expires=${tokenDetails.expires}&autoplay=false` : `https://iframe.mediadelivery.net/embed/${libId}/${guid}?autoplay=false`,
+    tokenMeta: token ? { expires: tokenDetails.expires, ttl: tokenDetails.ttl, path: pathForToken } : null,
     env: {
       hasSigningKey: !!process.env.BUNNY_STREAM_SIGNING_KEY,
       hasVideoApiKey: !!process.env.BUNNY_VIDEO_API_KEY
@@ -681,25 +731,31 @@ app.get('/debug/embed/:guid', async (req, res) => {
   // Reconstruct signed URL using same logic
   let base = `https://iframe.mediadelivery.net/embed/${libId}/${guid}`;
   let usedPath = `/embed/${libId}/${guid}`;
-  let expires = null; let token = null; let ttl = null; let altTried = false;
-  if (process.env.BUNNY_STREAM_SIGNING_KEY) {
-    const crypto = require('crypto');
-    ttl = Math.min(Math.max(parseInt(process.env.BUNNY_STREAM_TOKEN_TTL || '3600', 10) || 3600, 60), 86400);
-    expires = Math.floor(Date.now()/1000) + ttl;
-    token = crypto.createHash('md5').update(process.env.BUNNY_STREAM_SIGNING_KEY + usedPath + expires).digest('hex');
-    base += `?token=${token}&expires=${expires}`;
+  const signingKey = process.env.BUNNY_STREAM_SIGNING_KEY;
+  const primaryMeta = signingKey ? buildTokenMeta({
+    signingKey,
+    path: usedPath,
+    ttlSeconds: process.env.BUNNY_STREAM_TOKEN_TTL
+  }) : { token: null, expires: null, ttl: null };
+  if (primaryMeta.token) {
+    base += `?token=${primaryMeta.token}&expires=${primaryMeta.expires}`;
   }
   const axios = require('axios');
   let resultPrimary = null; let resultAlt = null; let errorPrimary = null; let errorAlt = null;
+  let altTried = false;
   try {
     resultPrimary = await axios.get(base, { validateStatus: () => true });
   } catch (e) { errorPrimary = e.message; }
-  if (process.env.BUNNY_STREAM_ALT_PATH === '1' && process.env.BUNNY_STREAM_SIGNING_KEY) {
+  if (process.env.BUNNY_STREAM_ALT_PATH === '1' && primaryMeta.token) {
     altTried = true;
-    const crypto = require('crypto');
     const altPath = `/iframe/${libId}/${guid}`;
-    const altToken = crypto.createHash('md5').update(process.env.BUNNY_STREAM_SIGNING_KEY + altPath + expires).digest('hex');
-  const altUrl = `https://iframe.mediadelivery.net/embed/${libId}/${guid}?token=${altToken}&expires=${expires}&autoplay=false`;
+    const altMeta = buildTokenMeta({
+      signingKey,
+      path: altPath,
+      ttlSeconds: process.env.BUNNY_STREAM_TOKEN_TTL,
+      expiresOverride: primaryMeta.expires
+    });
+  const altUrl = altMeta.token ? `https://iframe.mediadelivery.net/embed/${libId}/${guid}?token=${altMeta.token}&expires=${altMeta.expires}&autoplay=false` : `https://iframe.mediadelivery.net/embed/${libId}/${guid}?autoplay=false`;
     try { resultAlt = await axios.get(altUrl, { validateStatus: () => true }); } catch (e) { errorAlt = e.message; }
     return res.json({
       guid,
@@ -716,7 +772,12 @@ app.get('/debug/embed/:guid', async (req, res) => {
         headers: resultAlt && resultAlt.headers,
         error: errorAlt || null
       },
-      signing: { ttl, expires, usedPath, altPathTried: true }
+      signing: {
+        ttl: primaryMeta.ttl,
+        expires: primaryMeta.expires,
+        usedPath,
+        altPathTried: true
+      }
     });
   }
   return res.json({
@@ -727,7 +788,12 @@ app.get('/debug/embed/:guid', async (req, res) => {
       headers: resultPrimary && resultPrimary.headers,
       error: errorPrimary || null
     },
-    signing: { ttl, expires, usedPath, altPathTried: altTried }
+    signing: {
+      ttl: primaryMeta.ttl,
+      expires: primaryMeta.expires,
+      usedPath,
+      altPathTried: altTried
+    }
   });
 });
 
@@ -739,9 +805,9 @@ app.get('/debug/embed-matrix/:guid', async (req, res) => {
   if (!process.env.BUNNY_STREAM_SIGNING_KEY) {
     return res.status(400).json({ error: 'BUNNY_STREAM_SIGNING_KEY not set' });
   }
-  const crypto = require('crypto');
   const axios = require('axios');
-  const ttl = Math.min(Math.max(parseInt(process.env.BUNNY_STREAM_TOKEN_TTL || '3600', 10) || 3600, 60), 86400);
+  const ttlConfig = process.env.BUNNY_STREAM_TOKEN_TTL;
+  const ttl = clampTtl(ttlConfig || '3600');
   const expires = Math.floor(Date.now()/1000) + ttl;
   // Candidate path variants (leading slash required). Order matters.
   const variants = [
@@ -751,8 +817,13 @@ app.get('/debug/embed-matrix/:guid', async (req, res) => {
   ];
   const results = [];
   for (const v of variants) {
-    const token = crypto.createHash('md5').update(process.env.BUNNY_STREAM_SIGNING_KEY + v.path + expires).digest('hex');
-    const testUrl = `${v.url}?token=${token}&expires=${expires}`;
+    const meta = buildTokenMeta({
+      signingKey: process.env.BUNNY_STREAM_SIGNING_KEY,
+      path: v.path,
+      ttlSeconds: ttlConfig,
+      expiresOverride: expires
+    });
+    const testUrl = meta.token ? `${v.url}?token=${meta.token}&expires=${meta.expires}` : v.url;
     let status = null; let headers = null; let error = null;
     try {
       const r = await axios.get(testUrl, { validateStatus: () => true });
@@ -829,21 +900,25 @@ app.get('/debug/stream-signed/:guid', async (req, res) => {
     '/manifest/video.m3u8',
     '/video.m3u8'
   ];
-  const crypto = require('crypto');
   const axios = require('axios');
-  const ttl = Math.min(Math.max(parseInt(process.env.BUNNY_STREAM_TOKEN_TTL || '3600', 10) || 3600, 60), 86400);
+  const ttlConfig = process.env.BUNNY_STREAM_TOKEN_TTL;
+  const ttl = clampTtl(ttlConfig || '3600');
   const expires = Math.floor(Date.now()/1000) + ttl;
   const injectedRef = req.query.ref; // optional Referer
   const headersBase = injectedRef ? { Referer: injectedRef } : {};
   const includeIp = process.env.BUNNY_STREAM_TOKEN_INCLUDE_IP === '1';
   const results = [];
   for (const p of playlistPaths) {
-    // NOTE: Basic CDN token format uses Base64 URL-safe of MD5 RAW bytes
-    // token = base64url(md5_raw(key + path + expires [+ ip]))
-    const tokenBase = includeIp ? `${cdnKey}${p}${expires}${req.ip || ''}` : `${cdnKey}${p}${expires}`;
-    const md5Raw = crypto.createHash('md5').update(tokenBase).digest();
-    const token = md5Raw.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/,'');
-    const url = `https://${host}${p}?token=${token}&expires=${expires}`;
+    const tokenMeta = buildTokenMeta({
+      signingKey: cdnKey,
+      path: p,
+      ttlSeconds: ttlConfig,
+      includeIp,
+      ipAddress: includeIp ? req.ip : undefined,
+      expiresOverride: expires,
+      digest: 'base64url'
+    });
+    const url = `https://${host}${p}?token=${tokenMeta.token}&expires=${tokenMeta.expires}`;
     let headStatus = null, getStatus = null, length = null, contentType = null, error = null, headHeaders = null;
     try {
       const h = await axios.head(url, { timeout: 8000, validateStatus: () => true, headers: headersBase });
@@ -900,9 +975,9 @@ app.get('/debug/stream-matrix/:guid', async (req, res) => {
   if (!guid || !libId) return res.status(400).json({ error: 'Missing guid or library id' });
   const host = `vz-${libId}-${guid}.b-cdn.net`;
   const playlistPaths = ['/playlist.m3u8','/manifest/video.m3u8','/video.m3u8'];
-  const crypto = require('crypto');
   const axios = require('axios');
-  const ttl = Math.min(Math.max(parseInt(process.env.BUNNY_STREAM_TOKEN_TTL || '3600', 10) || 3600, 60), 86400);
+  const ttlConfig = process.env.BUNNY_STREAM_TOKEN_TTL;
+  const ttl = clampTtl(ttlConfig || '3600');
   const expires = Math.floor(Date.now()/1000) + ttl;
   const injectedRef = req.query.ref; // optional Referer
   const headersBase = injectedRef ? { Referer: injectedRef } : {};
@@ -918,10 +993,16 @@ app.get('/debug/stream-matrix/:guid', async (req, res) => {
   for (const combo of combos) {
     const perCombo = { combo: combo.name, includeIp: combo.includeIp, results: [] };
     for (const p of playlistPaths) {
-      const base = combo.includeIp ? `${combo.key}${p}${expires}${req.ip || ''}` : `${combo.key}${p}${expires}`;
-      const md5Raw = crypto.createHash('md5').update(base).digest();
-      const token = md5Raw.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/,'');
-      const url = `https://${host}${p}?token=${token}&expires=${expires}`;
+      const tokenMeta = buildTokenMeta({
+        signingKey: combo.key,
+        path: p,
+        ttlSeconds: ttlConfig,
+        includeIp: combo.includeIp,
+        ipAddress: combo.includeIp ? req.ip : undefined,
+        expiresOverride: expires,
+        digest: 'base64url'
+      });
+      const url = `https://${host}${p}?token=${tokenMeta.token}&expires=${tokenMeta.expires}`;
       let headStatus = null, getStatus = null, length = null, contentType = null, error = null;
       try {
         const h = await axios.head(url, { timeout: 8000, validateStatus: () => true, headers: headersBase });
@@ -966,7 +1047,7 @@ app.get('/debug/stream-adv/:guid', async (req, res) => {
   if (!key) return res.status(400).json({ error: 'Signing key not set' });
   const host = `vz-${libId}-${guid}.b-cdn.net`;
   const axios = require('axios');
-  const ttl = Math.min(Math.max(parseInt(process.env.BUNNY_STREAM_TOKEN_TTL || '3600', 10) || 3600, 60), 86400);
+  const ttl = clampTtl(process.env.BUNNY_STREAM_TOKEN_TTL || '3600');
   const expires = Math.floor(Date.now()/1000) + ttl;
   const injectedRef = req.query.ref;
   const headersBase = injectedRef ? { Referer: injectedRef } : {};
@@ -1015,7 +1096,7 @@ app.get('/debug/stream-adv-matrix/:guid', async (req, res) => {
   if (!keyEmbed && !keyCdn) return res.status(400).json({ error: 'No signing keys set' });
   const host = `vz-${libId}-${guid}.b-cdn.net`;
   const axios = require('axios');
-  const ttl = Math.min(Math.max(parseInt(process.env.BUNNY_STREAM_TOKEN_TTL || '3600', 10) || 3600, 60), 86400);
+  const ttl = clampTtl(process.env.BUNNY_STREAM_TOKEN_TTL || '3600');
   const expires = Math.floor(Date.now()/1000) + ttl;
   const injectedRef = req.query.ref;
   const headersBase = injectedRef ? { Referer: injectedRef } : {};
@@ -1071,7 +1152,7 @@ app.get('/debug/stream-path/:guid', async (req, res) => {
   const host = `vz-${libId}-${guid}.b-cdn.net`;
   const axios = require('axios');
   const crypto = require('crypto');
-  const ttl = Math.min(Math.max(parseInt(process.env.BUNNY_STREAM_TOKEN_TTL || '3600', 10) || 3600, 60), 86400);
+  const ttl = clampTtl(process.env.BUNNY_STREAM_TOKEN_TTL || '3600');
   const expires = Math.floor(Date.now()/1000) + ttl;
   const injectedRef = req.query.ref;
   const headersBase = injectedRef ? { Referer: injectedRef } : {};
@@ -1117,7 +1198,7 @@ app.get('/debug/stream-adv-path/:guid', async (req, res) => {
   if (!key) return res.status(400).json({ error: 'Signing key not set' });
   const host = `vz-${libId}-${guid}.b-cdn.net`;
   const axios = require('axios');
-  const ttl = Math.min(Math.max(parseInt(process.env.BUNNY_STREAM_TOKEN_TTL || '3600', 10) || 3600, 60), 86400);
+  const ttl = clampTtl(process.env.BUNNY_STREAM_TOKEN_TTL || '3600');
   const expires = Math.floor(Date.now()/1000) + ttl;
   const injectedRef = req.query.ref;
   const headersBase = injectedRef ? { Referer: injectedRef } : {};
@@ -1372,10 +1453,10 @@ app.post('/audition/:projectId', auditionUpload.fields([
       try {
         const libId = process.env.BUNNY_STREAM_LIBRARY_ID;
     let embedBase = `https://iframe.mediadelivery.net/embed/${libId}/${finalVideoUrl}`;
-        if (process.env.BUNNY_STREAM_SIGNING_KEY) {
-            const crypto = require('crypto');
-            const ttl = Math.min(Math.max(parseInt(process.env.BUNNY_STREAM_TOKEN_TTL || '3600', 10) || 3600, 60), 86400); // clamp 1m - 24h
-            const expires = Math.floor(Date.now()/1000) + ttl; // validity
+    if (process.env.BUNNY_STREAM_SIGNING_KEY) {
+      const crypto = require('crypto');
+      const ttl = clampTtl(process.env.BUNNY_STREAM_TOKEN_TTL || '3600'); // clamp 1m - 24h
+      const expires = Math.floor(Date.now()/1000) + ttl; // validity
             // Try official path first
             const pathsTried = [];
             const key = process.env.BUNNY_STREAM_SIGNING_KEY;
@@ -1534,7 +1615,7 @@ app.get('/projects/:projectId/auditions', async (req, res) => {
     let ttl = null;
     let expires = null;
     if (signingKey && libId) {
-      ttl = Math.min(Math.max(parseInt(process.env.BUNNY_STREAM_TOKEN_TTL || '3600', 10) || 3600, 60), 86400);
+      ttl = clampTtl(process.env.BUNNY_STREAM_TOKEN_TTL || '3600'); // clamp 1m - 24h
       expires = Math.floor(Date.now()/1000) + ttl;
       const crypto = require('crypto');
       for (const a of auditions) {
@@ -1774,6 +1855,32 @@ server.on('error', (error) => {
     }
     // For critical startup errors, ensure the process exits if it can't recover.
     // However, be cautious with process.exit in a web server unless it's truly a fatal startup condition.
+});
+
+const gracefulSignals = ['SIGINT', 'SIGTERM'];
+gracefulSignals.forEach((signal) => {
+  process.once(signal, () => {
+    console.log(`INFO: Received ${signal}. Initiating graceful shutdown sequence.`);
+    const timeout = setTimeout(() => {
+      console.error(`FATAL: Graceful shutdown timed out after signal ${signal}. Forcing exit.`);
+      process.exit(1);
+    }, 10000);
+    timeout.unref();
+
+    server.close(async (err) => {
+      if (err) {
+        console.error(`ERROR: HTTP server close failed during ${signal}.`, err);
+      }
+      try {
+        await closePool(`app:${signal}`);
+      } catch (dbErr) {
+        console.error(`ERROR: Failed to close database pool during ${signal}.`, dbErr);
+      } finally {
+        const exitCode = signal === 'SIGINT' ? 130 : 0;
+        process.exit(exitCode);
+      }
+    });
+  });
 });
 
 module.exports = app; // Ensure app is exported if needed for tests or other modules

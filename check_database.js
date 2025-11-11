@@ -1,11 +1,8 @@
 // Database structure checker for Heroku PostgreSQL
-const { Pool } = require('pg');
-require('dotenv').config();
+const { getPool, closePool, registerPoolShutdown } = require('./utils/database');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-});
+const pool = getPool();
+registerPoolShutdown({ exitOnFinish: true });
 
 async function checkDatabaseStructure() {
   console.log('=== DATABASE STRUCTURE CHECK ===');
@@ -122,7 +119,7 @@ async function checkDatabaseStructure() {
     console.error('❌ Database connection failed:', error.message);
     console.error('Connection string configured:', !!process.env.DATABASE_URL);
   } finally {
-    await pool.end();
+    await closePool('check_database:cleanup');
   }
 }
 

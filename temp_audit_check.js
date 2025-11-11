@@ -1,10 +1,7 @@
-const { Pool } = require('pg');
-require('dotenv').config();
+const { getPool, closePool, registerPoolShutdown } = require('./utils/database');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-});
+const pool = getPool();
+registerPoolShutdown({ exitOnFinish: true });
 
 async function showAuditions() {
   try {
@@ -27,7 +24,7 @@ async function showAuditions() {
   } catch (err) {
     console.error('Error:', err.message);
   } finally {
-    await pool.end();
+    await closePool('temp_audit_check:cleanup');
   }
 }
 

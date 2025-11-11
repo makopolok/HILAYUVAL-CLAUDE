@@ -1,46 +1,46 @@
 // services/projectService.js
 // Forcing a new build by adding a comment
-const { pool } = require('./auditionService');
+const { getPool, withClient } = require('../utils/database');
+const pool = getPool();
 
 // Add a version log at the top for deployment verification
 console.log('INFO: projectService.js version 2025-06-08_2100_DEBUG running');
 
 // Add a new project and its roles
 async function addProject(project) {
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    // Let DB generate primary key (SERIAL/BIGSERIAL). Return id.
-    const normalizedMethod = (project.uploadMethod || '').toString().trim().toLowerCase();
-    const uploadMethod = ({
-      bunny: 'bunny_stream',
-      bunnystream: 'bunny_stream',
-      bunny_stream: 'bunny_stream',
-      cloudflare: 'cloudflare',
-      youtube: 'youtube'
-    })[normalizedMethod] || 'bunny_stream';
-    const insertRes = await client.query(
-      `INSERT INTO projects (name, description, upload_method, created_at, director, production_company)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-      [project.name, project.description, uploadMethod, project.createdAt, project.director, project.production_company]
-    );
-    const newProjectId = insertRes.rows[0].id;
-    // Insert roles referencing generated id
-    for (const role of project.roles) {
-      await client.query(
-        `INSERT INTO roles (project_id, name, playlist_id)
-         VALUES ($1, $2, $3)`,
-        [newProjectId, role.name, role.playlistId]
+  return withClient(async (client) => {
+    try {
+      await client.query('BEGIN');
+      // Let DB generate primary key (SERIAL/BIGSERIAL). Return id.
+      const normalizedMethod = (project.uploadMethod || '').toString().trim().toLowerCase();
+      const uploadMethod = ({
+        bunny: 'bunny_stream',
+        bunnystream: 'bunny_stream',
+        bunny_stream: 'bunny_stream',
+        cloudflare: 'cloudflare',
+        youtube: 'youtube'
+      })[normalizedMethod] || 'bunny_stream';
+      const insertRes = await client.query(
+        `INSERT INTO projects (name, description, upload_method, created_at, director, production_company)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+        [project.name, project.description, uploadMethod, project.createdAt, project.director, project.production_company]
       );
+      const newProjectId = insertRes.rows[0].id;
+      // Insert roles referencing generated id
+      for (const role of project.roles) {
+        await client.query(
+          `INSERT INTO roles (project_id, name, playlist_id)
+           VALUES ($1, $2, $3)`,
+          [newProjectId, role.name, role.playlistId]
+        );
+      }
+      await client.query('COMMIT');
+      return newProjectId;
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
     }
-    await client.query('COMMIT');
-    return newProjectId;
-  } catch (err) {
-    await client.query('ROLLBACK');
-    throw err;
-  } finally {
-    client.release();
-  }
+  });
 }
 
 async function getAllProjects() {
@@ -109,38 +109,37 @@ module.exports = {
 
 // Rename a role; also update existing auditions to the new name for this project
 async function renameRole(projectId, roleId, newName) {
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    // Fetch current role and validate project ownership
-    const { rows } = await client.query('SELECT id, project_id, name FROM roles WHERE id=$1 AND project_id=$2', [roleId, projectId]);
-    if (rows.length === 0) {
-      throw new Error('Role not found for this project');
+  return withClient(async (client) => {
+    try {
+      await client.query('BEGIN');
+      // Fetch current role and validate project ownership
+      const { rows } = await client.query('SELECT id, project_id, name FROM roles WHERE id=$1 AND project_id=$2', [roleId, projectId]);
+      if (rows.length === 0) {
+        throw new Error('Role not found for this project');
+      }
+      const current = rows[0];
+      // Prevent duplicate name within the same project (case-insensitive)
+      const dupCheck = await client.query(
+        'SELECT 1 FROM roles WHERE project_id=$1 AND LOWER(name)=LOWER($2) AND id<>$3 AND COALESCE(is_deleted, FALSE)=FALSE LIMIT 1',
+        [projectId, newName, roleId]
+      );
+      if (dupCheck.rows.length > 0) {
+        throw new Error('A role with this name already exists');
+      }
+      // Update role name
+      await client.query('UPDATE roles SET name=$1 WHERE id=$2 AND project_id=$3', [newName, roleId, projectId]);
+      // Cascade rename in auditions for consistency (trigger also handles this)
+      await client.query(
+        'UPDATE auditions SET role=$1, role_locked_name=$1 WHERE project_id=$2 AND role_id=$3',
+        [newName, projectId, roleId]
+      );
+      await client.query('COMMIT');
+      return { oldName: current.name, newName };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
     }
-    const current = rows[0];
-    // Prevent duplicate name within the same project (case-insensitive)
-    const dupCheck = await client.query(
-      'SELECT 1 FROM roles WHERE project_id=$1 AND LOWER(name)=LOWER($2) AND id<>$3 AND COALESCE(is_deleted, FALSE)=FALSE LIMIT 1',
-      [projectId, newName, roleId]
-    );
-    if (dupCheck.rows.length > 0) {
-      throw new Error('A role with this name already exists');
-    }
-    // Update role name
-    await client.query('UPDATE roles SET name=$1 WHERE id=$2 AND project_id=$3', [newName, roleId, projectId]);
-    // Cascade rename in auditions for consistency (trigger also handles this)
-    await client.query(
-      'UPDATE auditions SET role=$1, role_locked_name=$1 WHERE project_id=$2 AND role_id=$3',
-      [newName, projectId, roleId]
-    );
-    await client.query('COMMIT');
-    return { oldName: current.name, newName };
-  } catch (err) {
-    await client.query('ROLLBACK');
-    throw err;
-  } finally {
-    client.release();
-  }
+  });
 }
 
 // Soft delete a role (mark as deleted). Existing auditions keep their role text.
@@ -155,28 +154,27 @@ async function softDeleteRole(projectId, roleId) {
 // Restore a previously soft-deleted role
 async function restoreRole(projectId, roleId) {
   // Prevent restoring to a duplicate active name
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const { rows } = await client.query('SELECT id, name FROM roles WHERE id=$1 AND project_id=$2 AND COALESCE(is_deleted, FALSE)=TRUE', [roleId, projectId]);
-    if (rows.length === 0) {
+  return withClient(async (client) => {
+    try {
+      await client.query('BEGIN');
+      const { rows } = await client.query('SELECT id, name FROM roles WHERE id=$1 AND project_id=$2 AND COALESCE(is_deleted, FALSE)=TRUE', [roleId, projectId]);
+      if (rows.length === 0) {
+        await client.query('ROLLBACK');
+        return false;
+      }
+      const role = rows[0];
+      const dup = await client.query('SELECT 1 FROM roles WHERE project_id=$1 AND LOWER(name)=LOWER($2) AND COALESCE(is_deleted, FALSE)=FALSE LIMIT 1', [projectId, role.name]);
+      if (dup.rows.length > 0) {
+        throw new Error('Cannot restore: an active role with the same name exists');
+      }
+      await client.query('UPDATE roles SET is_deleted=FALSE, deleted_at=NULL WHERE id=$1 AND project_id=$2', [roleId, projectId]);
+      await client.query('COMMIT');
+      return true;
+    } catch (e) {
       await client.query('ROLLBACK');
-      return false;
+      throw e;
     }
-    const role = rows[0];
-    const dup = await client.query('SELECT 1 FROM roles WHERE project_id=$1 AND LOWER(name)=LOWER($2) AND COALESCE(is_deleted, FALSE)=FALSE LIMIT 1', [projectId, role.name]);
-    if (dup.rows.length > 0) {
-      throw new Error('Cannot restore: an active role with the same name exists');
-    }
-    await client.query('UPDATE roles SET is_deleted=FALSE, deleted_at=NULL WHERE id=$1 AND project_id=$2', [roleId, projectId]);
-    await client.query('COMMIT');
-    return true;
-  } catch (e) {
-    await client.query('ROLLBACK');
-    throw e;
-  } finally {
-    client.release();
-  }
+  });
 }
 
 // Permanently purge a soft-deleted role row

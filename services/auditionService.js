@@ -1,39 +1,12 @@
 // services/auditionService.js
-const { Pool } = require('pg');
-require('dotenv').config();
+const { getPool, withClient, checkConnection } = require('../utils/database');
 
-// Create a singleton Pool. Provide clear logging to help diagnose connection issues.
-if (!process.env.DATABASE_URL) {
-  console.error('ERROR: DATABASE_URL environment variable is not set. Database operations will fail until it is provided.');
-}
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  // Heroku & many managed Postgres providers require SSL; for local dev you can disable by omitting ssl.
-  // We keep rejectUnauthorized false to avoid issues with self-signed certs in managed environments.
-  ssl: process.env.DATABASE_URL && process.env.DATABASE_URL.includes('localhost') ? false : { rejectUnauthorized: false },
-});
+const pool = getPool();
 
 // Optional: basic connectivity check helper (used by app.js /health route)
 async function checkDbConnection() {
-  const start = Date.now();
-  try {
-    const res = await pool.query('SELECT 1 as ok');
-    return { ok: true, result: res.rows[0], latency_ms: Date.now() - start };
-  } catch (err) {
-    return { ok: false, error: err.message, code: err.code, latency_ms: Date.now() - start };
-  }
+  return checkConnection();
 }
-
-// Capture pool error events (e.g., sudden disconnects) and log visibly
-pool.on('error', (err) => {
-  console.error('FATAL: Unexpected PG pool error (likely idle client error).', {
-    message: err.message,
-    code: err.code,
-    stack: err.stack,
-    time: new Date().toISOString()
-  });
-});
 
 const NAME_SEARCH_SQL = `COALESCE(
   TRIM(
@@ -54,71 +27,70 @@ const NAME_SEARCH_SQL = `COALESCE(
 )`;
 
 async function insertAudition(audition) {
-  const client = await pool.connect();
   const profilePictures = Array.isArray(audition.profile_pictures)
     ? audition.profile_pictures
     : (audition.profile_pictures || []);
   const ageVal = audition.age ? parseInt(audition.age, 10) : null;
   const heightVal = audition.height ? parseInt(audition.height, 10) : null;
 
-  try {
-    await client.query('BEGIN');
+  return withClient(async (client) => {
+    try {
+      await client.query('BEGIN');
 
-    const insertAuditionQuery = `
-      INSERT INTO auditions (
-        project_id, role_id, role,
-        first_name_he, last_name_he,
-        first_name_en, last_name_en,
-        age, height,
-        profile_pictures, showreel_url, video_url, video_type
-      ) VALUES (
-        $1, $2, $3,
-        $4, $5,
-        $6, $7,
-        $8, $9,
-        $10::jsonb, $11, $12, $13
-      )
-      RETURNING *;
-    `;
+      const insertAuditionQuery = `
+        INSERT INTO auditions (
+          project_id, role_id, role,
+          first_name_he, last_name_he,
+          first_name_en, last_name_en,
+          age, height,
+          profile_pictures, showreel_url, video_url, video_type
+        ) VALUES (
+          $1, $2, $3,
+          $4, $5,
+          $6, $7,
+          $8, $9,
+          $10::jsonb, $11, $12, $13
+        )
+        RETURNING *;
+      `;
 
-    const auditionValues = [
-      audition.project_id,
-      audition.role_id || null,
-      audition.role,
-      audition.first_name_he,
-      audition.last_name_he,
-      audition.first_name_en,
-      audition.last_name_en,
-      ageVal,
-      heightVal,
-      JSON.stringify(profilePictures),
-      audition.showreel_url,
-      audition.video_url,
-      audition.video_type
-    ];
+      const auditionValues = [
+        audition.project_id,
+        audition.role_id || null,
+        audition.role,
+        audition.first_name_he,
+        audition.last_name_he,
+        audition.first_name_en,
+        audition.last_name_en,
+        ageVal,
+        heightVal,
+        JSON.stringify(profilePictures),
+        audition.showreel_url,
+        audition.video_url,
+        audition.video_type
+      ];
 
-    const insertedAudition = await client.query(insertAuditionQuery, auditionValues);
-    const row = insertedAudition.rows[0];
+      const insertedAudition = await client.query(insertAuditionQuery, auditionValues);
+      const row = insertedAudition.rows[0];
 
-    await client.query(
-      `INSERT INTO audition_contacts (audition_id, email, phone, agency)
-       VALUES ($1, $2, $3, $4)
-       ON CONFLICT (audition_id) DO UPDATE
-       SET email = EXCLUDED.email,
-           phone = EXCLUDED.phone,
-           agency = EXCLUDED.agency,
-           updated_at = NOW()`,
-      [row.id, audition.email, audition.phone, audition.agency]
-    );
+      await client.query(
+        `INSERT INTO audition_contacts (audition_id, email, phone, agency)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (audition_id) DO UPDATE
+         SET email = EXCLUDED.email,
+             phone = EXCLUDED.phone,
+             agency = EXCLUDED.agency,
+             updated_at = NOW()`,
+        [row.id, audition.email, audition.phone, audition.agency]
+      );
 
-    await client.query('COMMIT');
-    return { ...row, email: audition.email, phone: audition.phone, agency: audition.agency };
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally {
-    client.release();
-  }
+      await client.query('COMMIT');
+      return { ...row, email: audition.email, phone: audition.phone, agency: audition.agency };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    }
+  });
 }
 
 function applyNameFilters(tokens, params, clauses) {
