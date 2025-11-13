@@ -169,7 +169,7 @@ app.get('/images/:file', async (req, res) => {
 const multerConfig = {
   dest: 'uploads/',
   limits: {
-    fileSize: 500 * 1024 * 1024, // 500MB max file size
+    fileSize: 400 * 1024 * 1024, // 400MB max file size (~7 min 1080p @ 8Mbps)
     files: 12, // Max 12 files per request (1 video + 10 profile pics + buffer)
     fieldSize: 10 * 1024 * 1024, // 10MB max field size
     fields: 50 // Max number of non-file fields

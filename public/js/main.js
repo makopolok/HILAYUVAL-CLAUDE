@@ -1,6 +1,10 @@
 (function () {
 	const DIRECT_UPLOAD_METHODS = new Set(['bunny', 'bunny_stream', 'bunnystream', 'cloudflare']);
+	const MAX_FILE_SIZE_BYTES = 400 * 1024 * 1024; // 400MB hard cap
+	const MAX_DURATION_SECONDS = 7 * 60; // 7 minutes
+	const MAX_VIDEO_HEIGHT = 1080;
 	let currentUpload = null;
+	let pendingMetadata = null;
 
 	async function createBunnyVideo(title) {
 		const response = await fetch('/api/videos?title=' + encodeURIComponent(title || 'audition'), {
@@ -55,6 +59,59 @@
 				reject(err);
 			}
 		});
+	}
+
+	function formatBytes(bytes) {
+		if (!Number.isFinite(bytes)) return '';
+		const units = ['bytes', 'KB', 'MB', 'GB'];
+		const k = 1024;
+		const i = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(k)));
+		return `${(bytes / Math.pow(k, i)).toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+	}
+
+	function readVideoMetadata(file) {
+		return new Promise((resolve, reject) => {
+			const video = document.createElement('video');
+			video.preload = 'metadata';
+			const url = URL.createObjectURL(file);
+			const clean = () => URL.revokeObjectURL(url);
+			video.onloadedmetadata = () => {
+				clean();
+				resolve({
+					duration: Number.isFinite(video.duration) ? video.duration : null,
+					height: video.videoHeight || null,
+					width: video.videoWidth || null,
+				});
+			};
+			video.onerror = () => {
+				clean();
+				reject(new Error('metadata_unavailable'));
+			};
+			video.src = url;
+		});
+	}
+
+	async function enforceVideoLimits(file) {
+		if (!file) return null;
+		if (file.size > MAX_FILE_SIZE_BYTES) {
+			return `Video is too large (${formatBytes(file.size)}). Please export at 1080p with H.264 under 400MB.`;
+		}
+		try {
+			if (!pendingMetadata || pendingMetadata.file !== file) {
+				const meta = await readVideoMetadata(file);
+				pendingMetadata = { file, meta };
+			}
+			const { meta } = pendingMetadata;
+			if (meta && Number.isFinite(meta.duration) && meta.duration > MAX_DURATION_SECONDS) {
+				return 'Video is longer than 7 minutes. Please trim or compress it before uploading.';
+			}
+			if (meta && meta.height && meta.height > MAX_VIDEO_HEIGHT + 4) {
+				return 'Video resolution exceeds 1080p. Please export to 1080p or lower.';
+			}
+		} catch (err) {
+			// If metadata cannot be read we allow the upload but keep existing size guard.
+		}
+		return null;
 	}
 
 	document.addEventListener('DOMContentLoaded', () => {
@@ -160,12 +217,29 @@
 			localStorage.removeItem('auditionUploadResume');
 		} catch (_) {}
 
+		videoInput.addEventListener('change', async () => {
+			clearError();
+			pendingMetadata = null;
+			const file = videoInput.files && videoInput.files[0];
+			if (!file) return;
+			const validationMessage = await enforceVideoLimits(file);
+			if (validationMessage) {
+				showError(validationMessage);
+				videoInput.value = '';
+			}
+		});
+
 		form.addEventListener('submit', async (event) => {
 			const file = videoInput.files && videoInput.files[0];
 			if (!file) return;
 
 			event.preventDefault();
 			clearError();
+			const validationMessage = await enforceVideoLimits(file);
+			if (validationMessage) {
+				showError(validationMessage);
+				return;
+			}
 
 			try {
 				const meta = await createBunnyVideo(file.name);

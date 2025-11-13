@@ -93,7 +93,7 @@
           <div class="invalid-feedback">If you wish, you may upload a video file.</div>
           <div class="form-text text-muted">
             <i class="fas fa-info-circle me-1"></i>
-            Maximum 500MB. Supported: MP4, AVI, MOV, WMV, FLV, WebM, MKV
+            Maximum 400MB (≈7 minutes at 1080p). Supported: MP4, MOV, MKV, WebM
           </div>
           <!-- Video preview and validation -->
           <div id="video-preview" class="mt-2 d-none">
@@ -141,7 +141,7 @@
           <div class="invalid-feedback">If you wish, you may upload a video file.</div>
           <div class="form-text text-muted">
             <i class="fas fa-info-circle me-1"></i>
-            Maximum 500MB. Supported: MP4, AVI, MOV, WMV, FLV, WebM, MKV
+            Maximum 400MB (≈7 minutes at 1080p). Supported: MP4, MOV, MKV, WebM
           </div>
           <!-- Video preview and validation -->
           <div id="video-preview" class="mt-2 d-none">
@@ -183,7 +183,7 @@
       <div class="invalid-feedback">If you wish, you may upload a video file.</div>
       <div class="form-text text-muted">
         <i class="fas fa-info-circle me-1"></i>
-        Maximum 500MB. Supported: MP4, AVI, MOV, WMV, FLV, WebM, MKV
+        Maximum 400MB (≈7 minutes at 1080p). Supported: MP4, MOV, MKV, WebM
       </div>
       <!-- Video preview and validation -->
       <div id="video-preview" class="mt-2 d-none">
@@ -211,6 +211,14 @@
       </div>
     </div>
     {{/if}}
+    <div class="alert alert-info mt-3" id="video-guidelines">
+      <h6 class="mb-2"><i class="fas fa-compress-video me-2"></i>Self-tape compression tips</h6>
+      <ul class="mb-0 small ps-3">
+        <li>Export at <strong>1080p (1920×1080)</strong> using the H.264/AVC codec and aim for a file under <strong>400MB</strong>.</li>
+        <li>Keep the performance under <strong>7 minutes</strong>; trim or split longer takes before uploading.</li>
+        <li>Free tools like <a href="https://handbrake.fr" target="_blank" rel="noopener">HandBrake</a> (Preset: <em>Fast 1080p30</em>) or <a href="https://shotcut.org/" target="_blank" rel="noopener">Shotcut</a> can compress large files without watermarks.</li>
+      </ul>
+    </div>
     <div class="mb-3">
       <label for="showreel_url" class="form-label">Showreel Link (optional)</label>
       <input type="url" class="form-control" id="showreel_url" name="showreel_url" placeholder="https://...">
