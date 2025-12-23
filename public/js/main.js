@@ -94,7 +94,7 @@
 	async function enforceVideoLimits(file) {
 		if (!file) return null;
 		if (file.size > MAX_FILE_SIZE_BYTES) {
-			return `Video is too large (${formatBytes(file.size)}). Export at 1080p H.264 under 400MB (e.g., HandBrake → Fast 1080p30 → 6–8 Mbps or RF 22–24).`;
+			return `Video is too large (${formatBytes(file.size)}). Hard cap is 400MB—please export to 150–250MB at 1080p H.264 (e.g., HandBrake → Fast 1080p30 → 6–8 Mbps or RF 22–24).`;
 		}
 		try {
 			if (!pendingMetadata || pendingMetadata.file !== file) {
