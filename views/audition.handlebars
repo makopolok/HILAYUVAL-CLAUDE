@@ -79,7 +79,7 @@
       <div class="invalid-feedback">If you wish, you may upload a profile picture.</div>
       <div class="form-text text-muted">
         <i class="fas fa-info-circle me-1"></i>
-        Maximum 10 files, 500MB each. Supported: JPG, PNG, WebP, GIF
+        Maximum 10 files, 400MB each. Supported: JPG, PNG, WebP, GIF
       </div>
       <!-- Profile pictures preview -->
       <div id="profile-pictures-preview" class="mt-2 d-none">
@@ -216,7 +216,8 @@
       <ul class="mb-0 small ps-3">
         <li>Export at <strong>1080p (1920×1080)</strong> using the H.264/AVC codec and aim for a file under <strong>400MB</strong>.</li>
         <li>Keep the performance under <strong>7 minutes</strong>; trim or split longer takes before uploading.</li>
-        <li>Free tools like <a href="https://handbrake.fr" target="_blank" rel="noopener">HandBrake</a> (Preset: <em>Fast 1080p30</em>) or <a href="https://shotcut.org/" target="_blank" rel="noopener">Shotcut</a> can compress large files without watermarks.</li>
+        <li>If your file is still too large: Open it in <a href="https://handbrake.fr" target="_blank" rel="noopener">HandBrake</a>, pick the <em>Fast 1080p30</em> preset, set Video to <strong>H.264</strong> with an average bitrate of <strong>6–8 Mbps</strong> (or RF 22–24), then export.</li>
+        <li>Recording on phone: set the camera to <strong>1080p at 30fps</strong> and “Most Compatible” / H.264 to avoid oversized HEVC/HDR files.</li>
       </ul>
     </div>
     <div class="mb-3">
