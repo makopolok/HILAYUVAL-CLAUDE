@@ -251,8 +251,13 @@
 			}
 
 			try {
-				const meta = await createBunnyVideo(file.name);
-				if (!meta || !meta.guid) throw new Error('Failed to prepare video for upload');
+				let meta;
+				try {
+					meta = await createBunnyVideo(file.name);
+				} catch (createErr) {
+					throw new Error('Step 1 failed (create video): ' + (createErr && createErr.message ? createErr.message : createErr));
+				}
+				if (!meta || !meta.guid) throw new Error('Failed to prepare video for upload (no guid returned)');
 
 				if (directUi) directUi.classList.remove('d-none');
 				resetProgress();
@@ -261,7 +266,11 @@
 				videoInput.disabled = true;
 
 				const progressFn = (pct) => updateProgress(pct);
-				await uploadViaProxy({ file, guid: meta.guid, onProgress: progressFn });
+				try {
+					await uploadViaProxy({ file, guid: meta.guid, onProgress: progressFn });
+				} catch (uploadErr) {
+					throw new Error('Step 2 failed (upload): ' + (uploadErr && uploadErr.message ? uploadErr.message : uploadErr));
+				}
 				updateProgress(100);
 
 				setControls({ pauseDisabled: true, resumeDisabled: true, cancelDisabled: true });
