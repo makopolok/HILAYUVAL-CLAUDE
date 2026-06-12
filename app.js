@@ -98,6 +98,9 @@ app.engine('handlebars', engine({
 }));
 app.set('view engine', 'handlebars');
 app.set('views', './views');
+// Required on Heroku (and any reverse-proxy setup) so Express sees the real client IP.
+// Without this, express-rate-limit throws ERR_ERL_UNEXPECTED_X_FORWARDED_FOR.
+app.set('trust proxy', 1);
 
 // Middleware - Configure for large file uploads
 app.use(express.json({ 
