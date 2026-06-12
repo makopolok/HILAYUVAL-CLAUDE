@@ -240,6 +240,25 @@ async function addVideoToYouTubePlaylist(youtube, videoId, playlistId) {
   console.log(`YOUTUBE_PLAYLIST_ITEM_ADDED: videoId=${videoId} playlistId=${playlistId}`);
 }
 
+// --- Bunny collection helpers ---
+
+// A valid Bunny collection GUID is a UUID (8-4-4-4-12 hex)
+function isValidBunnyCollectionId(id) {
+  return typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+}
+
+// Ensure a role has a Bunny collection. Creates one if missing and persists the GUID.
+async function ensureBunnyCollection(project, role) {
+  if (isValidBunnyCollectionId(role.playlist_id)) return role.playlist_id;
+
+  const collectionName = `${project.name} — ${role.name}`;
+  const guid = await bunnyUploadService.createCollection(collectionName);
+  await projectService.updateRolePlaylistId(role.id, guid);
+  role.playlist_id = guid;
+  console.log(`BUNNY_COLLECTION_CREATED: role=${role.name} project=${project.name} guid=${guid}`);
+  return guid;
+}
+
 // Routes
 app.use('/admin', adminRoutes);
 app.use('/', portfolioRoutes);
@@ -1424,11 +1443,22 @@ app.post('/audition/:projectId', auditionUpload.fields([
         }      } else { // Default to Bunny.net Stream (if uploadMethod is 'cloudflare' or anything else)
         console.log(`POST_AUDITION_UPLOADING_TO_BUNNY_STREAM: ${videoFile.originalname}`);
         try {
+          // Ensure the role has a Bunny collection, creating one if needed
+          const collectionGuid = await ensureBunnyCollection(project, selectedRole);
+
           const bunnyResult = await bunnyUploadService.uploadVideo(videoFile);
-          finalVideoUrl = bunnyResult.id; // This is the Bunny.net video GUID
+          finalVideoUrl = bunnyResult.id;
           videoType = 'bunny_stream';
           videoUploadResult = { id: bunnyResult.id };
           console.log(`POST_AUDITION_VIDEO_UPLOADED_BUNNY: ${videoFile.originalname}, GUID: ${bunnyResult.id}`);
+
+          // Assign the video to the role's collection
+          try {
+            await bunnyUploadService.assignVideoToCollection(bunnyResult.id, collectionGuid);
+            console.log(`BUNNY_COLLECTION_ITEM_ADDED: videoGuid=${bunnyResult.id} collectionGuid=${collectionGuid}`);
+          } catch (colErr) {
+            console.warn(`BUNNY_COLLECTION_ASSIGN_WARN: Could not assign video to collection: ${colErr.message}`);
+          }
         } catch (bunnyError) {
           console.error('POST_AUDITION_BUNNY_UPLOAD_ERROR: Failed to upload video to Bunny.net Stream.', bunnyError);
           throw bunnyError;

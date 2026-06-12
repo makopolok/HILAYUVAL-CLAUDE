@@ -20,6 +20,32 @@ const BUNNY_STREAM_LIBRARY_ID = process.env.BUNNY_STREAM_LIBRARY_ID;
 const BUNNY_CDN_BASE_URL = process.env.BUNNY_CDN_BASE_URL?.replace(/\/$/, '');
 
 module.exports = {
+  // Create a Bunny.net Stream Collection and return its GUID
+  async createCollection(name) {
+    if (!BUNNY_STREAM_LIBRARY_ID || !BUNNY_VIDEO_API_KEY) {
+      throw new Error('Bunny.net Stream credentials not configured.');
+    }
+    const res = await axios.post(
+      `https://video.bunnycdn.com/library/${BUNNY_STREAM_LIBRARY_ID}/collections`,
+      { name: name || `collection_${Date.now()}` },
+      { headers: { AccessKey: BUNNY_VIDEO_API_KEY, 'Content-Type': 'application/json' } }
+    );
+    if (!res.data || !res.data.guid) throw new Error('Failed to create Bunny collection.');
+    return res.data.guid;
+  },
+
+  // Assign an already-uploaded Bunny video to a collection
+  async assignVideoToCollection(videoGuid, collectionGuid) {
+    if (!BUNNY_STREAM_LIBRARY_ID || !BUNNY_VIDEO_API_KEY) {
+      throw new Error('Bunny.net Stream credentials not configured.');
+    }
+    await axios.post(
+      `https://video.bunnycdn.com/library/${BUNNY_STREAM_LIBRARY_ID}/videos/${videoGuid}`,
+      { collectionId: collectionGuid },
+      { headers: { AccessKey: BUNNY_VIDEO_API_KEY, 'Content-Type': 'application/json' } }
+    );
+  },
+
   // Create a Bunny.net Stream video entry and return its GUID (no upload yet)
   async createVideo(title) {
     if (!BUNNY_STREAM_LIBRARY_ID || !BUNNY_VIDEO_API_KEY) {
