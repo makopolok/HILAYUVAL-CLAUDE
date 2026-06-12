@@ -309,7 +309,7 @@ app.put('/api/videos/:guid/upload', async (req, res) => {
   try {
     const headers = {
       AccessKey: accessKey,
-      'Content-Type': 'application/octet-stream', // Bunny prefers octet-stream for raw PUT uploads
+      'Content-Type': req.headers['content-type'] || 'application/octet-stream',
     };
     if (req.headers['content-length']) {
       headers['Content-Length'] = req.headers['content-length'];
