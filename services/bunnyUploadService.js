@@ -47,12 +47,13 @@ module.exports = {
   },
 
   // Create a Bunny.net Stream video entry and return its GUID (no upload yet)
-  async createVideo(title) {
+  async createVideo(title, collectionId) {
     if (!BUNNY_STREAM_LIBRARY_ID || !BUNNY_VIDEO_API_KEY) {
       throw new Error('Bunny.net Stream credentials not configured.');
     }
     const createUrl = `https://video.bunnycdn.com/library/${BUNNY_STREAM_LIBRARY_ID}/videos`;
     const payload = { title: title || `upload_${Date.now()}` };
+    if (collectionId) payload.collectionId = collectionId;
     const res = await axios.post(createUrl, payload, {
       headers: {
         'AccessKey': BUNNY_VIDEO_API_KEY,

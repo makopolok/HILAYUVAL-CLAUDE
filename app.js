@@ -311,12 +311,12 @@ app.put('/api/videos/:guid/upload', (req, res) => {
   }
 
   const contentLength = req.headers['content-length'];
-  const contentType = req.headers['content-type'] || 'application/octet-stream';
-  console.log(`BUNNY_PROXY_UPLOAD_START: guid=${guid} contentLength=${contentLength || 'unknown'} contentType=${contentType}`);
+  // Bunny API requires Content-Type: application/octet-stream regardless of the video mime type
+  console.log(`BUNNY_PROXY_UPLOAD_START: guid=${guid} contentLength=${contentLength || 'unknown'} browserContentType=${req.headers['content-type']}`);
 
   const proxyHeaders = {
     'AccessKey': accessKey,
-    'Content-Type': contentType,
+    'Content-Type': 'application/octet-stream',
   };
   if (contentLength) proxyHeaders['Content-Length'] = contentLength;
 
