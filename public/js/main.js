@@ -251,6 +251,12 @@
 			}
 
 			try {
+				setUploadActive(true);
+				resetProgress();
+				if (directUi) directUi.classList.remove('d-none');
+				setControls({ pauseDisabled: true, resumeDisabled: true, cancelDisabled: false });
+				videoInput.disabled = true;
+
 				let meta;
 				try {
 					meta = await createBunnyVideo(file.name);
@@ -258,12 +264,6 @@
 					throw new Error('Step 1 failed (create video): ' + (createErr && createErr.message ? createErr.message : createErr));
 				}
 				if (!meta || !meta.guid) throw new Error('Failed to prepare video for upload (no guid returned)');
-
-				if (directUi) directUi.classList.remove('d-none');
-				resetProgress();
-				setUploadActive(true);
-				setControls({ pauseDisabled: true, resumeDisabled: true, cancelDisabled: false });
-				videoInput.disabled = true;
 
 				const progressFn = (pct) => updateProgress(pct);
 				try {
