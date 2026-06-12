@@ -306,48 +306,35 @@ app.put('/api/videos/:guid/upload', async (req, res) => {
     return res.status(503).json({ error: 'Direct upload is not configured on the server' });
   }
 
+  const contentLength = req.headers['content-length'];
+  const contentType = req.headers['content-type'] || 'application/octet-stream';
+  console.log(`BUNNY_PROXY_UPLOAD_START: guid=${guid} contentLength=${contentLength || 'unknown'} contentType=${contentType}`);
+
   try {
-    const headers = {
-      AccessKey: accessKey,
-      'Content-Type': req.headers['content-type'] || 'application/octet-stream',
-    };
-    if (req.headers['content-length']) {
-      headers['Content-Length'] = req.headers['content-length'];
-    }
-    console.log(`BUNNY_PROXY_UPLOAD_START: guid=${guid} contentLength=${req.headers['content-length'] || 'unknown'} clientContentType=${req.headers['content-type'] || 'unknown'}`);
-
-    const controller = new AbortController();
-    req.on('aborted', () => controller.abort());
-
     const targetUrl = `https://video.bunnycdn.com/library/${libId}/videos/${guid}`;
-    const bunnyRes = await fetch(targetUrl, {
-      method: 'PUT',
-      headers,
-      body: req,
-      duplex: 'half',
-      signal: controller.signal
+    const bunnyRes = await axios.put(targetUrl, req, {
+      headers: {
+        AccessKey: accessKey,
+        'Content-Type': contentType,
+        ...(contentLength ? { 'Content-Length': contentLength } : {}),
+      },
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity,
+      // Tell axios not to buffer — stream directly to Bunny
+      responseType: 'text',
     });
 
-    const responseText = await bunnyRes.text();
-
-    if (bunnyRes.ok) {
-      console.log(`BUNNY_PROXY_UPLOAD_OK: guid=${guid} bunnyStatus=${bunnyRes.status}`);
-      return res.status(200).json({ ok: true });
-    }
-
-    console.error('BUNNY_PROXY_UPLOAD_FAILED', {
-      guid,
-      status: bunnyRes.status,
-      bodyPreview: responseText ? responseText.slice(0, 500) : null
-    });
-    return res.status(502).json({ error: 'Bunny upload failed', status: bunnyRes.status });
+    console.log(`BUNNY_PROXY_UPLOAD_OK: guid=${guid} bunnyStatus=${bunnyRes.status}`);
+    return res.status(200).json({ ok: true });
   } catch (error) {
-    if (error.name === 'AbortError') {
-      console.warn('WARN: Client aborted upload before completion.');
-      return; // Client disconnected; nothing else to do
+    if (error.code === 'ECONNRESET' || error.code === 'ECONNABORTED' || error.message?.includes('aborted')) {
+      console.warn(`BUNNY_PROXY_UPLOAD_ABORTED: guid=${guid}`);
+      return;
     }
-    console.error('ERROR: Proxy upload unexpected failure', error);
-    return res.status(500).json({ error: 'Failed to proxy upload' });
+    const status = error.response?.status;
+    const body = error.response?.data;
+    console.error('BUNNY_PROXY_UPLOAD_FAILED', { guid, status, body });
+    return res.status(502).json({ error: 'Bunny upload failed', status });
   }
 });
 
