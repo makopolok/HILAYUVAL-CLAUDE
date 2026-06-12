@@ -197,6 +197,49 @@ const multerConfig = {
 // Define multer instance for the general /audition route (YouTube upload)
 const generalAuditionUpload = multer(multerConfig);
 
+// --- YouTube playlist helpers ---
+
+// Ensure a role has a YouTube playlist. Creates one if missing and persists the ID.
+// A valid YouTube playlist ID starts with 'PL' and is at least 18 chars.
+function isValidYouTubePlaylistId(id) {
+  return typeof id === 'string' && /^PL[a-zA-Z0-9_-]{16,}$/.test(id);
+}
+
+async function ensureRolePlaylist(youtube, project, role) {
+  if (isValidYouTubePlaylistId(role.playlist_id)) return role.playlist_id;
+
+  const res = await youtube.playlists.insert({
+    part: ['snippet', 'status'],
+    requestBody: {
+      snippet: {
+        title: `${project.name} — ${role.name}`,
+        description: `Auditions for role: ${role.name} | Project: ${project.name}`,
+      },
+      status: { privacyStatus: 'unlisted' },
+    },
+  });
+  const playlistId = res.data.id;
+  await projectService.updateRolePlaylistId(role.id, playlistId);
+  // Mutate in-memory so callers see the updated value
+  role.playlist_id = playlistId;
+  console.log(`YOUTUBE_PLAYLIST_CREATED: role=${role.name} project=${project.name} playlistId=${playlistId}`);
+  return playlistId;
+}
+
+// Add an already-uploaded YouTube video to a playlist.
+async function addVideoToYouTubePlaylist(youtube, videoId, playlistId) {
+  await youtube.playlistItems.insert({
+    part: ['snippet'],
+    requestBody: {
+      snippet: {
+        playlistId,
+        resourceId: { kind: 'youtube#video', videoId },
+      },
+    },
+  });
+  console.log(`YOUTUBE_PLAYLIST_ITEM_ADDED: videoId=${videoId} playlistId=${playlistId}`);
+}
+
 // Routes
 app.use('/admin', adminRoutes);
 app.use('/', portfolioRoutes);
@@ -1327,22 +1370,22 @@ app.post('/audition/:projectId', auditionUpload.fields([
   if (videoFile) {
       console.log(`POST_AUDITION_UPLOADING_VIDEO: ${videoFile.originalname} for project ${project.id}. Project's uploadMethod: ${project.upload_method}`);
       
-      if (project.upload_method === 'youtube') { // MODIFIED HERE
-        console.log(`POST_AUDITION_ATTEMPTING_YOUTUBE_UPLOAD: Role: ${selectedRole.name}, Playlist ID: ${selectedRole.playlistId}`);
+      if (project.upload_method === 'youtube') {
+        console.log(`POST_AUDITION_ATTEMPTING_YOUTUBE_UPLOAD: Role: ${selectedRole.name}, playlist_id: ${selectedRole.playlist_id || '(none yet)'}`);
         if (!REFRESH_TOKEN) {
           console.error('POST_AUDITION_YOUTUBE_ERROR: Google Refresh Token not configured.');
           throw new Error('Google Refresh Token not configured. Cannot upload to YouTube.');
-        }
-        if (!selectedRole.playlistId) {
-          console.warn(`POST_AUDITION_YOUTUBE_WARN: No playlistId found for role ${selectedRole.name} in project ${project.name}. Video will be uploaded without adding to a playlist.`);
         }
 
         oauth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
         const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
 
+        // Ensure the role has a playlist, creating one if needed
+        const playlistId = await ensureRolePlaylist(youtube, project, selectedRole);
+
         const videoTitle = `Audition: ${body.first_name_en || body.first_name_he} ${body.last_name_en || body.last_name_he} for ${selectedRole.name} in ${project.name}`;
-        const videoDescription = `Audition by ${body.first_name_en || body.first_name_he} ${body.last_name_en || body.last_name_he} (${body.email}) for ${selectedRole.name} in ${project.name}. Project ID: ${project.id}. Submitted: ${new Date().toISOString()}`;
-        
+        const videoDescription = `Audition by ${body.first_name_en || body.first_name_he} ${body.last_name_en || body.last_name_he} for ${selectedRole.name} in ${project.name}. Project ID: ${project.id}. Submitted: ${new Date().toISOString()}`;
+
         try {
           const youtubeResponse = await youtube.videos.insert({
             part: ['snippet', 'status'],
@@ -1350,7 +1393,6 @@ app.post('/audition/:projectId', auditionUpload.fields([
               snippet: {
                 title: videoTitle,
                 description: videoDescription,
-                playlistId: selectedRole.playlistId, // This can be null/undefined if not available
               },
               status: {
                 privacyStatus: 'unlisted',
@@ -1361,21 +1403,24 @@ app.post('/audition/:projectId', auditionUpload.fields([
             },
           });
 
-          if (fs.existsSync(videoFile.path)) { // Ensure file exists before unlinking
+          if (fs.existsSync(videoFile.path)) {
             fs.unlinkSync(videoFile.path);
           }
 
           const youtubeVideoId = youtubeResponse.data.id;
           finalVideoUrl = `https://www.youtube.com/watch?v=${youtubeVideoId}`;
           videoType = 'youtube';
-          videoUploadResult = { id: youtubeVideoId, url: finalVideoUrl }; 
+          videoUploadResult = { id: youtubeVideoId, url: finalVideoUrl };
           console.log(`POST_AUDITION_VIDEO_UPLOADED_YOUTUBE: ${videoFile.originalname}, ID: ${youtubeVideoId}, URL: ${finalVideoUrl}`);
+
+          // Add the video to the role's playlist
+          await addVideoToYouTubePlaylist(youtube, youtubeVideoId, playlistId);
         } catch (ytError) {
           console.error('POST_AUDITION_YOUTUBE_UPLOAD_ERROR: Failed to upload video to YouTube.', ytError);
-          if (fs.existsSync(videoFile.path)) { // Clean up temp file on error too
+          if (fs.existsSync(videoFile.path)) {
             fs.unlinkSync(videoFile.path);
           }
-          throw ytError; // Re-throw to be caught by the main try-catch
+          throw ytError;
         }      } else { // Default to Bunny.net Stream (if uploadMethod is 'cloudflare' or anything else)
         console.log(`POST_AUDITION_UPLOADING_TO_BUNNY_STREAM: ${videoFile.originalname}`);
         try {
@@ -1583,6 +1628,17 @@ app.post('/projects/:projectId/auditions/:auditionId/upload-to-youtube', require
       throw new Error('YouTube did not return a video ID.');
     }
     const youtubeUrl = `https://www.youtube.com/watch?v=${youtubeVideoId}`;
+
+    // Add to the role's playlist (creating it if it doesn't exist yet)
+    const role = audition.role_id
+      ? project.roles.find(r => r.id === audition.role_id)
+      : null;
+    if (role) {
+      const playlistId = await ensureRolePlaylist(youtube, project, role);
+      await addVideoToYouTubePlaylist(youtube, youtubeVideoId, playlistId);
+    } else {
+      console.warn(`PROMOTE_TO_YOUTUBE_NO_ROLE: audition ${auditionId} has no role_id — skipping playlist assignment.`);
+    }
 
     await auditionService.updateAuditionYoutubeData(audition.id, {
       youtubeVideoId,
