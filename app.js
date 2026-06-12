@@ -2,6 +2,7 @@ require('dotenv').config(); // Load environment variables
 const { google } = require('googleapis');
 const fs = require('fs');
 const path = require('path');
+const https = require('https');
 const nodemailer = require('nodemailer'); // Added nodemailer import
 
 const express = require('express');
@@ -297,7 +298,7 @@ app.post('/api/videos', async (req, res) => {
 });
 
 // Proxy upload endpoint so the client never sees the Bunny AccessKey
-app.put('/api/videos/:guid/upload', async (req, res) => {
+app.put('/api/videos/:guid/upload', (req, res) => {
   const guid = (req.params.guid || '').trim();
   const libId = process.env.BUNNY_STREAM_LIBRARY_ID;
   const accessKey = process.env.BUNNY_VIDEO_API_KEY;
@@ -313,32 +314,43 @@ app.put('/api/videos/:guid/upload', async (req, res) => {
   const contentType = req.headers['content-type'] || 'application/octet-stream';
   console.log(`BUNNY_PROXY_UPLOAD_START: guid=${guid} contentLength=${contentLength || 'unknown'} contentType=${contentType}`);
 
-  try {
-    const targetUrl = `https://video.bunnycdn.com/library/${libId}/videos/${guid}`;
-    const bunnyRes = await axios.put(targetUrl, req, {
-      headers: {
-        AccessKey: accessKey,
-        'Content-Type': contentType,
-        ...(contentLength ? { 'Content-Length': contentLength } : {}),
-      },
-      maxContentLength: Infinity,
-      maxBodyLength: Infinity,
-      // Tell axios not to buffer — stream directly to Bunny
-      responseType: 'text',
-    });
+  const proxyHeaders = {
+    'AccessKey': accessKey,
+    'Content-Type': contentType,
+  };
+  if (contentLength) proxyHeaders['Content-Length'] = contentLength;
 
-    console.log(`BUNNY_PROXY_UPLOAD_OK: guid=${guid} bunnyStatus=${bunnyRes.status}`);
-    return res.status(200).json({ ok: true });
-  } catch (error) {
-    if (error.code === 'ECONNRESET' || error.code === 'ECONNABORTED' || error.message?.includes('aborted')) {
-      console.warn(`BUNNY_PROXY_UPLOAD_ABORTED: guid=${guid}`);
-      return;
-    }
-    const status = error.response?.status;
-    const body = error.response?.data;
-    console.error('BUNNY_PROXY_UPLOAD_FAILED', { guid, status, body });
-    return res.status(502).json({ error: 'Bunny upload failed', status });
-  }
+  const proxyReq = https.request({
+    hostname: 'video.bunnycdn.com',
+    path: `/library/${libId}/videos/${guid}`,
+    method: 'PUT',
+    headers: proxyHeaders,
+  }, (proxyRes) => {
+    let body = '';
+    proxyRes.setEncoding('utf8');
+    proxyRes.on('data', (chunk) => { body += chunk; });
+    proxyRes.on('end', () => {
+      if (proxyRes.statusCode >= 200 && proxyRes.statusCode < 300) {
+        console.log(`BUNNY_PROXY_UPLOAD_OK: guid=${guid} bunnyStatus=${proxyRes.statusCode}`);
+        if (!res.headersSent) res.status(200).json({ ok: true });
+      } else {
+        console.error(`BUNNY_PROXY_UPLOAD_FAILED: guid=${guid} bunnyStatus=${proxyRes.statusCode} body=${body.slice(0, 200)}`);
+        if (!res.headersSent) res.status(502).json({ error: 'Bunny upload failed', bunnyStatus: proxyRes.statusCode });
+      }
+    });
+  });
+
+  proxyReq.on('error', (err) => {
+    console.error(`BUNNY_PROXY_UPLOAD_ERROR: guid=${guid} err=${err.message}`);
+    if (!res.headersSent) res.status(502).json({ error: 'Proxy connection error', detail: err.message });
+  });
+
+  req.on('aborted', () => {
+    console.warn(`BUNNY_PROXY_UPLOAD_CLIENT_ABORTED: guid=${guid}`);
+    proxyReq.destroy();
+  });
+
+  req.pipe(proxyReq);
 });
 
 // Route to render audition submission form
