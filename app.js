@@ -309,11 +309,12 @@ app.put('/api/videos/:guid/upload', async (req, res) => {
   try {
     const headers = {
       AccessKey: accessKey,
-      'Content-Type': req.headers['content-type'] || 'application/octet-stream'
+      'Content-Type': 'application/octet-stream', // Bunny prefers octet-stream for raw PUT uploads
     };
     if (req.headers['content-length']) {
       headers['Content-Length'] = req.headers['content-length'];
     }
+    console.log(`BUNNY_PROXY_UPLOAD_START: guid=${guid} contentLength=${req.headers['content-length'] || 'unknown'} clientContentType=${req.headers['content-type'] || 'unknown'}`);
 
     const controller = new AbortController();
     req.on('aborted', () => controller.abort());
@@ -330,10 +331,12 @@ app.put('/api/videos/:guid/upload', async (req, res) => {
     const responseText = await bunnyRes.text();
 
     if (bunnyRes.ok) {
+      console.log(`BUNNY_PROXY_UPLOAD_OK: guid=${guid} bunnyStatus=${bunnyRes.status}`);
       return res.status(200).json({ ok: true });
     }
 
-    console.error('ERROR: Bunny upload proxy failed', {
+    console.error('BUNNY_PROXY_UPLOAD_FAILED', {
+      guid,
       status: bunnyRes.status,
       bodyPreview: responseText ? responseText.slice(0, 500) : null
     });
@@ -1471,6 +1474,17 @@ app.post('/audition/:projectId', auditionUpload.fields([
         console.log(`POST_AUDITION_DIRECT_BUNNY_GUID_DETECTED: ${guidFromForm}`);
         finalVideoUrl = guidFromForm;
         videoType = 'bunny_stream';
+
+        // Assign to the role's Bunny collection (direct upload path)
+        if (project.upload_method !== 'youtube') {
+          try {
+            const collectionGuid = await ensureBunnyCollection(project, selectedRole);
+            await bunnyUploadService.assignVideoToCollection(guidFromForm, collectionGuid);
+            console.log(`BUNNY_COLLECTION_ITEM_ADDED (direct): videoGuid=${guidFromForm} collectionGuid=${collectionGuid}`);
+          } catch (colErr) {
+            console.warn(`BUNNY_COLLECTION_ASSIGN_WARN (direct): ${colErr.message}`);
+          }
+        }
       } else {
         console.log('POST_AUDITION_NO_VIDEO_UPLOADED: User submitted audition without video');
         finalVideoUrl = null;

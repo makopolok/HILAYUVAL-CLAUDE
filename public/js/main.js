@@ -220,16 +220,25 @@
 		videoInput.addEventListener('change', async () => {
 			clearError();
 			pendingMetadata = null;
+			videoInput.removeAttribute('data-rejected');
 			const file = videoInput.files && videoInput.files[0];
 			if (!file) return;
 			const validationMessage = await enforceVideoLimits(file);
 			if (validationMessage) {
 				showError(validationMessage);
 				videoInput.value = '';
+				videoInput.setAttribute('data-rejected', '1');
 			}
 		});
 
 		form.addEventListener('submit', async (event) => {
+			// Block submission if the user selected a video that was rejected
+			if (videoInput.getAttribute('data-rejected')) {
+				event.preventDefault();
+				showError('Please select a valid video file before submitting, or remove the video.');
+				return;
+			}
+
 			const file = videoInput.files && videoInput.files[0];
 			if (!file) return;
 
