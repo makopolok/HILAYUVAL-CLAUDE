@@ -86,7 +86,7 @@
         <div class="row g-2" id="profile-pictures-list"></div>
       </div>
     </div>    {{#if project}}
-      {{#if (eq project.uploadMethod "youtube")}}
+      {{#if (eq project.upload_method "youtube")}}
         <div class="mb-3">
           <label for="video" class="form-label">Self-Tape Video <span class="text-muted">(optional)</span> (YouTube Upload)</label>
           <input type="file" class="form-control" id="video" name="video" accept="video/*">
