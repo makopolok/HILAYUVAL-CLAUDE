@@ -105,8 +105,13 @@
 			if (meta && Number.isFinite(meta.duration) && meta.duration > MAX_DURATION_SECONDS) {
 				return 'Video is longer than 7 minutes. Please trim or compress it before uploading.';
 			}
-			if (meta && meta.height && meta.height > MAX_VIDEO_HEIGHT + 4) {
-				return 'Video resolution exceeds 1080p. Please export to 1080p or lower.';
+			if (meta && meta.height && meta.width) {
+				// Use the shorter dimension so vertical (portrait) videos aren't wrongly rejected.
+				// A vertical 1080×1920 has a short side of 1080 — that's fine.
+				const shortSide = Math.min(meta.width, meta.height);
+				if (shortSide > MAX_VIDEO_HEIGHT + 4) {
+					return 'Video resolution exceeds 1080p. Please export to 1080p or lower.';
+				}
 			}
 		} catch (err) {
 			// If metadata cannot be read we allow the upload but keep existing size guard.
