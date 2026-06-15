@@ -405,7 +405,6 @@ app.post('/api/videos', directUploadCreateLimiter, async (req, res) => {
     const projectIdRaw = req.body?.projectId || req.query.projectId;
     const parsedProjectId = projectIdRaw ? Number.parseInt(projectIdRaw, 10) : null;
     const projectId = Number.isFinite(parsedProjectId) ? parsedProjectId : null;
-    const roleName = (req.body?.role || req.query.role || '').toString().trim();
     const captchaToken = (req.body?.captchaToken || req.body?.turnstileToken || req.body?.['cf-turnstile-response'] || '').toString().trim();
 
     const libId = process.env.BUNNY_STREAM_LIBRARY_ID;
@@ -422,31 +421,18 @@ app.post('/api/videos', directUploadCreateLimiter, async (req, res) => {
       return res.status(400).json({ error: 'Human verification failed. Please try again.' });
     }
 
-    let collectionGuid = null;
-    let project = null;
-    let selectedRole = null;
-    if (projectId) {
-      project = await projectService.getProjectById(projectId);
-      if (!project) return res.status(404).json({ error: 'Project not found' });
-      if (project.upload_method === 'youtube') {
-        return res.status(400).json({ error: 'This project is configured for YouTube uploads only.' });
-      }
-      if (roleName) {
-        selectedRole = Array.isArray(project.roles) ? project.roles.find((r) => r.name === roleName) : null;
-      }
-      if (Array.isArray(project.roles) && project.roles.length > 0 && !selectedRole) {
-        return res.status(400).json({ error: 'Please choose a valid role before uploading.' });
-      }
-      if (selectedRole) {
-        collectionGuid = await ensureBunnyCollection(project, selectedRole);
-      }
+    // Keep this route lightweight: do not fetch full project/roles here.
+    // We validate project/role and assign collections in POST /audition/:projectId.
+    // This avoids creating upload-session failures when DB lookups are transiently slow.
+    if (projectIdRaw && !Number.isFinite(parsedProjectId)) {
+      return res.status(400).json({ error: 'Invalid project id.' });
     }
 
     if (!consumeProjectUploadQuota(projectId || 'global')) {
       return res.status(429).json({ error: 'Too many upload attempts for this audition project. Please wait and try again.' });
     }
 
-    const created = await bunnyService.createVideo(title, collectionGuid);
+    const created = await bunnyService.createVideo(title);
     const expires = Math.floor(Date.now() / 1000) + BUNNY_DIRECT_UPLOAD_TTL_SECONDS;
     const signature = crypto
       .createHash('sha256')
@@ -455,7 +441,7 @@ app.post('/api/videos', directUploadCreateLimiter, async (req, res) => {
     const uploadIntent = registerDirectUploadIntent({
       guid: created.guid,
       projectId: projectId || null,
-      roleName: selectedRole ? selectedRole.name : null,
+      roleName: null,
       ipAddress: req.ip || null,
     });
 
