@@ -1969,6 +1969,10 @@ app.get('/projects/:projectId/auditions', requireAdmin, async (req, res) => {
         return a.role === role.name;
       })
     }));
+    const roleFilter = (req.query.role || '').toString().trim();
+    const visibleRoles = roleFilter
+      ? rolesWithAuditions.filter((role) => role.name === roleFilter)
+      : rolesWithAuditions;
 
     // Casting director page: simplify to global flag only (no per-viewer toggle)
     const disableInlineEffective = process.env.DISABLE_INLINE_PLAYER === '1';
@@ -1976,6 +1980,8 @@ app.get('/projects/:projectId/auditions', requireAdmin, async (req, res) => {
 
     res.render('auditions', {
       project: { ...project, roles: rolesWithAuditions },
+      role_options: project.roles,
+      visible_roles: visibleRoles,
       query: req.query,
       bunny_stream_library_id: process.env.BUNNY_STREAM_LIBRARY_ID, // Pass library ID to the template
       disable_inline_player: disableInlineEffective,

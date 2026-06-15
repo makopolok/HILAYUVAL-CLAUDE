@@ -11,7 +11,7 @@
     <div class="col-md-4">
       <select class="form-select" name="role">
         <option value="">All Roles</option>
-        {{#each project.roles}}
+        {{#each role_options}}
           <option value="{{this.name}}" {{#if (eq ../query.role this.name)}}selected{{/if}}>{{this.name}}</option>
         {{/each}}
       </select>
@@ -21,8 +21,8 @@
       <a href="/projects/{{project.id}}/auditions" class="btn btn-outline-secondary ms-2">Clear</a>
     </div>
   </form>
-  {{#if project.roles.length}}
-    {{#each project.roles}}
+  {{#if visible_roles.length}}
+    {{#each visible_roles}}
       <div class="card mb-4 border-danger audition-role-card">
         <div class="card-header bg-danger text-white fw-bold">
           Role: {{this.name}}
@@ -167,7 +167,7 @@
       </div>
     {{/each}}
   {{else}}
-    <p>No roles found for this project.</p>
+    <p>No matching roles found for the selected filter.</p>
   {{/if}}
 
   <a href="/projects" class="btn btn-outline-danger mt-4">Back to Projects</a>
