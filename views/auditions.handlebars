@@ -3,10 +3,10 @@
   <h1 class="display-4 mb-4">Auditions for {{project.name}}</h1>
   <form class="row g-3 mb-4" method="GET" action="" id="audition-filter-form">
     <div class="col-md-4">
-      <input type="text" class="form-control" name="name" placeholder="Filter by actor name" value="{{query.name}}">
+      <input type="text" class="form-control" id="name-filter-input" name="name" placeholder="Filter by actor name" value="{{query.name}}">
     </div>
     <div class="col-md-4">
-      <input type="text" class="form-control" name="email" placeholder="Filter by email" value="{{query.email}}">
+      <input type="text" class="form-control" id="email-filter-input" name="email" placeholder="Filter by email" value="{{query.email}}">
     </div>
     <div class="col-md-4">
       <select class="form-select" name="role" id="role-filter-select">
@@ -17,6 +17,7 @@
       </select>
     </div>
     <div class="col-12">
+      <button type="submit" class="visually-hidden" aria-hidden="true" tabindex="-1">Apply filters</button>
       <a href="/projects/{{project.id}}/auditions" class="btn btn-outline-secondary ms-2">Clear</a>
     </div>
   </form>
@@ -269,11 +270,20 @@ function testIframeLoad(container) {
 document.addEventListener('DOMContentLoaded', function() {
   const roleSelect = document.getElementById('role-filter-select');
   const filterForm = document.getElementById('audition-filter-form');
+  const nameFilterInput = document.getElementById('name-filter-input');
+  const emailFilterInput = document.getElementById('email-filter-input');
   if (roleSelect && filterForm) {
     roleSelect.addEventListener('change', function () {
       filterForm.submit();
     });
   }
+  const submitOnEnter = function (event) {
+    if (event.key !== 'Enter' || !filterForm) return;
+    event.preventDefault();
+    filterForm.submit();
+  };
+  if (nameFilterInput) nameFilterInput.addEventListener('keydown', submitOnEnter);
+  if (emailFilterInput) emailFilterInput.addEventListener('keydown', submitOnEnter);
 
   const videoContainers = document.querySelectorAll('.video-container');
   
