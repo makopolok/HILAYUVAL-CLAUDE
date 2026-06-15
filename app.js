@@ -3,6 +3,7 @@ const { google } = require('googleapis');
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
+const crypto = require('crypto');
 const nodemailer = require('nodemailer'); // Added nodemailer import
 
 const express = require('express');
@@ -46,6 +47,15 @@ const getBuildInfo = () => {
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const BUNNY_DIRECT_UPLOAD_TTL_SECONDS = Math.max(3600, clampTtl(process.env.BUNNY_DIRECT_UPLOAD_TTL_SECONDS || process.env.BUNNY_STREAM_TOKEN_TTL || '7200'));
+const BUNNY_DIRECT_UPLOAD_REQUIRE_CAPTCHA = process.env.BUNNY_DIRECT_REQUIRE_CAPTCHA !== '0';
+const BUNNY_TURNSTILE_SECRET_KEY = process.env.TURNSTILE_SECRET_KEY || process.env.BUNNY_TURNSTILE_SECRET_KEY || '';
+const BUNNY_TURNSTILE_SITE_KEY = process.env.TURNSTILE_SITE_KEY || process.env.BUNNY_TURNSTILE_SITE_KEY || '';
+const BUNNY_DIRECT_UPLOAD_MAX_PER_IP = Number.parseInt(process.env.BUNNY_DIRECT_UPLOAD_MAX_PER_IP || '12', 10);
+const BUNNY_DIRECT_UPLOAD_MAX_PER_PROJECT_WINDOW = Number.parseInt(process.env.BUNNY_DIRECT_UPLOAD_MAX_PER_PROJECT_WINDOW || '80', 10);
+const BUNNY_DIRECT_UPLOAD_PROJECT_WINDOW_MS = Number.parseInt(process.env.BUNNY_DIRECT_UPLOAD_PROJECT_WINDOW_MS || String(60 * 60 * 1000), 10);
+const directUploadIntentStore = new Map();
+const directUploadProjectQuotaStore = new Map();
 
 // Canonical domain enforcement (optional). Set APP_PRIMARY_DOMAIN=hilayuval.com in env to enable.
 if (process.env.APP_PRIMARY_DOMAIN) {
@@ -263,6 +273,114 @@ async function ensureBunnyCollection(project, role) {
   return guid;
 }
 
+function cleanupExpiredDirectUploadIntents() {
+  const now = Date.now();
+  for (const [intentToken, entry] of directUploadIntentStore.entries()) {
+    if (!entry || entry.expiresAtMs <= now || entry.used) {
+      directUploadIntentStore.delete(intentToken);
+    }
+  }
+}
+
+function registerDirectUploadIntent({ guid, projectId, roleName, ipAddress }) {
+  cleanupExpiredDirectUploadIntents();
+  const intentToken = crypto.randomUUID();
+  const expiresAtMs = Date.now() + (BUNNY_DIRECT_UPLOAD_TTL_SECONDS * 1000);
+  directUploadIntentStore.set(intentToken, {
+    guid,
+    projectId: projectId ? String(projectId) : null,
+    roleName: roleName ? String(roleName) : null,
+    ipAddress: ipAddress || null,
+    expiresAtMs,
+    used: false,
+  });
+  return intentToken;
+}
+
+function consumeDirectUploadIntent({ intentToken, guid, projectId, roleName, ipAddress }) {
+  cleanupExpiredDirectUploadIntents();
+  if (!intentToken) {
+    return { ok: false, reason: 'missing_intent' };
+  }
+  const record = directUploadIntentStore.get(intentToken);
+  if (!record) {
+    return { ok: false, reason: 'intent_not_found' };
+  }
+  if (record.used) {
+    return { ok: false, reason: 'intent_already_used' };
+  }
+  if (record.guid !== guid) {
+    return { ok: false, reason: 'intent_guid_mismatch' };
+  }
+  if (record.projectId && String(projectId) !== record.projectId) {
+    return { ok: false, reason: 'intent_project_mismatch' };
+  }
+  if (record.roleName && String(roleName) !== record.roleName) {
+    return { ok: false, reason: 'intent_role_mismatch' };
+  }
+  if (record.ipAddress && ipAddress && record.ipAddress !== ipAddress) {
+    return { ok: false, reason: 'intent_ip_mismatch' };
+  }
+  record.used = true;
+  directUploadIntentStore.set(intentToken, record);
+  return { ok: true };
+}
+
+function consumeProjectUploadQuota(projectId) {
+  const key = projectId ? String(projectId) : 'global';
+  const now = Date.now();
+  const existing = directUploadProjectQuotaStore.get(key);
+  if (!existing || existing.windowStartMs + BUNNY_DIRECT_UPLOAD_PROJECT_WINDOW_MS <= now) {
+    directUploadProjectQuotaStore.set(key, { windowStartMs: now, count: 1 });
+    return true;
+  }
+  if (existing.count >= BUNNY_DIRECT_UPLOAD_MAX_PER_PROJECT_WINDOW) {
+    return false;
+  }
+  existing.count += 1;
+  directUploadProjectQuotaStore.set(key, existing);
+  return true;
+}
+
+async function verifyTurnstileToken(token, ipAddress) {
+  if (!BUNNY_DIRECT_UPLOAD_REQUIRE_CAPTCHA) {
+    return { ok: true };
+  }
+  if (!BUNNY_TURNSTILE_SECRET_KEY) {
+    return { ok: false, reason: 'captcha_not_configured' };
+  }
+  if (!token) {
+    return { ok: false, reason: 'captcha_missing' };
+  }
+
+  try {
+    const body = new URLSearchParams();
+    body.set('secret', BUNNY_TURNSTILE_SECRET_KEY);
+    body.set('response', token);
+    if (ipAddress) body.set('remoteip', ipAddress);
+    const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      body,
+    });
+    const payload = await response.json();
+    if (payload && payload.success) {
+      return { ok: true };
+    }
+    return { ok: false, reason: 'captcha_failed' };
+  } catch (error) {
+    console.error('TURNSTILE_VERIFY_ERROR:', error.message);
+    return { ok: false, reason: 'captcha_verify_error' };
+  }
+}
+
+const directUploadCreateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: Number.isFinite(BUNNY_DIRECT_UPLOAD_MAX_PER_IP) ? BUNNY_DIRECT_UPLOAD_MAX_PER_IP : 12,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many upload attempts from this network. Please wait and try again.' },
+});
+
 // Routes
 app.use('/admin', adminRoutes);
 app.use('/', portfolioRoutes);
@@ -280,20 +398,79 @@ app.get('/health/db', async (req, res) => {
   });
 });
 
-// API: Create a Bunny video stub and return upload info for direct browser upload
-// This avoids routing the large file through Heroku. The client will PUT the file directly to Bunny.
-app.post('/api/videos', async (req, res) => {
+// API: Create Bunny video + signed direct-upload credentials (TUS)
+app.post('/api/videos', directUploadCreateLimiter, async (req, res) => {
   try {
     const title = (req.query.title || req.body?.title || '').toString().slice(0, 200) || `audition_${Date.now()}`;
-    const created = await bunnyService.createVideo(title);
+    const projectIdRaw = req.body?.projectId || req.query.projectId;
+    const parsedProjectId = projectIdRaw ? Number.parseInt(projectIdRaw, 10) : null;
+    const projectId = Number.isFinite(parsedProjectId) ? parsedProjectId : null;
+    const roleName = (req.body?.role || req.query.role || '').toString().trim();
+    const captchaToken = (req.body?.captchaToken || req.body?.turnstileToken || req.body?.['cf-turnstile-response'] || '').toString().trim();
+
     const libId = process.env.BUNNY_STREAM_LIBRARY_ID;
-    // Bunny simple direct upload endpoint: PUT the raw file to /videos/{guid}
-    const uploadUrl = `https://video.bunnycdn.com/library/${libId}/videos/${created.guid}`;
-    // Return minimal info; DO NOT return AccessKey
-    res.json({ guid: created.guid, title: created.title, uploadUrl });
+    const accessKey = process.env.BUNNY_VIDEO_API_KEY;
+    if (!libId || !accessKey) {
+      return res.status(503).json({ error: 'Bunny direct upload is not configured on the server.' });
+    }
+
+    const captchaCheck = await verifyTurnstileToken(captchaToken, req.ip);
+    if (!captchaCheck.ok) {
+      if (captchaCheck.reason === 'captcha_not_configured') {
+        return res.status(503).json({ error: 'Upload protection is not configured. Please contact support.' });
+      }
+      return res.status(400).json({ error: 'Human verification failed. Please try again.' });
+    }
+
+    let collectionGuid = null;
+    let project = null;
+    let selectedRole = null;
+    if (projectId) {
+      project = await projectService.getProjectById(projectId);
+      if (!project) return res.status(404).json({ error: 'Project not found' });
+      if (project.upload_method === 'youtube') {
+        return res.status(400).json({ error: 'This project is configured for YouTube uploads only.' });
+      }
+      if (roleName) {
+        selectedRole = Array.isArray(project.roles) ? project.roles.find((r) => r.name === roleName) : null;
+      }
+      if (Array.isArray(project.roles) && project.roles.length > 0 && !selectedRole) {
+        return res.status(400).json({ error: 'Please choose a valid role before uploading.' });
+      }
+      if (selectedRole) {
+        collectionGuid = await ensureBunnyCollection(project, selectedRole);
+      }
+    }
+
+    if (!consumeProjectUploadQuota(projectId || 'global')) {
+      return res.status(429).json({ error: 'Too many upload attempts for this audition project. Please wait and try again.' });
+    }
+
+    const created = await bunnyService.createVideo(title, collectionGuid);
+    const expires = Math.floor(Date.now() / 1000) + BUNNY_DIRECT_UPLOAD_TTL_SECONDS;
+    const signature = crypto
+      .createHash('sha256')
+      .update(`${libId}${accessKey}${expires}${created.guid}`)
+      .digest('hex');
+    const uploadIntent = registerDirectUploadIntent({
+      guid: created.guid,
+      projectId: projectId || null,
+      roleName: selectedRole ? selectedRole.name : null,
+      ipAddress: req.ip || null,
+    });
+
+    return res.json({
+      guid: created.guid,
+      title: created.title,
+      libraryId: String(libId),
+      tusEndpoint: 'https://video.bunnycdn.com/tusupload',
+      authorizationExpire: expires,
+      authorizationSignature: signature,
+      uploadIntent,
+    });
   } catch (e) {
     console.error('API /api/videos create error:', e.message);
-    res.status(500).json({ error: 'Failed to create Bunny video' });
+    return res.status(500).json({ error: 'Failed to create Bunny upload session' });
   }
 });
 
@@ -358,7 +535,9 @@ app.get('/audition', (req, res) => {
   const libId = process.env.BUNNY_STREAM_LIBRARY_ID || '';
   res.render('audition', {
     bunny_stream_library_id: libId,
-    upload_method: 'bunny_stream'
+    upload_method: 'bunny_stream',
+    direct_upload_require_captcha: BUNNY_DIRECT_UPLOAD_REQUIRE_CAPTCHA,
+    turnstile_site_key: BUNNY_TURNSTILE_SITE_KEY
   });
 });
 
@@ -746,7 +925,9 @@ app.get('/audition/:projectId', async (req, res) => {
   res.render('audition', {
     project,
     bunny_stream_library_id: libId,
-    upload_method: viewUploadMethod
+    upload_method: viewUploadMethod,
+    direct_upload_require_captcha: BUNNY_DIRECT_UPLOAD_REQUIRE_CAPTCHA,
+    turnstile_site_key: BUNNY_TURNSTILE_SITE_KEY
   });
 });
 
@@ -1472,7 +1653,20 @@ app.post('/audition/:projectId', auditionUpload.fields([
     } else {
       // Support direct-to-Bunny uploads: client submits a GUID in body.video_url
       const guidFromForm = (body.video_url || '').toString().trim();
+      const uploadIntent = (body.video_upload_intent || '').toString().trim();
       if (guidFromForm && guidFromForm.length > 10) {
+        const intentCheck = consumeDirectUploadIntent({
+          intentToken: uploadIntent,
+          guid: guidFromForm,
+          projectId: project.id,
+          roleName: selectedRole ? selectedRole.name : null,
+          ipAddress: req.ip || null,
+        });
+        if (!intentCheck.ok) {
+          console.warn(`POST_AUDITION_DIRECT_UPLOAD_INTENT_REJECTED: guid=${guidFromForm} reason=${intentCheck.reason}`);
+          return res.status(400).send('Invalid or expired direct upload session. Please upload the video again.');
+        }
+
         console.log(`POST_AUDITION_DIRECT_BUNNY_GUID_DETECTED: ${guidFromForm}`);
         finalVideoUrl = guidFromForm;
         videoType = 'bunny_stream';

@@ -6,58 +6,88 @@
 	let currentUpload = null;
 	let pendingMetadata = null;
 
-	async function createBunnyVideo(title) {
-		const response = await fetch('/api/videos?title=' + encodeURIComponent(title || 'audition'), {
-			method: 'POST'
+	async function createBunnyVideo({ title, projectId, role, captchaToken }) {
+		const response = await fetch('/api/videos', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				title: title || 'audition',
+				projectId: projectId || null,
+				role: role || null,
+				captchaToken: captchaToken || null,
+			}),
 		});
-		if (!response.ok) throw new Error('Failed to create Bunny video');
-		return response.json();
+		let payload = {};
+		try {
+			payload = await response.json();
+		} catch (_) {}
+		if (!response.ok) throw new Error(payload.error || 'Failed to create Bunny video');
+		return payload;
 	}
 
-	function uploadViaProxy({ file, guid, onProgress }) {
+	function uploadViaTus({ file, uploadMeta, onProgress }) {
 		return new Promise((resolve, reject) => {
-			const xhr = new XMLHttpRequest();
-			currentUpload = xhr;
-
-			xhr.open('PUT', `/api/videos/${encodeURIComponent(guid)}/upload`, true);
-			xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
-			xhr.setRequestHeader('X-File-Name', encodeURIComponent(file.name));
-
-			xhr.upload.onprogress = (event) => {
-				if (!event.lengthComputable || typeof onProgress !== 'function') return;
-				const pct = Math.round((event.loaded / event.total) * 100);
-				onProgress(pct, event.loaded, event.total);
-			};
-
-			xhr.onload = () => {
-				currentUpload = null;
-				if (xhr.status >= 200 && xhr.status < 300) return resolve();
-				let message = 'Upload failed with status ' + xhr.status;
-				try {
-					const payload = JSON.parse(xhr.responseText || '{}');
-					if (payload && payload.error) message = payload.error;
-				} catch (_) {}
-				reject(new Error(message));
-			};
-
-			xhr.onerror = () => {
-				currentUpload = null;
-				reject(new Error('Network error during upload'));
-			};
-
-			xhr.onabort = () => {
-				currentUpload = null;
-				const abortError = new Error('Upload aborted');
-				abortError.name = 'AbortError';
-				reject(abortError);
-			};
-
-			try {
-				xhr.send(file);
-			} catch (err) {
-				currentUpload = null;
-				reject(err);
+			if (!window.tus || !window.tus.Upload) {
+				reject(new Error('Upload library is unavailable. Please refresh and try again.'));
+				return;
 			}
+
+			let settled = false;
+			const endpoint = uploadMeta.tusEndpoint || 'https://video.bunnycdn.com/tusupload';
+			const upload = new window.tus.Upload(file, {
+				endpoint,
+				retryDelays: [0, 3000, 5000, 10000, 20000, 60000],
+				removeFingerprintOnSuccess: true,
+				headers: {
+					AuthorizationSignature: uploadMeta.authorizationSignature,
+					AuthorizationExpire: String(uploadMeta.authorizationExpire),
+					VideoId: uploadMeta.guid,
+					LibraryId: String(uploadMeta.libraryId),
+				},
+				metadata: {
+					filetype: file.type || 'application/octet-stream',
+					title: file.name || uploadMeta.title || 'audition',
+				},
+				onProgress: (bytesUploaded, bytesTotal) => {
+					if (!bytesTotal || typeof onProgress !== 'function') return;
+					const pct = Math.round((bytesUploaded / bytesTotal) * 100);
+					onProgress(pct, bytesUploaded, bytesTotal);
+				},
+				onError: (error) => {
+					if (settled) return;
+					settled = true;
+					currentUpload = null;
+					reject(error instanceof Error ? error : new Error(String(error)));
+				},
+				onSuccess: () => {
+					if (settled) return;
+					settled = true;
+					currentUpload = null;
+					resolve();
+				},
+			});
+
+			currentUpload = {
+				abort: () => {
+					if (settled) return Promise.resolve();
+					settled = true;
+					const abortError = new Error('Upload aborted');
+					abortError.name = 'AbortError';
+					currentUpload = null;
+					return upload.abort(true).catch(() => {}).then(() => reject(abortError));
+				},
+			};
+
+			upload.findPreviousUploads()
+				.then((previousUploads) => {
+					if (previousUploads && previousUploads.length > 0) {
+						upload.resumeFromPreviousUpload(previousUploads[0]);
+					}
+					upload.start();
+				})
+				.catch(() => {
+					upload.start();
+				});
 		});
 	}
 
@@ -249,6 +279,13 @@
 
 			event.preventDefault();
 			clearError();
+			const captchaRequired = (form.getAttribute('data-direct-captcha-required') || '').toLowerCase() === 'true';
+			const captchaInput = form.querySelector('input[name="cf-turnstile-response"]');
+			const captchaToken = captchaInput ? (captchaInput.value || '').trim() : '';
+			if (captchaRequired && !captchaToken) {
+				showError('Please complete the human verification check before uploading.');
+				return;
+			}
 			const validationMessage = await enforceVideoLimits(file);
 			if (validationMessage) {
 				showError(validationMessage);
@@ -264,7 +301,17 @@
 
 				let meta;
 				try {
-					meta = await createBunnyVideo(file.name);
+					const actionPath = form.getAttribute('action') || '';
+					const projectMatch = actionPath.match(/\/audition\/(\d+)/);
+					const projectId = projectMatch ? projectMatch[1] : null;
+					const roleInput = form.querySelector('[name="role"]');
+					const roleName = roleInput ? roleInput.value : null;
+					meta = await createBunnyVideo({
+						title: file.name,
+						projectId,
+						role: roleName,
+						captchaToken,
+					});
 				} catch (createErr) {
 					throw new Error('Step 1 failed (create video): ' + (createErr && createErr.message ? createErr.message : createErr));
 				}
@@ -272,7 +319,7 @@
 
 				const progressFn = (pct) => updateProgress(pct);
 				try {
-					await uploadViaProxy({ file, guid: meta.guid, onProgress: progressFn });
+					await uploadViaTus({ file, uploadMeta: meta, onProgress: progressFn });
 				} catch (uploadErr) {
 					throw new Error('Step 2 failed (upload): ' + (uploadErr && uploadErr.message ? uploadErr.message : uploadErr));
 				}
@@ -291,6 +338,14 @@
 					form.appendChild(hidden);
 				}
 				hidden.value = meta.guid;
+				let intentHidden = form.querySelector('input[name="video_upload_intent"]');
+				if (!intentHidden) {
+					intentHidden = document.createElement('input');
+					intentHidden.type = 'hidden';
+					intentHidden.name = 'video_upload_intent';
+					form.appendChild(intentHidden);
+				}
+				intentHidden.value = meta.uploadIntent || '';
 
 				videoInput.value = '';
 				form.submit();
