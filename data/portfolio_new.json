@@ -1,5 +1,95 @@
 [
           {
+                    "title": "All Mothers Lie",
+                    "year": 2026,
+                    "episodes": 9,
+                    "director": "Atara Frish",
+                    "writers": ["Atara Frish", "Yael Katz", "Natali Michaelshvili", "Noam Nevo"],
+                    "actors": [
+                              "Maya Maron",
+                              "Agam Rudberg",
+                              "Tsahi Halevi",
+                              "Bat-el Moseri",
+                              "Diana Golbi"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt39572794/"
+          },
+          {
+                    "title": "Unconditional",
+                    "year": 2026,
+                    "episodes": 8,
+                    "director": "Johnathan Gurfinkel",
+                    "writers": ["Adam Bizanski", "Dana Idisis"],
+                    "actors": [
+                              "Liraz Chamami",
+                              "Talia Lynne Ronn",
+                              "Evgenia Dodina",
+                              "Leib Levin",
+                              "Vladimir Friedman"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt35668813/"
+          },
+          {
+                    "title": "Yaffa",
+                    "year": "2025–2026",
+                    "episodes": 8,
+                    "director": "Leora Kamenetzky, Michael Mayer",
+                    "writers": ["Alma Ganihar", "Leora Kamenetzky", "Amit Lior"],
+                    "actors": [
+                              "Shadi Mar'i",
+                              "Amir Khoury",
+                              "Arkan Tarif",
+                              "Neta Roth",
+                              "Neta Riskin"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt8337384/"
+          },
+          {
+                    "title": "Matkalistim",
+                    "year": "2025–2026",
+                    "episodes": 8,
+                    "director": "Boaz Frankel",
+                    "writers": ["Gitit Fisher", "Moish Goldberg", "Ilan Shefler", "Eran Zarahovitsh"],
+                    "actors": [
+                              "Eran Zarahovitsh",
+                              "Amir Tessler",
+                              "Liraz Chamami",
+                              "Yadin Gellman",
+                              "Alon Hamawi"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt39772791/"
+          },
+          {
+                    "title": "YeledHara",
+                    "year": 2025,
+                    "episodes": 7,
+                    "director": "Niv Majar",
+                    "writers": ["Niv Majar", "Ariel Waysman"],
+                    "actors": [
+                              "Shmueli Dector",
+                              "Yoram Toledano",
+                              "Efrat Ben-Zur",
+                              "Liat Harlev",
+                              "Menashe Noy"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt41268636/"
+          },
+          {
+                    "title": "Dead Language",
+                    "year": 2025,
+                    "episodes": null,
+                    "director": "Oded Binnun, Mihal Brezis",
+                    "writers": ["Mihal Brezis", "Amital Stern", "Tom Shoval", "Oded Binnun"],
+                    "actors": [
+                              "Sarah Adler",
+                              "Ulrich Thomsen",
+                              "Yehezkel Lazarov",
+                              "Lars Eidinger",
+                              "Maciej Maciejewski"
+                    ],
+                    "imdb_url": "https://www.imdb.com/title/tt12839450/"
+          },
+          {
                     "title": "Night Therapy",
                     "hebrew_title": "טיפול לילי",
                     "year": 2024,

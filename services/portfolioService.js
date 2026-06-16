@@ -2,6 +2,12 @@ const path = require('path');
 const portfolio = require(path.resolve(__dirname, '../data/portfolio_new.json'));
 
 const projectLabels = {
+    'All Mothers Lie': 'Motherhood Drama',
+    'Unconditional': 'Crime Thriller',
+    'Yaffa': 'Crime Thriller',
+    'Matkalistim': 'Comedy Drama',
+    'YeledHara': 'Comedy Series',
+    'Dead Language': 'Drama Mystery',
     'Night Therapy': 'Psychological Drama',
     '8200': 'Intelligence Thriller',
     'Manayek': 'Police Corruption',
