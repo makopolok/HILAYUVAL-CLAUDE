@@ -7,10 +7,11 @@ const { pool } = auditionService;
 const { requireAdmin } = require('../middleware/auth');
 
 router.get('/', async (req, res) => {
-    const projects = await portfolioService.getAllProjects();
+    const { projects, featuredProjects } = await portfolioService.getAllProjects();
     res.render('home', { 
         title: 'Hila Yuval Casting',
-        projects 
+        projects,
+        featuredProjects,
     });
 });
 

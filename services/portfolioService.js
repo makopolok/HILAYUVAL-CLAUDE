@@ -73,6 +73,93 @@ const projectLabels = {
     'Hafuch': 'Cult Series'
 };
 
+const projectHebrewTitles = {
+    'All Mothers Lie': 'כל האמהות משקרות',
+    'Unconditional': 'הבת',
+    'Yaffa': 'יאפא',
+    'Matkalistim': 'מטכ"ליסטים',
+    'YeledHara': 'ילד חרא',
+    'Dead Language': 'שפה זרה',
+};
+
+const projectVisuals = {
+    'Manayek': {
+        featured_image_url: '/images/accordion-headers/manayek_header_blue.jpg',
+        featured_image_alt: 'Manayek artwork',
+        featured_image_object_position: 'center 35%',
+    },
+    'Dismissed': {
+        featured_image_url: '/images/accordion-headers/dissmissed_header.jpg',
+        featured_image_alt: 'Dismissed header art',
+        featured_image_object_position: 'center 60%',
+    },
+    'Six Zeros': {
+        featured_image_url: '/images/accordion-headers/sixzeros_header_yellow.jpg',
+        featured_image_alt: 'Six Zeros artwork',
+        featured_image_object_position: 'center 50%',
+    },
+    'Temporarily Dead': {
+        featured_image_url: '/images/accordion-headers/metim_rega_header.jpg',
+        featured_image_alt: 'Temporarily Dead header art',
+        featured_image_object_position: 'center 55%',
+    },
+    'Valley of Tears': {
+        featured_image_url: '/images/accordion-headers/valey of tears_header.webp',
+        featured_image_alt: 'Valley of Tears header art',
+        featured_image_object_position: 'center center',
+    },
+    'The Red Sea Diving Resort': {
+        featured_image_url: '/images/posterim/metim_larega_publicity.jpg',
+        featured_image_alt: 'The Red Sea Diving Resort visual',
+        featured_image_object_position: 'center 45%',
+    },
+    'Our Boys': {
+        featured_image_url: '/images/accordion-headers/OURBOYES_POSTER.png',
+        featured_image_alt: 'Our Boys poster',
+        featured_image_object_position: 'center center',
+    },
+    'Shtisel': {
+        featured_image_url: '/images/accordion-headers/shtisel_poster.webp',
+        featured_image_alt: 'Shtisel poster',
+        featured_image_object_position: 'center center',
+    },
+    '8200': {
+        featured_image_url: '/images/posterim/manayek_still.jpg',
+        featured_image_alt: '8200 visual reference',
+        featured_image_object_position: 'center center',
+    },
+    'Night Therapy': {
+        featured_image_url: '/images/posterim/hamefakedet_publicity.jpg',
+        featured_image_alt: 'Night Therapy visual reference',
+        featured_image_object_position: 'center center',
+    },
+    'Yaffa': {
+        featured_image_url: '/images/posterim/six_zeros_still.jpg',
+        featured_image_alt: 'Yaffa visual reference',
+        featured_image_object_position: 'center 43%',
+    },
+    'Matkalistim': {
+        featured_image_url: '/images/posterim/metim_larega_publicity.jpg',
+        featured_image_alt: 'Matkalistim visual reference',
+        featured_image_object_position: 'center 44%',
+    },
+    'Dead Language': {
+        featured_image_url: '/images/posterim/manayek.jpg',
+        featured_image_alt: 'Dead Language visual reference',
+        featured_image_object_position: 'center 24%',
+    },
+    'The Spy': {
+        featured_image_url: '/images/posterim/six_zeros.jpg',
+        featured_image_alt: 'The Spy visual reference',
+        featured_image_object_position: 'center center',
+    },
+    'Fauda': {
+        featured_image_url: '/images/accordion-headers/fauda_header_poster.jpg',
+        featured_image_alt: 'Fauda poster',
+        featured_image_object_position: 'center center',
+    },
+};
+
 function getFallbackLabel(project) {
     if (project.broadcaster) return project.broadcaster;
     if (project.episodes === null || project.episodes === 'Film' || project.episodes === 'Feature Film') {
@@ -89,14 +176,29 @@ function getSortYear(project) {
     return Math.max(...years.map((year) => parseInt(year, 10)));
 }
 
+function slugifyTitle(title) {
+    return String(title || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+}
+
 class PortfolioService {
     async getAllProjects() {
-        return [...portfolio]
+        const projects = [...portfolio]
             .sort((a, b) => getSortYear(b) - getSortYear(a))
             .map((project) => ({
                 ...project,
-                portfolio_label: projectLabels[project.title] || getFallbackLabel(project)
+                slug: slugifyTitle(project.title),
+                portfolio_label: projectLabels[project.title] || getFallbackLabel(project),
+                hebrew_title: projectHebrewTitles[project.title] || project.hebrew_title,
+                ...(projectVisuals[project.title] || {}),
             }));
+        const featuredOrder = ['Manayek', 'Dismissed'];
+        const featuredProjects = featuredOrder
+            .map((title) => projects.find((project) => project.title === title))
+            .filter(Boolean);
+        return { projects, featuredProjects };
     }
 }
 

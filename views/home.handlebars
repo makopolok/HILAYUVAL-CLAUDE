@@ -19,15 +19,29 @@
   <main>
     <section class="accordion" aria-label="Selected projects">
       {{#each projects}}
-        <details {{#if @first}}open{{/if}}>
+        <details id="project-{{slug}}" class="{{#if featured_image_url}}has-visual{{/if}}">
           <summary>
             <span class="year">{{year}}</span>
             <span class="meta">
-              <span class="title">{{title}}{{#if hebrew_title}} / {{hebrew_title}}{{/if}}</span>
+              <span class="title">{{title}}{{#if hebrew_title}} / <span class="hebrew-title">{{hebrew_title}}</span>{{/if}}</span>
               <span class="chev">+</span>
             </span>
             <span class="type">{{portfolio_label}}</span>
           </summary>
+          {{#if featured_image_url}}
+            <div class="panel-visual">
+              <img
+                src="{{featured_image_url}}"
+                alt="{{#if featured_image_alt}}{{featured_image_alt}}{{else}}{{title}}{{/if}}"
+                style="{{#if featured_image_object_position}}object-position: {{featured_image_object_position}};{{/if}}"
+                loading="lazy"
+              >
+              <div class="panel-visual-overlay">
+                <span>{{portfolio_label}}</span>
+                <strong>{{title}}{{#if hebrew_title}} / <span class="hebrew-title">{{hebrew_title}}</span>{{/if}}</strong>
+              </div>
+            </div>
+          {{/if}}
           <div class="panel">
             <div class="panel-inner">
               {{#if director}}
