@@ -88,9 +88,9 @@
     </div>    {{#if project}}
       {{#if (eq project.upload_method "youtube")}}
         <div class="mb-3">
-          <label for="video" class="form-label">Self-Tape Video <span class="text-muted">(optional)</span> (YouTube Upload)</label>
-          <input type="file" class="form-control" id="video" name="video" accept="video/*">
-          <div class="invalid-feedback">If you wish, you may upload a video file.</div>
+          <label for="video" class="form-label">Self-Tape Video <span class="text-danger">(required)</span> (YouTube Upload)</label>
+          <input type="file" class="form-control" id="video" name="video" accept="video/*" required>
+          <div class="invalid-feedback">Please upload a video file for YouTube projects.</div>
           <div class="form-text text-muted">
             <i class="fas fa-info-circle me-1"></i>
             Hard cap 400MB (please keep under 250MB; ≈7 minutes at 1080p). Supported: MP4, MOV, MKV, WebM

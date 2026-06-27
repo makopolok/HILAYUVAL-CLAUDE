@@ -1637,6 +1637,11 @@ app.post('/audition/:projectId', auditionUpload.fields([
         }
       }
     } else {
+      if (project.upload_method === 'youtube') {
+        console.warn('POST_AUDITION_YOUTUBE_VIDEO_REQUIRED: YouTube project submission without video file');
+        return res.status(400).send('Video file is required for YouTube projects. Please attach a self-tape and try again.');
+      }
+
       // Support direct-to-Bunny uploads: client submits a GUID in body.video_url
       const guidFromForm = (body.video_url || '').toString().trim();
       const uploadIntent = (body.video_upload_intent || '').toString().trim();
