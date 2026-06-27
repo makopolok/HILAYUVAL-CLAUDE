@@ -220,24 +220,44 @@ function isValidYouTubePlaylistId(id) {
 }
 
 async function ensureRolePlaylist(youtube, project, role) {
-  if (isValidYouTubePlaylistId(role.playlist_id)) return role.playlist_id;
-
-  const res = await youtube.playlists.insert({
-    part: ['snippet', 'status'],
-    requestBody: {
-      snippet: {
-        title: `${project.name} — ${role.name}`,
-        description: `Auditions for role: ${role.name} | Project: ${project.name}`,
+  const createAndPersistPlaylist = async () => {
+    const res = await youtube.playlists.insert({
+      part: ['snippet', 'status'],
+      requestBody: {
+        snippet: {
+          title: `${project.name} — ${role.name}`,
+          description: `Auditions for role: ${role.name} | Project: ${project.name}`,
+        },
+        status: { privacyStatus: 'unlisted' },
       },
-      status: { privacyStatus: 'unlisted' },
-    },
-  });
-  const playlistId = res.data.id;
-  await projectService.updateRolePlaylistId(role.id, playlistId);
-  // Mutate in-memory so callers see the updated value
-  role.playlist_id = playlistId;
-  console.log(`YOUTUBE_PLAYLIST_CREATED: role=${role.name} project=${project.name} playlistId=${playlistId}`);
-  return playlistId;
+    });
+    const playlistId = res.data.id;
+    await projectService.updateRolePlaylistId(role.id, playlistId);
+    role.playlist_id = playlistId;
+    console.log(`YOUTUBE_PLAYLIST_CREATED: role=${role.name} project=${project.name} playlistId=${playlistId}`);
+    return playlistId;
+  };
+
+  if (isValidYouTubePlaylistId(role.playlist_id)) {
+    try {
+      const check = await youtube.playlists.list({
+        part: ['id'],
+        id: [role.playlist_id],
+        mine: true,
+        maxResults: 1,
+      });
+      const items = (check && check.data && Array.isArray(check.data.items)) ? check.data.items : [];
+      if (items.length > 0) return role.playlist_id;
+
+      console.warn(`YOUTUBE_PLAYLIST_NOT_OWNED_OR_INACCESSIBLE: role=${role.name} project=${project.name} playlistId=${role.playlist_id}. Recreating.`);
+      return await createAndPersistPlaylist();
+    } catch (err) {
+      console.warn(`YOUTUBE_PLAYLIST_CHECK_FAILED: role=${role.name} project=${project.name} playlistId=${role.playlist_id} err=${err.message}. Recreating.`);
+      return await createAndPersistPlaylist();
+    }
+  }
+
+  return await createAndPersistPlaylist();
 }
 
 // Add an already-uploaded YouTube video to a playlist.
