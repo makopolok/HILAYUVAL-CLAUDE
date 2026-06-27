@@ -511,13 +511,22 @@ document.addEventListener('DOMContentLoaded', function() {
   if (form) {
     const method = (form.getAttribute('data-upload-method') || '').toLowerCase();
     if (method === 'youtube') {
-      form.addEventListener('submit', function(event) {
-        if (!form.checkValidity()) {
+      let youtubeSubmitInFlight = false;
+
+      const submitYoutubeAudition = (event) => {
+        if (event) {
           event.preventDefault();
           event.stopPropagation();
+        }
+
+        if (youtubeSubmitInFlight) return;
+
+        if (!form.checkValidity()) {
           form.classList.add('was-validated');
           return;
         }
+
+        youtubeSubmitInFlight = true;
 
         const submitBtn = document.getElementById('submit-btn');
         const submitText = document.getElementById('submit-text');
@@ -545,7 +554,15 @@ document.addEventListener('DOMContentLoaded', function() {
           e.preventDefault();
           e.returnValue = '';
         });
-      });
+
+        HTMLFormElement.prototype.submit.call(form);
+      };
+
+      form.addEventListener('submit', submitYoutubeAudition);
+      const submitBtn = document.getElementById('submit-btn');
+      if (submitBtn) {
+        submitBtn.addEventListener('click', submitYoutubeAudition);
+      }
     }
   }
 });
