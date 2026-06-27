@@ -1624,8 +1624,12 @@ app.post('/audition/:projectId', auditionUpload.fields([
           videoUploadResult = { id: youtubeVideoId, url: finalVideoUrl };
           console.log(`POST_AUDITION_VIDEO_UPLOADED_YOUTUBE: ${videoFile.originalname}, ID: ${youtubeVideoId}, URL: ${finalVideoUrl}`);
 
-          // Add the video to the role's playlist
-          await addVideoToYouTubePlaylist(youtube, youtubeVideoId, playlistId);
+          // Add the video to the role's playlist (best effort; don't fail full submission if this step fails)
+          try {
+            await addVideoToYouTubePlaylist(youtube, youtubeVideoId, playlistId);
+          } catch (playlistErr) {
+            console.warn(`POST_AUDITION_YOUTUBE_PLAYLIST_ADD_WARN: videoId=${youtubeVideoId} playlistId=${playlistId} reason=${playlistErr.message}`);
+          }
         } catch (ytError) {
           console.error('POST_AUDITION_YOUTUBE_UPLOAD_ERROR: Failed to upload video to YouTube.', ytError);
           if (fs.existsSync(videoFile.path)) {

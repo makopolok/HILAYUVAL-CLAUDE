@@ -498,13 +498,55 @@ document.addEventListener('DOMContentLoaded', function() {
   // Attach file handlers
   const videoInput = document.getElementById('video');
   const profileInput = document.getElementById('profile_pictures');
-  
+  const form = document.getElementById('audition-form');
+
   if (videoInput) {
     videoInput.addEventListener('change', handleVideoSelection);
   }
-  
+
   if (profileInput) {
     profileInput.addEventListener('change', handleProfilePicturesSelection);
+  }
+
+  if (form) {
+    const method = (form.getAttribute('data-upload-method') || '').toLowerCase();
+    if (method === 'youtube') {
+      form.addEventListener('submit', function(event) {
+        if (!form.checkValidity()) {
+          event.preventDefault();
+          event.stopPropagation();
+          form.classList.add('was-validated');
+          return;
+        }
+
+        const submitBtn = document.getElementById('submit-btn');
+        const submitText = document.getElementById('submit-text');
+        const submitSpinner = document.getElementById('submit-spinner');
+        const overlay = document.getElementById('loading-overlay');
+        const overlayTitle = overlay ? overlay.querySelector('h4') : null;
+        const overlayProgressText = document.getElementById('overlay-upload-progress-text');
+        const overlayProgressBar = document.getElementById('overlay-upload-progress-bar');
+
+        if (submitBtn) submitBtn.disabled = true;
+        if (submitText) submitText.classList.add('d-none');
+        if (submitSpinner) submitSpinner.classList.remove('d-none');
+
+        if (overlay) overlay.classList.remove('d-none');
+        if (overlayTitle) {
+          overlayTitle.innerHTML = '<i class="fas fa-cloud-upload-alt me-2"></i>Uploading to YouTube...';
+        }
+        if (overlayProgressText) overlayProgressText.textContent = 'Processing...';
+        if (overlayProgressBar) {
+          overlayProgressBar.classList.remove('progress-bar-animated');
+          overlayProgressBar.style.width = '100%';
+        }
+
+        window.addEventListener('beforeunload', function beforeUnloadHandler(e) {
+          e.preventDefault();
+          e.returnValue = '';
+        });
+      });
+    }
   }
 });
 
