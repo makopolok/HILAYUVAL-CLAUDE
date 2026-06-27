@@ -512,16 +512,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const method = (form.getAttribute('data-upload-method') || '').toLowerCase();
     if (method === 'youtube') {
       let youtubeSubmitInFlight = false;
-
-      const submitYoutubeAudition = (event) => {
-        if (event) {
+      form.addEventListener('submit', function(event) {
+        if (youtubeSubmitInFlight) {
           event.preventDefault();
-          event.stopPropagation();
+          return;
         }
 
-        if (youtubeSubmitInFlight) return;
-
         if (!form.checkValidity()) {
+          event.preventDefault();
+          event.stopPropagation();
           form.classList.add('was-validated');
           return;
         }
@@ -544,20 +543,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (overlayTitle) {
           overlayTitle.innerHTML = '<i class="fas fa-cloud-upload-alt me-2"></i>Uploading to YouTube...';
         }
-        if (overlayProgressText) overlayProgressText.textContent = 'Processing...';
+        if (overlayProgressText) overlayProgressText.textContent = 'Uploading...';
         if (overlayProgressBar) {
-          overlayProgressBar.classList.remove('progress-bar-animated');
+          overlayProgressBar.classList.add('progress-bar-animated');
           overlayProgressBar.style.width = '100%';
         }
-
-        HTMLFormElement.prototype.submit.call(form);
-      };
-
-      form.addEventListener('submit', submitYoutubeAudition);
-      const submitBtn = document.getElementById('submit-btn');
-      if (submitBtn) {
-        submitBtn.addEventListener('click', submitYoutubeAudition);
-      }
+      });
     }
   }
 });
