@@ -100,11 +100,21 @@ async function addRoleToProject(projectId, role) {
   );
 }
 
+async function updateProject(projectId, { description }) {
+  return withClient(async (client) => {
+    await client.query(
+      'UPDATE projects SET description = $1 WHERE id = $2',
+      [description, projectId]
+    );
+  });
+}
+
 module.exports = {
   addProject,
   getAllProjects,
   getProjectById,
-  addRoleToProject
+  addRoleToProject,
+  updateProject
 };
 
 // Rename a role; also update existing auditions to the new name for this project

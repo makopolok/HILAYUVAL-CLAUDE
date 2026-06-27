@@ -164,6 +164,21 @@ router.get('/projects/:projectId/edit', async (req, res) => {
     }
 });
 
+// Update project description
+router.post('/projects/:projectId/update-description', async (req, res) => {
+    try {
+        const { projectId } = req.params;
+        const description = (req.body.description || '').toString().trim();
+        await projectService.updateProject(projectId, { description });
+        req.flash('success', 'Description updated');
+        return res.redirect(`/projects/${projectId}/edit`);
+    } catch (err) {
+        console.error('PROJECT_UPDATE_DESCRIPTION_ERROR:', err);
+        req.flash('error', 'Failed to update description');
+        res.redirect(`/projects/${req.params.projectId}/edit`);
+    }
+});
+
 // Add a role to a project
 router.post('/projects/:projectId/add-role', async (req, res) => {
     try {
