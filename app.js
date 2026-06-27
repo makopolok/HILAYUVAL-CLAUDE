@@ -606,7 +606,7 @@ app.post('/audition', generalAuditionUpload.single('video'), async (req, res) =>
     
   // Inline player toggle
   submissionData.disable_inline_player = process.env.DISABLE_INLINE_PLAYER === '1';
-  res.render('audition-success', submissionData);
+  return res.render('audition-success', submissionData);
   } catch (error) {
     console.error('Error uploading audition:', error);
     res.status(500).send(`<h2>Error uploading audition.</h2><pre>${error && error.message ? error.message : error}</pre><pre>${error && error.response && error.response.data ? JSON.stringify(error.response.data, null, 2) : ''}</pre>`);
@@ -935,6 +935,19 @@ app.get('/audition/:projectId', async (req, res) => {
     direct_upload_require_captcha: BUNNY_DIRECT_UPLOAD_REQUIRE_CAPTCHA,
     turnstile_site_key: BUNNY_TURNSTILE_SITE_KEY
   });
+});
+
+app.get('/audition/:projectId/success', async (req, res) => {
+  const successEnvelope = req.session ? req.session.lastAuditionSuccess : null;
+  if (!successEnvelope || String(successEnvelope.projectId) !== String(req.params.projectId)) {
+    return res.redirect(`/audition/${req.params.projectId}`);
+  }
+
+  const submissionData = successEnvelope.submissionData;
+  if (req.session) {
+    delete req.session.lastAuditionSuccess;
+  }
+  return res.render('audition-success', submissionData);
 });
 
 // Optional guard for /debug routes (active only if DEBUG_SECRET is set)
@@ -1794,7 +1807,21 @@ app.post('/audition/:projectId', auditionUpload.fields([
   const globalDisable = process.env.DISABLE_INLINE_PLAYER === '1';
   submissionData.disable_inline_player = !!globalDisable;
     
-    res.render('audition-success', submissionData);
+    if (req.session) {
+      req.session.lastAuditionSuccess = {
+        projectId: project.id,
+        submissionData,
+      };
+      return req.session.save((sessionErr) => {
+        if (sessionErr) {
+          console.warn('AUDITION_SUCCESS_SESSION_SAVE_WARN:', sessionErr.message);
+          return res.render('audition-success', submissionData);
+        }
+        return res.redirect(`/audition/${project.id}/success`);
+      });
+    }
+
+    return res.render('audition-success', submissionData);
     
   } catch (error) {
     // Enhanced error logging
