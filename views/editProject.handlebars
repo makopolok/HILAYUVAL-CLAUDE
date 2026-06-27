@@ -44,11 +44,11 @@
                         <div class="input-group input-group-sm" style="max-width: 260px;">
                           <span class="input-group-text bg-white"><i class="fas fa-pen text-primary"></i></span>
                           <input type="text" name="newName" class="form-control" placeholder="Rename role" aria-label="Rename role">
-                          <button class="btn btn-outline-primary" type="submit">Rename</button>
+                          <button class="btn btn-outline-primary" type="submit" title="Rename role" aria-label="Rename role"><i class="fas fa-check"></i></button>
                         </div>
                       </form>
                       <form method="POST" action="/projects/{{../project.id}}/roles/{{this.id}}/delete" onsubmit="return confirm('Move role &quot;{{this.name}}&quot; to Trash?');">
-                        <button class="btn btn-sm btn-outline-danger" type="submit"><i class="fas fa-trash-alt me-1"></i>Move to Trash</button>
+                        <button class="btn btn-sm btn-outline-danger" type="submit" title="Move to Trash" aria-label="Move to Trash"><i class="fas fa-trash-alt"></i></button>
                       </form>
                     </div>
                   </div>
