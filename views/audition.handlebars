@@ -10,7 +10,7 @@
     {{/if}}
   </h1>
   {{!-- Form action is dynamic: /audition/:projectId for project-specific, /audition for generic --}}
-  <form id="audition-form" action="{{#if project}}/audition/{{project.id}}{{else}}/audition{{/if}}" method="POST" enctype="multipart/form-data" class="needs-validation" novalidate data-upload-method="{{upload_method}}" data-bunny-library-id="{{bunny_stream_library_id}}" data-direct-captcha-required="{{direct_upload_require_captcha}}">
+  <form id="audition-form" action="{{#if project}}/audition/{{project.id}}{{else}}/audition{{/if}}" method="POST" enctype="multipart/form-data" class="needs-validation" novalidate data-upload-method="{{upload_method}}" data-bunny-library-id="{{bunny_stream_library_id}}" data-direct-captcha-required="{{direct_upload_require_captcha}}" onsubmit="if(((this.dataset.uploadMethod||'').toLowerCase())==='youtube' && this.checkValidity()){var sb=document.getElementById('submit-btn');var st=document.getElementById('submit-text');var ss=document.getElementById('submit-spinner');var ov=document.getElementById('loading-overlay');var opt=document.getElementById('overlay-upload-progress-text');var opb=document.getElementById('overlay-upload-progress-bar');if(sb)sb.disabled=true;if(st)st.classList.add('d-none');if(ss)ss.classList.remove('d-none');if(ov)ov.classList.remove('d-none');if(opt)opt.textContent='Uploading...';if(opb){opb.classList.add('progress-bar-animated');opb.style.width='100%';}}">
     <div class="row">
       <div class="col-md-6 mb-3">
         <label for="first_name_he" class="form-label">שם פרטי (First Name, Hebrew)</label>
