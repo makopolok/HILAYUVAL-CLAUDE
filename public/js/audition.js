@@ -13,6 +13,7 @@
   const IMAGE_TYPES = [
     'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg'
   ];
+  const ROMAN_NAME_REGEX = /^[A-Za-z][A-Za-z\s.'-]*$/;
 
   function formatFileSize(bytes) {
     if (bytes === 0) return '0 Bytes';
@@ -61,6 +62,20 @@
     }
 
     field.classList.remove('is-invalid');
+  }
+
+  function validateRomanNameField(fieldId, label) {
+    const field = document.getElementById(fieldId);
+    if (!field) return true;
+    const value = (field.value || '').trim();
+    if (!value) return true;
+    if (ROMAN_NAME_REGEX.test(value)) {
+      field.classList.remove('is-invalid');
+      return true;
+    }
+    field.classList.add('is-invalid');
+    showFileError(fieldId, `${label} must use Roman letters only.`);
+    return false;
   }
 
   function getVideoDuration(file) {
@@ -263,12 +278,24 @@
     if (!form) return;
 
     form.addEventListener('submit', function (event) {
+      clearFileError('first_name_en');
+      clearFileError('last_name_en');
+      const englishNamesValid =
+        validateRomanNameField('first_name_en', 'First name in English') &&
+        validateRomanNameField('last_name_en', 'Last name in English');
+
       if (requireProfilePicture && profileInput && (!profileInput.files || profileInput.files.length !== 1)) {
         event.preventDefault();
         event.stopImmediatePropagation();
         showFileError('profile_pictures', 'Please upload exactly one profile picture.');
         form.classList.add('was-validated');
         return;
+      }
+
+      if (!englishNamesValid) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        form.classList.add('was-validated');
       }
     });
 

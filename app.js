@@ -170,6 +170,10 @@ function isValidHttpUrl(value) {
   }
 }
 
+function isValidRomanName(value) {
+  return /^[A-Za-z][A-Za-z\s.'-]*$/.test(value);
+}
+
 function validateAuditionBody({ body, project, rules }) {
   const errors = [];
 
@@ -180,6 +184,12 @@ function validateAuditionBody({ body, project, rules }) {
 
   if (!body.first_name_en) errors.push('Please enter the first name in English.');
   if (!body.last_name_en) errors.push('Please enter the last name in English.');
+  if (body.first_name_en && !isValidRomanName(body.first_name_en)) {
+    errors.push('First name in English must use Roman letters only.');
+  }
+  if (body.last_name_en && !isValidRomanName(body.last_name_en)) {
+    errors.push('Last name in English must use Roman letters only.');
+  }
 
   if (!body.phone) {
     errors.push('Please enter a phone number.');
@@ -233,25 +243,27 @@ function validateAuditionBody({ body, project, rules }) {
   return errors;
 }
 
-function validateAuditionFiles({ rules, videoFile, profilePictureFiles, requireVideo }) {
+function validateAuditionFiles({ rules, videoFile, profilePictureFiles, requireVideo, validatePictures = true }) {
   const errors = [];
   const pictures = Array.isArray(profilePictureFiles) ? profilePictureFiles : [];
 
-  if (rules.requireProfilePicture && pictures.length !== 1) {
-    errors.push('Please upload exactly one profile picture.');
-  }
-  if (pictures.length > rules.maxProfilePictures) {
-    errors.push(`You can upload up to ${rules.maxProfilePictures} profile picture${rules.maxProfilePictures === 1 ? '' : 's'}.`);
-  }
+  if (validatePictures) {
+    if (rules.requireProfilePicture && pictures.length !== 1) {
+      errors.push('Please upload exactly one profile picture.');
+    }
+    if (pictures.length > rules.maxProfilePictures) {
+      errors.push(`You can upload up to ${rules.maxProfilePictures} profile picture${rules.maxProfilePictures === 1 ? '' : 's'}.`);
+    }
 
-  pictures.forEach((file) => {
-    if (!file.mimetype || !file.mimetype.startsWith('image/')) {
-      errors.push(`"${file.originalname}" is not a valid image file.`);
-    }
-    if (typeof file.size === 'number' && file.size > rules.maxProfilePictureBytes) {
-      errors.push(`"${file.originalname}" is too large. Profile pictures must be ${rules.maxProfilePictureSizeMb}MB or smaller.`);
-    }
-  });
+    pictures.forEach((file) => {
+      if (!file.mimetype || !file.mimetype.startsWith('image/')) {
+        errors.push(`"${file.originalname}" is not a valid image file.`);
+      }
+      if (typeof file.size === 'number' && file.size > rules.maxProfilePictureBytes) {
+        errors.push(`"${file.originalname}" is too large. Profile pictures must be ${rules.maxProfilePictureSizeMb}MB or smaller.`);
+      }
+    });
+  }
 
   if (requireVideo && !videoFile) {
     errors.push('Please upload a self-tape video.');
@@ -2194,6 +2206,7 @@ app.post('/upload-chunk/:uploadId/assemble', async (req, res) => {
         videoFile,
         profilePictureFiles: [],
         requireVideo: true,
+        validatePictures: false,
       });
       if (videoValidationErrors.length > 0) {
         throw new Error(videoValidationErrors[0]);

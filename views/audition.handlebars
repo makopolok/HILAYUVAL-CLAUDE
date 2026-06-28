@@ -28,13 +28,13 @@
     <div class="row">
       <div class="col-md-6 mb-3">
         <label for="first_name_en" class="form-label">First Name (English)</label>
-        <input type="text" class="form-control" id="first_name_en" name="first_name_en" required>
-        <div class="invalid-feedback">Please enter your first name in English.</div>
+        <input type="text" class="form-control" id="first_name_en" name="first_name_en" pattern="[A-Za-z][A-Za-z\s.'-]*" required>
+        <div class="invalid-feedback">Please enter your first name in English using Roman letters only.</div>
       </div>
       <div class="col-md-6 mb-3">
         <label for="last_name_en" class="form-label">Last Name (English)</label>
-        <input type="text" class="form-control" id="last_name_en" name="last_name_en" required>
-        <div class="invalid-feedback">Please enter your last name in English.</div>
+        <input type="text" class="form-control" id="last_name_en" name="last_name_en" pattern="[A-Za-z][A-Za-z\s.'-]*" required>
+        <div class="invalid-feedback">Please enter your last name in English using Roman letters only.</div>
       </div>
     </div>
     <div class="mb-3">
