@@ -266,33 +266,66 @@
             return;
           }
 
-          // Step 2: Upload video via tus in 5MB chunks (each chunk is a short request - no H28 timeout)
-          var upload = new tus.Upload(videoFile, {
-            endpoint: '/tus',
-            chunkSize: 5 * 1024 * 1024, // 5MB chunks
-            retryDelays: [0, 3000, 5000, 10000],
-            metadata: {
-              filename: videoFile.name,
-              filetype: videoFile.type,
-              submissionId: submissionId,
-              projectId: projectId,
-            },
-            onProgress: function(bytesUploaded, bytesTotal) {
-              var pct = Math.max(1, Math.min(98, Math.round((bytesUploaded / bytesTotal) * 100)));
-              setYoutubeUploadUi(uploadUi, pct, pct + '%');
-            },
-            onSuccess: function() {
-              // Video uploaded to server — now background job uploads to YouTube
-              setYoutubeUploadUi(uploadUi, 99, 'Processing on YouTube...');
-              pollUploadJob(submissionId, form.action, uploadUi, function() { youtubeSubmitInFlight = false; });
-            },
-            onError: function(err) {
-              console.error('Tus upload error:', err);
-              youtubeSubmitInFlight = false;
-              window.location.href = '/audition/' + projectId + '/error';
-            },
-          });
-          upload.start();
+          // Step 2: Upload video in 5MB binary chunks — each PUT is a separate short
+          // HTTP request so Heroku's 90s idle timeout can never trigger.
+          var CHUNK_SIZE = 5 * 1024 * 1024; // 5MB
+          var totalChunks = Math.ceil(videoFile.size / CHUNK_SIZE);
+          var currentChunk = 0;
+
+          function uploadNextChunk() {
+            var start = currentChunk * CHUNK_SIZE;
+            var end = Math.min(start + CHUNK_SIZE, videoFile.size);
+            var chunk = videoFile.slice(start, end);
+
+            fetch('/upload-chunk/' + submissionId + '/' + currentChunk, {
+              method: 'PUT',
+              body: chunk,
+              headers: { 'Content-Type': 'application/octet-stream' },
+            })
+              .then(function(r) {
+                if (!r.ok) throw new Error('Chunk ' + currentChunk + ' failed: HTTP ' + r.status);
+                return r.json();
+              })
+              .then(function() {
+                currentChunk++;
+                var pct = Math.max(1, Math.min(98, Math.round((currentChunk / totalChunks) * 100)));
+                setYoutubeUploadUi(uploadUi, pct, pct + '%');
+
+                if (currentChunk < totalChunks) {
+                  uploadNextChunk();
+                } else {
+                  // All chunks uploaded — tell server to assemble and start YouTube background job
+                  fetch('/upload-chunk/' + submissionId + '/assemble', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      submissionId: submissionId,
+                      totalChunks: totalChunks,
+                      filename: videoFile.name,
+                      mimetype: videoFile.type,
+                    }),
+                  })
+                    .then(function(r) { return r.json(); })
+                    .then(function(result) {
+                      if (!result.jobId) throw new Error('No jobId from assemble');
+                      setYoutubeUploadUi(uploadUi, 99, 'Processing on YouTube...');
+                      pollUploadJob(result.jobId, form.action, uploadUi, function() { youtubeSubmitInFlight = false; });
+                    })
+                    .catch(function(err) {
+                      console.error('Assemble error:', err);
+                      youtubeSubmitInFlight = false;
+                      window.location.href = '/audition/' + projectId + '/error';
+                    });
+                }
+              })
+              .catch(function(err) {
+                console.error('Chunk upload error:', err);
+                youtubeSubmitInFlight = false;
+                window.location.href = '/audition/' + projectId + '/error';
+              });
+          }
+
+          uploadNextChunk();
         })
         .catch(function(err) {
           console.error('Fields submit error:', err);

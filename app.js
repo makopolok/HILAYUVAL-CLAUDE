@@ -27,17 +27,14 @@ const flash = require('connect-flash');
 const adminRoutes = require('./routes/adminRoutes');
 const { attachAdminToLocals, requireAdmin } = require('./middleware/auth');
 const { closePool } = require('./utils/database');
-const { Server: TusServer } = require('@tus/server');
-const { FileStore } = require('@tus/file-store');
-
 // Add a version log at the top for deployment verification
-console.log('INFO: app.js version 2025-06-08_2100_DEBUG running');
+console.log('INFO: app.js version 2025-06-08_2200_MANUAL_CHUNKS running');
 
 // In-memory job store for background YouTube uploads
 // Keys are jobId strings, values: { status, videoId, videoUrl, error, auditionData }
 const uploadJobs = new Map();
 
-// Pending form submissions waiting for video upload (tus protocol)
+// Pending form submissions waiting for video upload (chunk protocol)
 // Keys are submissionId, values: { projectId, body, profilePictures, expiry }
 const pendingSubmissions = new Map();
 
@@ -156,11 +153,6 @@ app.use((req, res, next) => {
   res.setTimeout(60 * 60 * 1000); // 1 hour
   next();
 });
-
-// Tus upload server must be mounted BEFORE any body-parsing middleware
-// because body-parsers consume the request stream, making it unreadable by tus
-app.all('/tus', (req, res) => tusServer.handle(req, res));
-app.all('/tus/*', (req, res) => tusServer.handle(req, res));
 
 // Middleware - Configure for large file uploads
 app.use(express.json({ 
@@ -1877,8 +1869,8 @@ app.get('/upload-status/:jobId', (req, res) => {
   res.json(job);
 });
 
-// Step 1: Receive form fields before the tus video upload
-// Returns a submissionId that the browser passes as tus metadata
+// Step 1: Receive form fields before the video upload
+// Returns a submissionId that the browser passes during chunk assembly
 app.post('/audition/:projectId/fields', auditionUpload.fields([
   { name: 'profile_pictures', maxCount: 10 }
 ]), async (req, res) => {
@@ -1914,95 +1906,130 @@ app.post('/audition/:projectId/fields', auditionUpload.fields([
   }
 });
 
-// Tus upload server — receives video in 5MB chunks, each chunk is a short request
-// This prevents Heroku H28 idle timeout for large files (>42MB)
-const TUS_UPLOAD_DIR = path.join('/tmp', 'tus-uploads');
-if (!fs.existsSync(TUS_UPLOAD_DIR)) fs.mkdirSync(TUS_UPLOAD_DIR, { recursive: true });
+// Step 2: Receive video in 5MB binary chunks — each PUT is a short HTTP request
+// so Heroku H28 idle timeout (90s) can never trigger regardless of file size.
+const CHUNK_UPLOAD_DIR = path.join('/tmp', 'chunk-uploads');
+if (!fs.existsSync(CHUNK_UPLOAD_DIR)) fs.mkdirSync(CHUNK_UPLOAD_DIR, { recursive: true });
 
-const tusServer = new TusServer({
-  path: '/tus',
-  datastore: new FileStore({ directory: TUS_UPLOAD_DIR }),
-  onUploadFinish: async (req, res, upload) => {
-    const meta = upload.metadata || {};
-    const submissionId = meta.submissionId;
-    const projectId = meta.projectId;
-    const submission = submissionId && pendingSubmissions.get(submissionId);
+app.put('/upload-chunk/:uploadId/:chunkIndex',
+  express.raw({ type: '*/*', limit: '10mb' }),
+  (req, res) => {
+    const { uploadId, chunkIndex } = req.params;
+    if (!/^[a-f0-9]{32}$/.test(uploadId)) return res.status(400).json({ error: 'Invalid uploadId' });
+    const idx = parseInt(chunkIndex, 10);
+    if (isNaN(idx) || idx < 0) return res.status(400).json({ error: 'Invalid chunkIndex' });
 
-    if (!submission) {
-      console.error(`[tus] onUploadFinish: no pending submission for id=${submissionId}`);
-      return res;
-    }
+    const uploadDir = path.join(CHUNK_UPLOAD_DIR, uploadId);
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
-    pendingSubmissions.delete(submissionId);
+    const chunkPath = path.join(uploadDir, `chunk-${String(idx).padStart(5, '0')}`);
+    fs.writeFileSync(chunkPath, req.body);
+    console.log(`[chunk] PUT uploadId=${uploadId} chunkIndex=${idx} size=${req.body.length}`);
+    res.json({ ok: true, chunkIndex: idx });
+  }
+);
 
-    const jobId = crypto.randomBytes(16).toString('hex');
-    uploadJobs.set(jobId, { status: 'processing', jobId });
-    // Also index by submissionId so client can find it
-    uploadJobs.set(`sub:${submissionId}`, jobId);
+// Step 3: All chunks received — assemble file, start background YouTube job
+app.post('/upload-chunk/:uploadId/assemble', async (req, res) => {
+  const { uploadId } = req.params;
+  const { submissionId, totalChunks, filename, mimetype } = req.body;
 
-    const videoFilePath = path.join(TUS_UPLOAD_DIR, upload.id);
-    const videoFile = {
-      path: videoFilePath,
-      originalname: meta.filename || 'video.mp4',
-      mimetype: meta.filetype || 'video/mp4',
-    };
+  if (!/^[a-f0-9]{32}$/.test(uploadId)) return res.status(400).json({ error: 'Invalid uploadId' });
 
-    // Fire background YouTube upload
-    (async () => {
-      try {
-        const project = await projectService.getProjectById(submission.projectId);
-        const selectedRole = project.roles.find(r => r.name === submission.body.role);
-        if (!selectedRole) throw new Error(`Role not found: ${submission.body.role}`);
+  const submission = pendingSubmissions.get(submissionId);
+  if (!submission) {
+    console.error(`[chunk] assemble: no pending submission for submissionId=${submissionId}`);
+    return res.status(404).json({ error: 'Submission not found or expired' });
+  }
+  pendingSubmissions.delete(submissionId);
 
-        oauth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
-        const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
-        const playlistId = await ensureRolePlaylist(youtube, project, selectedRole);
+  const jobId = crypto.randomBytes(16).toString('hex');
+  uploadJobs.set(jobId, { status: 'processing', jobId });
+  uploadJobs.set(`sub:${submissionId}`, jobId);
 
-        const body = submission.body;
-        const videoTitle = `Audition: ${body.first_name_en || body.first_name_he} ${body.last_name_en || body.last_name_he} for ${selectedRole.name} in ${project.name}`;
-        const videoDescription = `Audition by ${body.first_name_en || body.first_name_he} ${body.last_name_en || body.last_name_he} for ${selectedRole.name} in ${project.name}. Project ID: ${project.id}. Submitted: ${new Date().toISOString()}`;
-        const videoMetadata = {
-          snippet: { title: videoTitle, description: videoDescription },
-          status: { privacyStatus: 'unlisted' },
-        };
+  console.log(`[chunk] assemble START: uploadId=${uploadId} totalChunks=${totalChunks} jobId=${jobId}`);
 
-        const youtubeResponse = await uploadToYouTubeResumable(youtube, videoFile, videoMetadata);
-        if (fs.existsSync(videoFilePath)) fs.unlinkSync(videoFilePath);
+  // Respond immediately — background job assembles file and uploads to YouTube
+  res.json({ jobId });
 
-        const youtubeVideoId = youtubeResponse.data.id;
-        const ytUrl = `https://www.youtube.com/watch?v=${youtubeVideoId}`;
-        console.log(`[tus] BACKGROUND_YOUTUBE_SUCCESS: jobId=${jobId} videoId=${youtubeVideoId}`);
+  (async () => {
+    let assembledPath = null;
+    try {
+      const uploadDir = path.join(CHUNK_UPLOAD_DIR, uploadId);
+      assembledPath = path.join(CHUNK_UPLOAD_DIR, `${uploadId}-assembled`);
 
-        try { await addVideoToYouTubePlaylist(youtube, youtubeVideoId, playlistId); }
-        catch (pe) { console.warn(`[tus] playlist add warn: ${pe.message}`); }
-
-        const auditionObj = {
-          project_id: project.id,
-          role_id: selectedRole.id,
-          role: selectedRole.name,
-          first_name_he: body.first_name_he, last_name_he: body.last_name_he,
-          first_name_en: body.first_name_en, last_name_en: body.last_name_en,
-          phone: body.phone, email: body.email, agency: body.agency,
-          age: body.age, height: body.height,
-          profile_pictures: submission.profilePictures,
-          showreel_url: body.showreel_url,
-          video_url: ytUrl, video_type: 'youtube',
-        };
-        await auditionService.insertAudition(auditionObj);
-        console.log(`[tus] AUDITION_SAVED: jobId=${jobId}`);
-
-        uploadJobs.set(jobId, { status: 'done', videoId: youtubeVideoId, videoUrl: ytUrl });
-        setTimeout(() => uploadJobs.delete(jobId), 3600000);
-      } catch (err) {
-        console.error(`[tus] BACKGROUND_ERROR: jobId=${jobId} err=${err.message}`);
-        if (fs.existsSync(videoFilePath)) try { fs.unlinkSync(videoFilePath); } catch(e) {}
-        uploadJobs.set(jobId, { status: 'error', error: err.message });
-        setTimeout(() => uploadJobs.delete(jobId), 3600000);
+      const writeStream = fs.createWriteStream(assembledPath);
+      for (let i = 0; i < parseInt(totalChunks, 10); i++) {
+        const chunkPath = path.join(uploadDir, `chunk-${String(i).padStart(5, '0')}`);
+        if (!fs.existsSync(chunkPath)) throw new Error(`Missing chunk ${i}`);
+        const chunkData = fs.readFileSync(chunkPath);
+        writeStream.write(chunkData);
+        fs.unlinkSync(chunkPath);
       }
-    })();
+      writeStream.end();
+      await new Promise((resolve, reject) => {
+        writeStream.on('finish', resolve);
+        writeStream.on('error', reject);
+      });
+      try { fs.rmdirSync(path.join(CHUNK_UPLOAD_DIR, uploadId)); } catch (e) {}
+      console.log(`[chunk] assembled: ${assembledPath}`);
 
-    return res;
-  },
+      const videoFile = {
+        path: assembledPath,
+        originalname: filename || 'video.mp4',
+        mimetype: mimetype || 'video/mp4',
+      };
+
+      const project = await projectService.getProjectById(submission.projectId);
+      const selectedRole = project.roles.find(r => r.name === submission.body.role);
+      if (!selectedRole) throw new Error(`Role not found: ${submission.body.role}`);
+
+      oauth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
+      const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
+      const playlistId = await ensureRolePlaylist(youtube, project, selectedRole);
+
+      const body = submission.body;
+      const videoTitle = `Audition: ${body.first_name_en || body.first_name_he} ${body.last_name_en || body.last_name_he} for ${selectedRole.name} in ${project.name}`;
+      const videoDescription = `Audition by ${body.first_name_en || body.first_name_he} ${body.last_name_en || body.last_name_he} for ${selectedRole.name} in ${project.name}. Project ID: ${project.id}. Submitted: ${new Date().toISOString()}`;
+      const videoMetadata = {
+        snippet: { title: videoTitle, description: videoDescription },
+        status: { privacyStatus: 'unlisted' },
+      };
+
+      const youtubeResponse = await uploadToYouTubeResumable(youtube, videoFile, videoMetadata);
+      if (fs.existsSync(assembledPath)) fs.unlinkSync(assembledPath);
+
+      const youtubeVideoId = youtubeResponse.data.id;
+      const ytUrl = `https://www.youtube.com/watch?v=${youtubeVideoId}`;
+      console.log(`[chunk] YOUTUBE_SUCCESS: jobId=${jobId} videoId=${youtubeVideoId}`);
+
+      try { await addVideoToYouTubePlaylist(youtube, youtubeVideoId, playlistId); }
+      catch (pe) { console.warn(`[chunk] playlist warn: ${pe.message}`); }
+
+      const auditionObj = {
+        project_id: project.id,
+        role_id: selectedRole.id,
+        role: selectedRole.name,
+        first_name_he: body.first_name_he, last_name_he: body.last_name_he,
+        first_name_en: body.first_name_en, last_name_en: body.last_name_en,
+        phone: body.phone, email: body.email, agency: body.agency,
+        age: body.age, height: body.height,
+        profile_pictures: submission.profilePictures,
+        showreel_url: body.showreel_url,
+        video_url: ytUrl, video_type: 'youtube',
+      };
+      await auditionService.insertAudition(auditionObj);
+      console.log(`[chunk] AUDITION_SAVED: jobId=${jobId}`);
+
+      uploadJobs.set(jobId, { status: 'done', videoId: youtubeVideoId, videoUrl: ytUrl });
+      setTimeout(() => uploadJobs.delete(jobId), 3600000);
+    } catch (err) {
+      console.error(`[chunk] BACKGROUND_ERROR: jobId=${jobId} err=${err.message}`);
+      if (assembledPath && fs.existsSync(assembledPath)) try { fs.unlinkSync(assembledPath); } catch (e) {}
+      uploadJobs.set(jobId, { status: 'error', error: err.message });
+      setTimeout(() => uploadJobs.delete(jobId), 3600000);
+    }
+  })();
 });
 
 // Updated POST route to handle project-specific audition form submission and upload
