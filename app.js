@@ -297,6 +297,61 @@ async function addVideoToYouTubePlaylist(youtube, videoId, playlistId) {
   console.log(`YOUTUBE_PLAYLIST_ITEM_ADDED: videoId=${videoId} playlistId=${playlistId}`);
 }
 
+// Resumable upload helper for large files (>50MB)
+async function uploadToYouTubeResumable(youtube, videoFile, videoMetadata, maxRetries = 3) {
+  const MAX_RETRIES = maxRetries;
+  let lastError;
+  
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const fileSize = fs.statSync(videoFile.path).size;
+      console.log(`[YouTube Upload] Attempt ${attempt + 1}/${MAX_RETRIES + 1}: ${videoFile.originalname} (${fileSize} bytes)`);
+      
+      const response = await youtube.videos.insert(
+        {
+          part: ['snippet', 'status'],
+          requestBody: videoMetadata,
+          media: {
+            body: fs.createReadStream(videoFile.path),
+          },
+        },
+        {
+          // Use resumable protocol for uploads >50MB
+          resumable: fileSize > 50 * 1024 * 1024,
+          // Longer timeout for large files: 5 minutes
+          timeout: Math.max(300000, (fileSize / (1024 * 1024)) * 30000),
+          // Enable automatic retry
+          retryStrategy: require('google-auth-library').createRetryStrategy(),
+        }
+      );
+      
+      console.log(`[YouTube Upload] Success: ${videoFile.originalname} -> ${response.data.id}`);
+      return response;
+    } catch (error) {
+      lastError = error;
+      const isRetryable = 
+        error.code === 'ECONNRESET' ||
+        error.code === 'ETIMEDOUT' ||
+        error.code === 'ENOTFOUND' ||
+        (error.status && error.status >= 500) ||
+        error.message.includes('timeout');
+      
+      if (isRetryable && attempt < MAX_RETRIES) {
+        const waitTime = Math.pow(2, attempt) * 1000; // Exponential backoff: 1s, 2s, 4s
+        console.warn(`[YouTube Upload] Retryable error (attempt ${attempt + 1}): ${error.message}. Retrying in ${waitTime}ms...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        continue;
+      }
+      
+      console.error(`[YouTube Upload] Non-retryable error or max retries exceeded: ${error.message}`);
+      throw error;
+    }
+  }
+  
+  throw lastError || new Error('Unknown error uploading to YouTube');
+}
+
+
 // --- Bunny collection helpers ---
 
 // A valid Bunny collection GUID is a UUID (8-4-4-4-12 hex)
@@ -584,22 +639,18 @@ app.post('/audition', generalAuditionUpload.single('video'), async (req, res) =>
     oauth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
     const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
 
-    // Upload video to YouTube
-    const response = await youtube.videos.insert({
-      part: ['snippet', 'status'],
-      requestBody: {
-        snippet: {
-          title: `Audition: ${name}${role ? ' for ' + role : ''}`,
-          description: `Audition submitted by ${name} (${email})${role ? ' for role: ' + role : ''}.`,
-        },
-        status: {
-          privacyStatus: 'unlisted', // Not public, but accessible via link
-        },
+    // Upload video to YouTube with resumable upload support
+    const videoMetadata = {
+      snippet: {
+        title: `Audition: ${name}${role ? ' for ' + role : ''}`,
+        description: `Audition submitted by ${name} (${email})${role ? ' for role: ' + role : ''}.`,
       },
-      media: {
-        body: fs.createReadStream(videoFile.path),
+      status: {
+        privacyStatus: 'unlisted', // Not public, but accessible via link
       },
-    });
+    };
+    
+    const response = await uploadToYouTubeResumable(youtube, videoFile, videoMetadata);
 
     // Clean up uploaded file
     fs.unlinkSync(videoFile.path);
@@ -1641,21 +1692,17 @@ app.post('/audition/:projectId', auditionUpload.fields([
         const videoDescription = `Audition by ${body.first_name_en || body.first_name_he} ${body.last_name_en || body.last_name_he} for ${selectedRole.name} in ${project.name}. Project ID: ${project.id}. Submitted: ${new Date().toISOString()}`;
 
         try {
-          const youtubeResponse = await youtube.videos.insert({
-            part: ['snippet', 'status'],
-            requestBody: {
-              snippet: {
-                title: videoTitle,
-                description: videoDescription,
-              },
-              status: {
-                privacyStatus: 'unlisted',
-              },
+          const videoMetadata = {
+            snippet: {
+              title: videoTitle,
+              description: videoDescription,
             },
-            media: {
-              body: fs.createReadStream(videoFile.path),
+            status: {
+              privacyStatus: 'unlisted',
             },
-          });
+          };
+          
+          const youtubeResponse = await uploadToYouTubeResumable(youtube, videoFile, videoMetadata);
 
           if (fs.existsSync(videoFile.path)) {
             fs.unlinkSync(videoFile.path);
@@ -1911,21 +1958,23 @@ app.post('/projects/:projectId/auditions/:auditionId/upload-to-youtube', require
       audition.phone ? `Phone: ${audition.phone}` : null,
     ].filter(Boolean).join('\n');
 
-    const uploadResponse = await youtube.videos.insert({
-      part: ['snippet', 'status'],
-      requestBody: {
-        snippet: {
-          title,
-          description,
-        },
-        status: {
-          privacyStatus: 'unlisted',
-        },
+    const videoMetadata = {
+      snippet: {
+        title,
+        description,
       },
-      media: {
-        body: fs.createReadStream(tempDownloadPath),
+      status: {
+        privacyStatus: 'unlisted',
       },
-    });
+    };
+    
+    // Create a mock file object for uploadToYouTubeResumable
+    const mockFile = {
+      path: tempDownloadPath,
+      originalname: `${performerName}-audition.mp4`,
+    };
+    
+    const uploadResponse = await uploadToYouTubeResumable(youtube, mockFile, videoMetadata);
 
     const youtubeVideoId = uploadResponse?.data?.id;
     if (!youtubeVideoId) {
