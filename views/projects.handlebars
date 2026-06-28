@@ -68,7 +68,7 @@
       </thead>
       <tbody>
         {{#each projects}}
-        <tr class="project-tag-row{{#if this.tag_color}} tag-color-{{this.tag_color}}{{/if}}" data-project-id="{{this.id}}" data-tag-color="{{this.tag_color}}" data-tag-color-bg="{{this.tag_color_bg}}" data-tag-color-hover="{{this.tag_color_hover}}"{{#if this.tag_color_bg}} style="border-left: 5px solid {{this.tag_color_bg}}; padding-left: 10px;"{{/if}}>
+        <tr class="project-tag-row{{#if this.tag_color}} tag-color-{{this.tag_color}}{{/if}}" data-project-id="{{this.id}}" data-tag-color="{{this.tag_color}}">
           <td>{{this.name}}</td>
           <td>{{this.description}}</td>
           <td>{{this.createdAt}}</td>
@@ -126,25 +126,32 @@
 </div>
 
 <script>
-function setProjectRowColor(row, bgColor, hoverColor) {
- const normalizedBg = bgColor || '';
- row.dataset.tagColorBg = normalizedBg;
- row.dataset.tagColorHover = hoverColor || normalizedBg;
- if (normalizedBg) {
-   row.style.borderLeft = `5px solid ${normalizedBg}`;
-   row.style.paddingLeft = '10px';
- } else {
-   row.style.borderLeft = '';
-   row.style.paddingLeft = '';
- }
-}
-
 document.addEventListener('DOMContentLoaded', function () {
+  const TAG_COLOR_MAP = {
+    gray: '#6c757d',
+    red: '#e03131',
+    orange: '#f08c00',
+    yellow: '#f59f00',
+    green: '#2f9e44',
+    blue: '#1c7ed6',
+    purple: '#9c36b5'
+  };
+
+  function applyColorStripe(row, colorName) {
+    if (!colorName || !TAG_COLOR_MAP[colorName]) {
+      row.style.backgroundImage = '';
+      return;
+    }
+    const colorHex = TAG_COLOR_MAP[colorName];
+    row.style.backgroundImage = `linear-gradient(90deg, ${colorHex} 0%, ${colorHex} 6px, transparent 6px)`;
+    row.style.backgroundRepeat = 'repeat-y';
+    row.style.backgroundAttachment = 'local';
+  }
+
   document.querySelectorAll('.project-tag-row').forEach(function (row) {
-    const bg = row.dataset.tagColorBg;
-    const hover = row.dataset.tagColorHover || bg;
-    if (bg) {
-      setProjectRowColor(row, bg, hover);
+    const colorName = row.dataset.tagColor;
+    if (colorName) {
+      applyColorStripe(row, colorName);
     }
   });
 
@@ -181,9 +188,7 @@ document.addEventListener('DOMContentLoaded', function () {
       const payload = await res.json().catch(function () { return {}; });
       if (!res.ok || !payload.ok) throw new Error(payload.error || 'Failed');
       row.dataset.tagColor = payload.tagColor || '';
-      row.dataset.tagColorBg = payload.tagColorBg || '';
-      row.dataset.tagColorHover = payload.tagColorHover || '';
-      setProjectRowColor(row, payload.tagColorBg || '', payload.tagColorHover || '');
+      applyColorStripe(row, payload.tagColor || '');
     } catch (err) {
       console.error('[TAG_COLOR]', err);
       alert('Could not save color. Please try again.');
@@ -237,7 +242,6 @@ document.addEventListener('DOMContentLoaded', function () {
 .tag-blue   { background: #1c7ed6; }
 .tag-purple { background: #9c36b5; }
 .project-tag-row {
-  border-left: 5px solid transparent;
-  transition: border-left-color 0.2s ease;
+  background-size: 6px 100%;
 }
 </style>
