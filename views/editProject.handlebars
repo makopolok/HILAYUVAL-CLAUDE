@@ -12,9 +12,11 @@
   {{/if}}
   <div class="mb-4">
     <form method="POST" action="/projects/{{project.id}}/update-description">
+      <label for="projectName" class="form-label fw-semibold small text-secondary text-uppercase">Project Name</label>
+      <input class="form-control mb-3" id="projectName" name="name" value="{{project.name}}" required maxlength="150" placeholder="Project name">
       <label for="projectDescription" class="form-label fw-semibold small text-secondary text-uppercase">Description / Synopsis</label>
       <textarea class="form-control mb-2" id="projectDescription" name="description" rows="4" placeholder="Add a project description or synopsis…">{{project.description}}</textarea>
-      <button type="submit" class="btn btn-sm btn-danger">Save Description</button>
+      <button type="submit" class="btn btn-sm btn-danger">Save Project Details</button>
     </form>
   </div>
 
@@ -171,4 +173,3 @@
     });
   });
 </script>
-

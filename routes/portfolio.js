@@ -211,17 +211,22 @@ router.get('/projects/:projectId/edit', async (req, res) => {
     }
 });
 
-// Update project description
+// Update project details
 router.post('/projects/:projectId/update-description', async (req, res) => {
     try {
         const { projectId } = req.params;
+        const name = (req.body.name || '').toString().trim();
         const description = (req.body.description || '').toString().trim();
-        await projectService.updateProject(projectId, { description });
-        req.flash('success', 'Description updated');
+        if (!name) {
+            req.flash('error', 'Project name is required');
+            return res.redirect(`/projects/${projectId}/edit`);
+        }
+        await projectService.updateProject(projectId, { name, description });
+        req.flash('success', 'Project details updated');
         return res.redirect(`/projects/${projectId}/edit`);
     } catch (err) {
-        console.error('PROJECT_UPDATE_DESCRIPTION_ERROR:', err);
-        req.flash('error', 'Failed to update description');
+        console.error('PROJECT_UPDATE_DETAILS_ERROR:', err);
+        req.flash('error', 'Failed to update project details');
         res.redirect(`/projects/${req.params.projectId}/edit`);
     }
 });

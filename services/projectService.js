@@ -118,11 +118,11 @@ async function addRoleToProject(projectId, role) {
   );
 }
 
-async function updateProject(projectId, { description }) {
+async function updateProject(projectId, { name, description }) {
   return withClient(async (client) => {
     await client.query(
-      'UPDATE projects SET description = $1 WHERE id = $2',
-      [description, projectId]
+      'UPDATE projects SET name = $1, description = $2 WHERE id = $3',
+      [name, description, projectId]
     );
   });
 }
