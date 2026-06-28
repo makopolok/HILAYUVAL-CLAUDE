@@ -267,6 +267,25 @@
             window.location.assign(getAuditionSuccessUrl(form.action));
             return;
           }
+          // On error, check if response is HTML (error page) or JSON
+          if (xhr.status >= 400) {
+            console.error('Upload error - Status:', xhr.status);
+            console.error('Response:', xhr.responseText?.substring(0, 500));
+            
+            // If response is HTML (error page), write it to the document
+            if (xhr.responseText && (xhr.responseText.includes('<!DOCTYPE') || xhr.responseText.includes('<html'))) {
+              // Server sent an error page - display it
+              document.open();
+              document.write(xhr.responseText);
+              document.close();
+              return;
+            }
+            
+            // Otherwise, redirect to error page
+            const projectId = form.action.split('/').filter(Boolean).pop();
+            window.location.href = `/audition/${projectId || ''}/error`;
+            return;
+          }
           resetYoutubeUploadUi(uploadUi);
         };
         xhr.send(formData);

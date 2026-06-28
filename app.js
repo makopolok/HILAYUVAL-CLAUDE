@@ -1036,6 +1036,16 @@ app.get('/audition/:projectId/success', async (req, res) => {
   return res.render('audition-success', submissionData);
 });
 
+// Error page for audition uploads
+app.get('/audition/:projectId/error', (req, res) => {
+  const errorDetails = 'There was an error uploading your audition. Please try again later.';
+  const timestamp = new Date().toISOString();
+  res.status(500).render('audition-upload-error', {
+    errorDetails,
+    timestamp
+  });
+});
+
 // Optional guard for /debug routes (active only if DEBUG_SECRET is set)
 // Usage: append ?key=YOUR_SECRET or send header x-debug-secret: YOUR_SECRET
 const debugGuard = (req, res, next) => {
