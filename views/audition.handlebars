@@ -10,7 +10,7 @@
     {{/if}}
   </h1>
   {{!-- Form action is dynamic: /audition/:projectId for project-specific, /audition for generic --}}
-  <form id="audition-form" action="{{#if project}}/audition/{{project.id}}{{else}}/audition{{/if}}" method="POST" enctype="multipart/form-data" class="needs-validation" novalidate data-upload-method="{{upload_method}}" data-bunny-library-id="{{bunny_stream_library_id}}" data-direct-captcha-required="{{direct_upload_require_captcha}}" onsubmit="if(((this.dataset.uploadMethod||'').toLowerCase())==='youtube' && this.checkValidity()){var sb=document.getElementById('submit-btn');var st=document.getElementById('submit-text');var ss=document.getElementById('submit-spinner');var ov=document.getElementById('loading-overlay');var opt=document.getElementById('overlay-upload-progress-text');var opb=document.getElementById('overlay-upload-progress-bar');if(sb)sb.disabled=true;if(st)st.classList.add('d-none');if(ss)ss.classList.remove('d-none');if(ov)ov.classList.remove('d-none');if(opt)opt.textContent='Uploading...';if(opb){opb.classList.add('progress-bar-animated');opb.style.width='100%';}}">
+  <form id="audition-form" action="{{#if project}}/audition/{{project.id}}{{else}}/audition{{/if}}" method="POST" enctype="multipart/form-data" class="needs-validation" novalidate data-upload-method="{{upload_method}}" data-bunny-library-id="{{bunny_stream_library_id}}" data-direct-captcha-required="{{direct_upload_require_captcha}}" onsubmit="if(((this.dataset.uploadMethod||'').toLowerCase())==='youtube' && this.checkValidity()){var sb=document.getElementById('submit-btn');var st=document.getElementById('submit-text');var ss=document.getElementById('submit-spinner');var ov=document.getElementById('loading-overlay');var opt=document.getElementById('overlay-upload-progress-text');var opb=document.getElementById('overlay-upload-progress-bar');if(sb)sb.disabled=true;if(st)st.classList.add('d-none');if(ss)ss.classList.remove('d-none');if(ov)ov.classList.remove('d-none');if(opt)opt.textContent='Starting upload...';if(opb){opb.classList.add('progress-bar-animated');opb.style.width='0%';}}">
     <div class="row">
       <div class="col-md-6 mb-3">
         <label for="first_name_he" class="form-label">שם פרטי (First Name, Hebrew)</label>
@@ -88,9 +88,9 @@
     </div>    {{#if project}}
       {{#if (eq project.upload_method "youtube")}}
         <div class="mb-3">
-          <label for="video" class="form-label">Self-Tape Video <span class="text-danger">(required)</span> (YouTube Upload)</label>
+          <label for="video" class="form-label">Self-Tape Video <span class="text-danger">(required)</span></label>
           <input type="file" class="form-control" id="video" name="video" accept="video/*" required>
-          <div class="invalid-feedback">Please upload a video file for YouTube projects.</div>
+          <div class="invalid-feedback">Please upload a video file.</div>
           <div class="form-text text-muted">
             <i class="fas fa-info-circle me-1"></i>
             Hard cap 400MB (please keep under 250MB; ≈7 minutes at 1080p). Supported: MP4, MOV, MKV, WebM
@@ -273,20 +273,20 @@
           <div class="card-body p-3">
             <h6 class="text-white mb-3">
               <i class="fas fa-shield-alt me-2" style="color: var(--primary-red);"></i>
-              Secure Bunny.net Upload
+              Secure Video Upload
             </h6>
             <div class="text-start">
               <div class="d-flex justify-content-between mb-2">
                 <span class="small text-muted">Upload Method:</span>
-                <span class="small text-white">Private & Secure (Bunny.net)</span>
+                <span class="small text-white">Private & Secure</span>
               </div>
               <div class="d-flex justify-content-between mb-2">
                 <span class="small text-muted">Processing:</span>
-                <span class="small text-white">Real-time</span>
+                <span class="small text-white">Uploading now</span>
               </div>
               <div class="d-flex justify-content-between">
                 <span class="small text-muted">Accessibility:</span>
-                <span class="small text-white">Casting Directors Only</span>
+                <span class="small text-white">Private review only</span>
               </div>
             </div>
           </div>
@@ -512,7 +512,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const method = (form.getAttribute('data-upload-method') || '').toLowerCase();
     if (method === 'youtube') {
       let youtubeSubmitInFlight = false;
-      form.addEventListener('submit', function(event) {
+      form.addEventListener('submit', async function(event) {
         if (youtubeSubmitInFlight) {
           event.preventDefault();
           return;
@@ -525,6 +525,7 @@ document.addEventListener('DOMContentLoaded', function() {
           return;
         }
 
+        event.preventDefault();
         youtubeSubmitInFlight = true;
 
         const submitBtn = document.getElementById('submit-btn');
@@ -535,18 +536,69 @@ document.addEventListener('DOMContentLoaded', function() {
         const overlayProgressText = document.getElementById('overlay-upload-progress-text');
         const overlayProgressBar = document.getElementById('overlay-upload-progress-bar');
 
-        if (submitBtn) submitBtn.disabled = true;
-        if (submitText) submitText.classList.add('d-none');
-        if (submitSpinner) submitSpinner.classList.remove('d-none');
+        const setUi = (pct, text) => {
+          if (submitBtn) submitBtn.disabled = true;
+          if (submitText) submitText.classList.add('d-none');
+          if (submitSpinner) submitSpinner.classList.remove('d-none');
+          if (overlay) overlay.classList.remove('d-none');
+          if (overlayTitle) {
+            overlayTitle.innerHTML = '<i class="fas fa-cloud-upload-alt me-2"></i>Uploading...';
+          }
+          if (overlayProgressText) overlayProgressText.textContent = text || `${pct || 0}%`;
+          if (overlayProgressBar && typeof pct === 'number') {
+            overlayProgressBar.style.width = `${pct}%`;
+          }
+        };
 
-        if (overlay) overlay.classList.remove('d-none');
-        if (overlayTitle) {
-          overlayTitle.innerHTML = '<i class="fas fa-cloud-upload-alt me-2"></i>Uploading to YouTube...';
-        }
-        if (overlayProgressText) overlayProgressText.textContent = 'Uploading...';
-        if (overlayProgressBar) {
-          overlayProgressBar.classList.add('progress-bar-animated');
-          overlayProgressBar.style.width = '100%';
+        const updatePct = (pct) => {
+          setUi(pct, `${pct}%`);
+        };
+
+        setUi(0, '0%');
+
+        try {
+          const formData = new FormData(form);
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', form.action, true);
+          xhr.withCredentials = true;
+          xhr.responseType = 'text';
+          xhr.upload.onprogress = (e) => {
+            if (!e.lengthComputable) return;
+            const pct = Math.max(1, Math.min(99, Math.round((e.loaded / e.total) * 100)));
+            updatePct(pct);
+          };
+          xhr.onerror = () => {
+            youtubeSubmitInFlight = false;
+            if (submitBtn) submitBtn.disabled = false;
+            if (submitText) submitText.classList.remove('d-none');
+            if (submitSpinner) submitSpinner.classList.add('d-none');
+            if (overlay) overlay.classList.add('d-none');
+            if (overlayProgressText) overlayProgressText.textContent = '0%';
+            if (overlayProgressBar) overlayProgressBar.style.width = '0%';
+          };
+          xhr.onload = () => {
+            youtubeSubmitInFlight = false;
+            if (xhr.status >= 200 && xhr.status < 400) {
+              window.location.assign(xhr.responseURL || form.action.replace(/\/audition\/(\d+)$/, '/audition/$1/success'));
+              return;
+            }
+            if (submitBtn) submitBtn.disabled = false;
+            if (submitText) submitText.classList.remove('d-none');
+            if (submitSpinner) submitSpinner.classList.add('d-none');
+            if (overlay) overlay.classList.add('d-none');
+            if (overlayProgressText) overlayProgressText.textContent = '0%';
+            if (overlayProgressBar) overlayProgressBar.style.width = '0%';
+          };
+          xhr.send(formData);
+        } catch (err) {
+          youtubeSubmitInFlight = false;
+          if (submitBtn) submitBtn.disabled = false;
+          if (submitText) submitText.classList.remove('d-none');
+          if (submitSpinner) submitSpinner.classList.add('d-none');
+          if (overlay) overlay.classList.add('d-none');
+          if (overlayProgressText) overlayProgressText.textContent = '0%';
+          if (overlayProgressBar) overlayProgressBar.style.width = '0%';
+          throw err;
         }
       });
     }

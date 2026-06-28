@@ -249,20 +249,9 @@
             </script>
             {{/if}}
           {{else if (eq video_type "youtube")}}
-            <div class="ratio ratio-16x9 mb-3">
-              <iframe 
-                src="https://www.youtube.com/embed/{{video_url}}?autoplay=0" 
-                frameborder="0" 
-                allowfullscreen
-                allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                class="rounded w-100 h-100">
-              </iframe>
-            </div>
-            <div class="d-flex align-items-center">
-              <i class="fab fa-youtube text-danger me-2"></i>
-              <a href="{{video_url}}" target="_blank" class="btn btn-outline-danger btn-sm">
-                View on YouTube
-              </a>
+            <div class="alert alert-success mb-0">
+              <h6 class="mb-2"><i class="fas fa-check-circle me-2"></i>Video Uploaded Successfully</h6>
+              <p class="mb-0">Your video was uploaded successfully and your audition has been submitted.</p>
             </div>
           {{/if}}
         </div>
@@ -521,4 +510,3 @@
   }
 }
 </style>
-
