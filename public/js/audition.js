@@ -64,18 +64,52 @@
     field.classList.remove('is-invalid');
   }
 
-  function validateRomanNameField(fieldId, label) {
-    const field = document.getElementById(fieldId);
-    if (!field) return true;
+  function applyRomanNameConstraint(field) {
+    if (!field) return;
     const value = (field.value || '').trim();
-    if (!value) return true;
-    if (ROMAN_NAME_REGEX.test(value)) {
-      field.classList.remove('is-invalid');
+    if (!value) {
+      field.setCustomValidity('');
+      return;
+    }
+    field.setCustomValidity(ROMAN_NAME_REGEX.test(value) ? '' : 'Please use Roman letters only.');
+  }
+
+  function updateFieldValidationState(field, forceShow) {
+    if (!field) return true;
+
+    if (field.id === 'first_name_en' || field.id === 'last_name_en') {
+      applyRomanNameConstraint(field);
+    }
+
+    const value = (field.value || '').trim();
+    const isOptionalEmpty = !field.required && value === '';
+    const shouldShow = Boolean(forceShow || field.dataset.touched === '1' || value !== '');
+
+    field.classList.remove('is-valid', 'is-invalid');
+
+    if (isOptionalEmpty) {
+      field.setCustomValidity('');
       return true;
     }
-    field.classList.add('is-invalid');
-    showFileError(fieldId, `${label} must use Roman letters only.`);
-    return false;
+
+    const isValid = field.checkValidity();
+    if (shouldShow) {
+      field.classList.add(isValid ? 'is-valid' : 'is-invalid');
+    }
+    return isValid;
+  }
+
+  function bindRealtimeValidation(field) {
+    if (!field) return;
+
+    const handler = function () {
+      field.dataset.touched = '1';
+      updateFieldValidationState(field, true);
+    };
+
+    field.addEventListener('input', handler);
+    field.addEventListener('change', handler);
+    field.addEventListener('blur', handler);
   }
 
   function getVideoDuration(file) {
@@ -271,6 +305,10 @@
       profileInput.addEventListener('change', handleProfilePicturesSelection);
     }
 
+    ['first_name_he', 'last_name_he', 'first_name_en', 'last_name_en', 'phone', 'email', 'age', 'height', 'showreel_url', 'role']
+      .map((id) => document.getElementById(id))
+      .forEach(bindRealtimeValidation);
+
     document.querySelectorAll('[data-clear-video]').forEach((button) => {
       button.addEventListener('click', clearVideoSelection);
     });
@@ -278,11 +316,13 @@
     if (!form) return;
 
     form.addEventListener('submit', function (event) {
-      clearFileError('first_name_en');
-      clearFileError('last_name_en');
-      const englishNamesValid =
-        validateRomanNameField('first_name_en', 'First name in English') &&
-        validateRomanNameField('last_name_en', 'Last name in English');
+      const fieldsToValidate = ['first_name_he', 'last_name_he', 'first_name_en', 'last_name_en', 'phone', 'email', 'age', 'height', 'showreel_url', 'role']
+        .map((id) => document.getElementById(id))
+        .filter(Boolean);
+      const liveFieldsValid = fieldsToValidate.every((field) => {
+        field.dataset.touched = '1';
+        return updateFieldValidationState(field, true);
+      });
 
       if (requireProfilePicture && profileInput && (!profileInput.files || profileInput.files.length !== 1)) {
         event.preventDefault();
@@ -292,7 +332,7 @@
         return;
       }
 
-      if (!englishNamesValid) {
+      if (!liveFieldsValid) {
         event.preventDefault();
         event.stopImmediatePropagation();
         form.classList.add('was-validated');
