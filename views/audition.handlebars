@@ -10,7 +10,8 @@
     {{/if}}
   </h1>
   {{!-- Form action is dynamic: /audition/:projectId for project-specific, /audition for generic --}}
-  <form id="audition-form" action="{{#if project}}/audition/{{project.id}}{{else}}/audition{{/if}}" method="POST" enctype="multipart/form-data" class="needs-validation" novalidate data-upload-method="{{upload_method}}" data-bunny-library-id="{{bunny_stream_library_id}}" data-direct-captcha-required="{{direct_upload_require_captcha}}">
+  <form id="audition-form" action="{{#if project}}/audition/{{project.id}}{{else}}/audition{{/if}}" method="POST" enctype="multipart/form-data" class="needs-validation" novalidate data-upload-method="{{upload_method}}" data-bunny-library-id="{{bunny_stream_library_id}}" data-direct-captcha-required="{{direct_upload_require_captcha}}" data-require-hebrew-name="{{#if auditionRules.requireHebrewName}}1{{else}}0{{/if}}" data-require-profile-picture="{{#if auditionRules.requireProfilePicture}}1{{else}}0{{/if}}" data-max-profile-pictures="{{auditionRules.maxProfilePictures}}" data-max-profile-picture-bytes="{{auditionRules.maxProfilePictureBytes}}" data-max-video-bytes="{{auditionRules.maxVideoBytes}}" data-max-video-duration-seconds="{{auditionRules.maxVideoDurationSeconds}}">
+    {{#if auditionRules.requireHebrewName}}
     <div class="row">
       <div class="col-md-6 mb-3">
         <label for="first_name_he" class="form-label">שם פרטי (First Name, Hebrew)</label>
@@ -23,6 +24,7 @@
         <div class="invalid-feedback">נא להזין שם משפחה בעברית.</div>
       </div>
     </div>
+    {{/if}}
     <div class="row">
       <div class="col-md-6 mb-3">
         <label for="first_name_en" class="form-label">First Name (English)</label>
@@ -75,12 +77,29 @@
     </div>
     {{/if}}
     <div class="mb-3">
-      <label for="profile_pictures" class="form-label">Profile Picture(s) <span class="text-muted">(optional)</span></label>
-      <input type="file" class="form-control" id="profile_pictures" name="profile_pictures" accept="image/*" multiple>
-      <div class="invalid-feedback">If you wish, you may upload a profile picture.</div>
+      <label for="profile_pictures" class="form-label">
+        {{#if auditionRules.profilePictureSingle}}Profile Picture{{else}}Profile Picture(s){{/if}}
+        {{#if auditionRules.requireProfilePicture}}
+          <span class="text-danger">(required)</span>
+        {{else}}
+          <span class="text-muted">(optional)</span>
+        {{/if}}
+      </label>
+      <input type="file" class="form-control" id="profile_pictures" name="profile_pictures" accept="image/*" {{#unless auditionRules.profilePictureSingle}}multiple{{/unless}} {{#if auditionRules.requireProfilePicture}}required{{/if}}>
+      <div class="invalid-feedback">
+        {{#if auditionRules.requireProfilePicture}}
+          Please upload {{#if auditionRules.profilePictureSingle}}one profile picture{{else}}your profile picture(s){{/if}}.
+        {{else}}
+          If you wish, you may upload a profile picture.
+        {{/if}}
+      </div>
       <div class="form-text text-muted">
         <i class="fas fa-info-circle me-1"></i>
-        Maximum 10 files, 400MB each. Supported: JPG, PNG, WebP, GIF
+        {{#if auditionRules.profilePictureSingle}}
+          Upload 1 image only, up to {{auditionRules.maxProfilePictureSizeMb}}MB. Supported: JPG, PNG, WebP, GIF
+        {{else}}
+          Maximum {{auditionRules.maxProfilePictures}} files, {{auditionRules.maxProfilePictureSizeMb}}MB each. Supported: JPG, PNG, WebP, GIF
+        {{/if}}
       </div>
       <!-- Profile pictures preview -->
       <div id="profile-pictures-preview" class="mt-2 d-none">
@@ -95,7 +114,7 @@
           <div class="invalid-feedback">Please upload a video file.</div>
           <div class="form-text text-muted">
             <i class="fas fa-info-circle me-1"></i>
-            Hard cap 400MB (please keep under 250MB; ≈7 minutes at 1080p). Supported: MP4, MOV, MKV, WebM
+            Hard cap {{auditionRules.maxVideoSizeMb}}MB{{#if auditionRules.maxVideoDurationMinutes}}; maximum {{auditionRules.maxVideoDurationMinutes}} minutes{{/if}}. Supported: MP4, MOV, MKV, WebM
           </div>
           <!-- Video preview and validation -->
           <div id="video-preview" class="mt-2 d-none">
@@ -143,7 +162,7 @@
           <div class="invalid-feedback">If you wish, you may upload a video file.</div>
           <div class="form-text text-muted">
             <i class="fas fa-info-circle me-1"></i>
-            Hard cap 400MB (please keep under 250MB; ≈7 minutes at 1080p). Supported: MP4, MOV, MKV, WebM
+            Hard cap {{auditionRules.maxVideoSizeMb}}MB{{#if auditionRules.maxVideoDurationMinutes}}; maximum {{auditionRules.maxVideoDurationMinutes}} minutes{{/if}}. Supported: MP4, MOV, MKV, WebM
           </div>
           <!-- Video preview and validation -->
           <div id="video-preview" class="mt-2 d-none">
@@ -187,7 +206,7 @@
       <div class="invalid-feedback">If you wish, you may upload a video file.</div>
       <div class="form-text text-muted">
         <i class="fas fa-info-circle me-1"></i>
-        Hard cap 400MB (please keep under 250MB; ≈7 minutes at 1080p). Supported: MP4, MOV, MKV, WebM
+        Hard cap {{auditionRules.maxVideoSizeMb}}MB{{#if auditionRules.maxVideoDurationMinutes}}; maximum {{auditionRules.maxVideoDurationMinutes}} minutes{{/if}}. Supported: MP4, MOV, MKV, WebM
       </div>
       <!-- Video preview and validation -->
       <div id="video-preview" class="mt-2 d-none">
@@ -218,8 +237,12 @@
     <div class="alert alert-info mt-3" id="video-guidelines">
       <h6 class="mb-2"><i class="fas fa-compress-video me-2"></i>Self-tape compression tips</h6>
       <ul class="mb-0 small ps-3">
-        <li>Export at <strong>1080p (1920×1080)</strong> using the H.264/AVC codec; hard cap <strong>400MB</strong>, but please keep files under <strong>250MB</strong> (ideally 150–200MB).</li>
+        <li>Export at <strong>1080p (1920×1080)</strong> using the H.264/AVC codec; hard cap <strong>{{auditionRules.maxVideoSizeMb}}MB</strong>{{#if auditionRules.maxVideoDurationMinutes}}, and keep the performance under <strong>{{auditionRules.maxVideoDurationMinutes}} minutes</strong>{{else}}, but please keep files under <strong>250MB</strong> (ideally 150–200MB){{/if}}.</li>
+        {{#if auditionRules.maxVideoDurationMinutes}}
+        <li>Trim the performance before exporting if it runs longer than <strong>{{auditionRules.maxVideoDurationMinutes}} minutes</strong>.</li>
+        {{else}}
         <li>Keep the performance under <strong>7 minutes</strong>; trim or split longer takes before uploading.</li>
+        {{/if}}
         <li>If your file is still too large: Open it in <a href="https://handbrake.fr" target="_blank" rel="noopener">HandBrake</a>, pick the <em>Fast 1080p30</em> preset, set Video to <strong>H.264</strong> with an average bitrate of <strong>6–8 Mbps</strong> (or RF 22–24), then export.</li>
         <li>Recording on phone: set the camera to <strong>1080p at 30fps</strong> and “Most Compatible” / H.264 to avoid oversized HEVC/HDR files.</li>
       </ul>

@@ -1,6 +1,10 @@
 (function () {
-  const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
-  const MAX_PROFILE_PICTURES = 10;
+  const DEFAULT_MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
+  let maxVideoSizeBytes = DEFAULT_MAX_FILE_SIZE;
+  let maxProfilePictureSizeBytes = DEFAULT_MAX_FILE_SIZE;
+  let maxProfilePictures = 10;
+  let requireProfilePicture = false;
+  let maxVideoDurationSeconds = 0;
 
   const VIDEO_TYPES = [
     'video/mp4', 'video/avi', 'video/mov', 'video/wmv',
@@ -18,8 +22,8 @@
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
 
-  function validateFileSize(file) {
-    return file.size <= MAX_FILE_SIZE;
+  function validateFileSize(file, maxBytes) {
+    return file.size <= maxBytes;
   }
 
   function validateVideoType(file) {
@@ -59,7 +63,25 @@
     field.classList.remove('is-invalid');
   }
 
-  function handleVideoSelection(event) {
+  function getVideoDuration(file) {
+    return new Promise((resolve, reject) => {
+      const objectUrl = URL.createObjectURL(file);
+      const probe = document.createElement('video');
+      probe.preload = 'metadata';
+      probe.onloadedmetadata = function () {
+        const duration = probe.duration;
+        URL.revokeObjectURL(objectUrl);
+        resolve(duration);
+      };
+      probe.onerror = function () {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error('Could not inspect the selected video.'));
+      };
+      probe.src = objectUrl;
+    });
+  }
+
+  async function handleVideoSelection(event) {
     const file = event.target.files[0];
     const preview = document.getElementById('video-preview');
     if (!preview) return;
@@ -76,11 +98,28 @@
       return;
     }
 
-    if (!validateFileSize(file)) {
-      showFileError('video', `Video file is too large (${formatFileSize(file.size)}). Maximum size is 500MB.`);
+    if (!validateFileSize(file, maxVideoSizeBytes)) {
+      showFileError('video', `Video file is too large (${formatFileSize(file.size)}). Maximum size is ${formatFileSize(maxVideoSizeBytes)}.`);
       event.target.value = '';
       preview.classList.add('d-none');
       return;
+    }
+
+    if (maxVideoDurationSeconds > 0) {
+      try {
+        const duration = await getVideoDuration(file);
+        if (duration > maxVideoDurationSeconds) {
+          showFileError('video', `Please select a video that is ${Math.floor(maxVideoDurationSeconds / 60)} minutes or shorter.`);
+          event.target.value = '';
+          preview.classList.add('d-none');
+          return;
+        }
+      } catch (error) {
+        showFileError('video', error.message);
+        event.target.value = '';
+        preview.classList.add('d-none');
+        return;
+      }
     }
 
     const videoName = document.getElementById('video-name');
@@ -101,11 +140,12 @@
 
     if (!files.length) {
       preview.classList.add('d-none');
+      clearFileError('profile_pictures');
       return;
     }
 
-    if (files.length > MAX_PROFILE_PICTURES) {
-      showFileError('profile_pictures', `Too many files selected. Maximum ${MAX_PROFILE_PICTURES} profile pictures allowed.`);
+    if (files.length > maxProfilePictures) {
+      showFileError('profile_pictures', `Too many files selected. Maximum ${maxProfilePictures} profile picture${maxProfilePictures === 1 ? '' : 's'} allowed.`);
       event.target.value = '';
       preview.classList.add('d-none');
       return;
@@ -121,8 +161,8 @@
         return;
       }
 
-      if (!validateFileSize(file)) {
-        showFileError('profile_pictures', `File "${file.name}" is too large (${formatFileSize(file.size)}). Maximum size is 500MB.`);
+      if (!validateFileSize(file, maxProfilePictureSizeBytes)) {
+        showFileError('profile_pictures', `File "${file.name}" is too large (${formatFileSize(file.size)}). Maximum size is ${formatFileSize(maxProfilePictureSizeBytes)}.`);
         hasErrors = true;
         return;
       }
@@ -200,6 +240,14 @@
     const videoInput = document.getElementById('video');
     const profileInput = document.getElementById('profile_pictures');
 
+    if (form) {
+      maxVideoSizeBytes = Number(form.dataset.maxVideoBytes || DEFAULT_MAX_FILE_SIZE);
+      maxProfilePictureSizeBytes = Number(form.dataset.maxProfilePictureBytes || DEFAULT_MAX_FILE_SIZE);
+      maxProfilePictures = Number(form.dataset.maxProfilePictures || 10);
+      requireProfilePicture = form.dataset.requireProfilePicture === '1';
+      maxVideoDurationSeconds = Number(form.dataset.maxVideoDurationSeconds || 0);
+    }
+
     if (videoInput) {
       videoInput.addEventListener('change', handleVideoSelection);
     }
@@ -213,6 +261,16 @@
     });
 
     if (!form) return;
+
+    form.addEventListener('submit', function (event) {
+      if (requireProfilePicture && profileInput && (!profileInput.files || profileInput.files.length !== 1)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        showFileError('profile_pictures', 'Please upload exactly one profile picture.');
+        form.classList.add('was-validated');
+        return;
+      }
+    });
 
     const method = (form.getAttribute('data-upload-method') || '').toLowerCase();
     if (method !== 'youtube') return;
@@ -255,7 +313,14 @@
       if (videoFile) fieldsData.delete('video'); // Remove video, we upload it separately via tus
 
       fetch('/audition/' + projectId + '/fields', { method: 'POST', body: fieldsData })
-        .then(function(r) { return r.json(); })
+        .then(function(r) {
+          return r.json().then(function(payload) {
+            if (!r.ok) {
+              throw new Error(payload.error || 'Could not validate the submission.');
+            }
+            return payload;
+          });
+        })
         .then(function(fieldsResult) {
           if (!fieldsResult.submissionId) throw new Error('No submissionId from server');
           var submissionId = fieldsResult.submissionId;
@@ -343,7 +408,8 @@
         .catch(function(err) {
           console.error('Fields submit error:', err);
           youtubeSubmitInFlight = false;
-          window.location.href = '/audition/' + projectId + '/error';
+          alert(err.message || 'Could not validate the submission.');
+          resetYoutubeUploadUi(uploadUi);
         });
     });
   });

@@ -72,6 +72,17 @@ const BUNNY_DIRECT_UPLOAD_MAX_PER_PROJECT_WINDOW = Number.parseInt(process.env.B
 const BUNNY_DIRECT_UPLOAD_PROJECT_WINDOW_MS = Number.parseInt(process.env.BUNNY_DIRECT_UPLOAD_PROJECT_WINDOW_MS || String(60 * 60 * 1000), 10);
 const directUploadIntentStore = new Map();
 const directUploadProjectQuotaStore = new Map();
+const SPECIAL_AUDITION_PROJECT_ID = 265;
+const DEFAULT_AUDITION_FORM_RULES = Object.freeze({
+  requireHebrewName: true,
+  requireProfilePicture: false,
+  maxProfilePictures: 10,
+  maxProfilePictureBytes: 400 * 1024 * 1024,
+  maxProfilePictureSizeMb: 400,
+  maxVideoBytes: 400 * 1024 * 1024,
+  maxVideoSizeMb: 400,
+  maxVideoDurationSeconds: 0,
+});
 const formatTelAvivDateTime = (value = new Date()) => {
   const date = value instanceof Date ? value : new Date(value);
   return date.toLocaleString('en-IL', {
@@ -86,6 +97,183 @@ const formatTelAvivDateTime = (value = new Date()) => {
     timeZoneName: 'short'
   });
 };
+
+function getAuditionFormRules(projectOrId) {
+  const rawProjectId = projectOrId && typeof projectOrId === 'object'
+    ? (projectOrId.id ?? projectOrId.project_id)
+    : projectOrId;
+  const projectId = Number(rawProjectId);
+
+  if (projectId === SPECIAL_AUDITION_PROJECT_ID) {
+    return {
+      ...DEFAULT_AUDITION_FORM_RULES,
+      requireHebrewName: false,
+      requireProfilePicture: true,
+      maxProfilePictures: 1,
+      profilePictureSingle: true,
+      maxProfilePictureBytes: 20 * 1024 * 1024,
+      maxProfilePictureSizeMb: 20,
+      maxVideoBytes: 150 * 1024 * 1024,
+      maxVideoSizeMb: 150,
+      maxVideoDurationSeconds: 180,
+      maxVideoDurationMinutes: 3,
+    };
+  }
+
+  return {
+    ...DEFAULT_AUDITION_FORM_RULES,
+    profilePictureSingle: false,
+    maxVideoDurationMinutes: 0,
+  };
+}
+
+function trimToString(value) {
+  return (value || '').toString().trim();
+}
+
+function normalizeAuditionBody(body = {}) {
+  return {
+    first_name_he: trimToString(body.first_name_he),
+    last_name_he: trimToString(body.last_name_he),
+    first_name_en: trimToString(body.first_name_en),
+    last_name_en: trimToString(body.last_name_en),
+    phone: trimToString(body.phone),
+    email: trimToString(body.email).toLowerCase(),
+    agency: trimToString(body.agency),
+    age: trimToString(body.age),
+    height: trimToString(body.height),
+    role: trimToString(body.role),
+    showreel_url: trimToString(body.showreel_url),
+    video_url: trimToString(body.video_url),
+    video_upload_intent: trimToString(body.video_upload_intent),
+  };
+}
+
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function isValidPhone(value) {
+  if (!/^[0-9\-+() ]+$/.test(value)) {
+    return false;
+  }
+  const digits = value.replace(/\D/g, '');
+  return digits.length >= 7 && digits.length <= 15;
+}
+
+function isValidHttpUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch (_) {
+    return false;
+  }
+}
+
+function validateAuditionBody({ body, project, rules }) {
+  const errors = [];
+
+  if (rules.requireHebrewName) {
+    if (!body.first_name_he) errors.push('Please enter the first name in Hebrew.');
+    if (!body.last_name_he) errors.push('Please enter the last name in Hebrew.');
+  }
+
+  if (!body.first_name_en) errors.push('Please enter the first name in English.');
+  if (!body.last_name_en) errors.push('Please enter the last name in English.');
+
+  if (!body.phone) {
+    errors.push('Please enter a phone number.');
+  } else if (!isValidPhone(body.phone)) {
+    errors.push('Please enter a valid phone number.');
+  }
+
+  if (!body.email) {
+    errors.push('Please enter an email address.');
+  } else if (!isValidEmail(body.email)) {
+    errors.push('Please enter a valid email address.');
+  }
+
+  if (body.showreel_url && !isValidHttpUrl(body.showreel_url)) {
+    errors.push('Please enter a valid showreel link starting with http:// or https://.');
+  }
+
+  if (body.age) {
+    const age = Number.parseInt(body.age, 10);
+    if (!Number.isInteger(age) || age < 1 || age > 120) {
+      errors.push('Please enter a valid age between 1 and 120.');
+    }
+  }
+
+  if (body.height) {
+    const height = Number.parseInt(body.height, 10);
+    if (!Number.isInteger(height) || height < 50 || height > 250) {
+      errors.push('Please enter a valid height between 50 and 250 cm.');
+    }
+  }
+
+  if (body.first_name_en.length > 100 || body.last_name_en.length > 100) {
+    errors.push('Names must be 100 characters or fewer.');
+  }
+  if ((body.first_name_he && body.first_name_he.length > 100) || (body.last_name_he && body.last_name_he.length > 100)) {
+    errors.push('Hebrew names must be 100 characters or fewer.');
+  }
+  if (body.agency.length > 120) {
+    errors.push('Agency must be 120 characters or fewer.');
+  }
+
+  const roles = project && Array.isArray(project.roles) ? project.roles : [];
+  if (roles.length > 0) {
+    if (!body.role) {
+      errors.push('Please select a role.');
+    } else if (!roles.some((role) => role.name === body.role)) {
+      errors.push('Please select a valid role for this project.');
+    }
+  }
+
+  return errors;
+}
+
+function validateAuditionFiles({ rules, videoFile, profilePictureFiles, requireVideo }) {
+  const errors = [];
+  const pictures = Array.isArray(profilePictureFiles) ? profilePictureFiles : [];
+
+  if (rules.requireProfilePicture && pictures.length !== 1) {
+    errors.push('Please upload exactly one profile picture.');
+  }
+  if (pictures.length > rules.maxProfilePictures) {
+    errors.push(`You can upload up to ${rules.maxProfilePictures} profile picture${rules.maxProfilePictures === 1 ? '' : 's'}.`);
+  }
+
+  pictures.forEach((file) => {
+    if (!file.mimetype || !file.mimetype.startsWith('image/')) {
+      errors.push(`"${file.originalname}" is not a valid image file.`);
+    }
+    if (typeof file.size === 'number' && file.size > rules.maxProfilePictureBytes) {
+      errors.push(`"${file.originalname}" is too large. Profile pictures must be ${rules.maxProfilePictureSizeMb}MB or smaller.`);
+    }
+  });
+
+  if (requireVideo && !videoFile) {
+    errors.push('Please upload a self-tape video.');
+  }
+
+  if (videoFile) {
+    if (!videoFile.mimetype || !videoFile.mimetype.startsWith('video/')) {
+      errors.push('Please upload a valid video file.');
+    }
+    if (typeof videoFile.size === 'number' && videoFile.size > rules.maxVideoBytes) {
+      errors.push(`Video files must be ${rules.maxVideoSizeMb}MB or smaller for this audition.`);
+    }
+  }
+
+  return errors;
+}
+
+async function cleanupUploadedFiles(files = []) {
+  await Promise.all(files
+    .filter((file) => file && file.path)
+    .map((file) => fs.promises.unlink(file.path).catch(() => undefined)));
+}
 
 // Canonical domain enforcement (optional). Set APP_PRIMARY_DOMAIN=hilayuval.com in env to enable.
 if (process.env.APP_PRIMARY_DOMAIN) {
@@ -869,6 +1057,7 @@ app.get('/audition', (req, res) => {
   res.render('audition', {
     bunny_stream_library_id: libId,
     upload_method: 'bunny_stream',
+    auditionRules: getAuditionFormRules(),
     direct_upload_require_captcha: BUNNY_DIRECT_UPLOAD_REQUIRE_CAPTCHA,
     turnstile_site_key: BUNNY_TURNSTILE_SITE_KEY
   });
@@ -1265,6 +1454,7 @@ app.get('/audition/:projectId', async (req, res) => {
     project,
     bunny_stream_library_id: libId,
     upload_method: viewUploadMethod,
+    auditionRules: getAuditionFormRules(project),
     direct_upload_require_captcha: BUNNY_DIRECT_UPLOAD_REQUIRE_CAPTCHA,
     turnstile_site_key: BUNNY_TURNSTILE_SITE_KEY
   });
@@ -1878,8 +2068,24 @@ app.post('/audition/:projectId/fields', auditionUpload.fields([
     const project = await projectService.getProjectById(req.params.projectId);
     if (!project) return res.status(404).json({ error: 'Project not found' });
 
+    const rules = getAuditionFormRules(project);
+    const normalizedBody = normalizeAuditionBody(req.body);
     const submissionId = crypto.randomBytes(16).toString('hex');
     const profilePictureFiles = req.files && req.files.profile_pictures ? req.files.profile_pictures : [];
+    const validationErrors = [
+      ...validateAuditionBody({ body: normalizedBody, project, rules }),
+      ...validateAuditionFiles({
+        rules,
+        videoFile: null,
+        profilePictureFiles,
+        requireVideo: false,
+      }),
+    ];
+
+    if (validationErrors.length > 0) {
+      await cleanupUploadedFiles(profilePictureFiles);
+      return res.status(400).json({ error: validationErrors[0] });
+    }
 
     // Upload profile pictures now (they're small and fast)
     let profilePictureUploadResults = [];
@@ -1892,7 +2098,7 @@ app.post('/audition/:projectId/fields', auditionUpload.fields([
 
     pendingSubmissions.set(submissionId, {
       projectId: req.params.projectId,
-      body: req.body,
+      body: normalizedBody,
       profilePictures: profilePictureUploadResults,
       expiry: Date.now() + 3600000, // 1 hour
     });
@@ -1978,9 +2184,20 @@ app.post('/upload-chunk/:uploadId/assemble', async (req, res) => {
         path: assembledPath,
         originalname: filename || 'video.mp4',
         mimetype: mimetype || 'video/mp4',
+        size: fs.statSync(assembledPath).size,
       };
 
       const project = await projectService.getProjectById(submission.projectId);
+      const rules = getAuditionFormRules(project);
+      const videoValidationErrors = validateAuditionFiles({
+        rules,
+        videoFile,
+        profilePictureFiles: [],
+        requireVideo: true,
+      });
+      if (videoValidationErrors.length > 0) {
+        throw new Error(videoValidationErrors[0]);
+      }
       const selectedRole = project.roles.find(r => r.name === submission.body.role);
       if (!selectedRole) throw new Error(`Role not found: ${submission.body.role}`);
 
@@ -2067,8 +2284,25 @@ app.post('/audition/:projectId', auditionUpload.fields([
       // return res.status(500).send('Project data is incomplete (roles).');
     }
 
-    const body = req.body;
+    const body = normalizeAuditionBody(req.body);
     console.log(`POST_AUDITION_BODY_CONTENT: ${JSON.stringify(body)}`);
+    const videoFile = req.files && req.files.video ? req.files.video[0] : null;
+    const profilePictureFiles = req.files && req.files.profile_pictures ? req.files.profile_pictures : [];
+    const rules = getAuditionFormRules(project);
+    const validationErrors = [
+      ...validateAuditionBody({ body, project, rules }),
+      ...validateAuditionFiles({
+        rules,
+        videoFile,
+        profilePictureFiles,
+        requireVideo: project.upload_method === 'youtube',
+      }),
+    ];
+
+    if (validationErrors.length > 0) {
+      await cleanupUploadedFiles([videoFile, ...profilePictureFiles].filter(Boolean));
+      return res.status(400).send(validationErrors[0]);
+    }
     
     // Defensive check for project and project.roles before the .find() call
     if (!(project && project.roles && Array.isArray(project.roles))) {
@@ -2088,8 +2322,6 @@ app.post('/audition/:projectId', auditionUpload.fields([
     }
 
     const { name, email, phone, message } = body;
-    const videoFile = req.files && req.files.video ? req.files.video[0] : null;
-    const profilePictureFiles = req.files && req.files.profile_pictures ? req.files.profile_pictures : [];
 
     console.log(`POST_AUDITION_DATA_EXTRACTED: Name=${name}, Email=${email}, Role=${body.role}`);
     if(videoFile) console.log(`POST_AUDITION_VIDEO_FILE: ${videoFile.originalname}, Path: ${videoFile.path}`);
