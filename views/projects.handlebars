@@ -69,16 +69,16 @@
       <tbody>
         {{#each projects}}
         <tr class="project-tag-row" data-project-id="{{this.id}}" data-tag-color="{{this.tag_color}}" data-tag-color-bg="{{this.tag_color_bg}}" data-tag-color-hover="{{this.tag_color_hover}}">
-          <td{{#if this.tag_color_bg}} style="background-color: {{this.tag_color_bg}};"{{/if}}>{{this.name}}</td>
-          <td{{#if this.tag_color_bg}} style="background-color: {{this.tag_color_bg}};"{{/if}}>{{this.description}}</td>
-          <td{{#if this.tag_color_bg}} style="background-color: {{this.tag_color_bg}};"{{/if}}>{{this.createdAt}}</td>
-          <td{{#if this.tag_color_bg}} style="background-color: {{this.tag_color_bg}};"{{/if}}>
+          <td{{#if this.tag_color_bg}} style="background: {{this.tag_color_bg}};"{{/if}}>{{this.name}}</td>
+          <td{{#if this.tag_color_bg}} style="background: {{this.tag_color_bg}};"{{/if}}>{{this.description}}</td>
+          <td{{#if this.tag_color_bg}} style="background: {{this.tag_color_bg}};"{{/if}}>{{this.createdAt}}</td>
+          <td{{#if this.tag_color_bg}} style="background: {{this.tag_color_bg}};"{{/if}}>
             <a href="/audition/{{this.id}}" target="_blank">/audition/{{this.id}}</a>
           </td>
-          <td{{#if this.tag_color_bg}} style="background-color: {{this.tag_color_bg}};"{{/if}}>
+          <td{{#if this.tag_color_bg}} style="background: {{this.tag_color_bg}};"{{/if}}>
             <a href="/projects/{{this.id}}/auditions" class="btn btn-outline-danger btn-sm">View Auditions</a>
           </td>
-          <td{{#if this.tag_color_bg}} style="background-color: {{this.tag_color_bg}};"{{/if}}>
+          <td{{#if this.tag_color_bg}} style="background: {{this.tag_color_bg}};"{{/if}}>
             <a href="/projects/{{this.id}}/edit" class="btn btn-outline-secondary btn-sm">Edit</a>
           </td>
         </tr>
@@ -129,7 +129,7 @@
 function setProjectRowColor(row, bgColor) {
   row.dataset.tagColorBg = bgColor || '';
   row.querySelectorAll('td').forEach(function (cell) {
-    cell.style.backgroundColor = bgColor || '';
+    cell.style.background = bgColor || '';
   });
 }
 
