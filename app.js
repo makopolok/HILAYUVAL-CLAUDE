@@ -399,19 +399,23 @@ async function uploadToYouTubeResumable(youtube, videoFile, videoMetadata, maxRe
        console.error(`[YouTube Upload] Stream error: ${err.message}`);
      });
       
+     // Use resumable protocol which handles chunking automatically
+     // This keeps the connection alive with periodic progress updates
      const response = await youtube.videos.insert(
        {
          part: ['snippet', 'status'],
          requestBody: videoMetadata,
          media: {
+           mimeType: 'video/mp4',
            body: fileStream,
          },
        },
        {
-         // Very generous timeout: 15 min base + 5 min per MB of file
-         // For 40MB: 900000 + (40 * 300000) = 13.9 minutes total
-         timeout: Math.max(900000, (fileSize / (1024 * 1024)) * 300000),
-         maxRedirects: 5,
+         // Use resumable upload for files > 5MB
+         // This automatically chunks the file and maintains connection
+         resumable: true,
+         // Per-chunk timeout (googleapis will retry individual chunks)
+         timeout: 60000, // 1 minute per chunk
        }
      );
       
@@ -426,12 +430,12 @@ async function uploadToYouTubeResumable(youtube, videoFile, videoMetadata, maxRe
      const isRateLimitError = error && error.response && error.response.status === 429;
      const isTimeoutError = error.code === 'ETIMEDOUT' || 
                             error.code === 'ECONNRESET' ||
-                            (error.message && (error.message.includes('timeout') || error.message.includes('Connection terminated')));
+                            error.code === 'ENOTFOUND' ||
+                            (error.message && (error.message.includes('timeout') || error.message.includes('Connection terminated') || error.message.includes('Aborted')));
       
      const isRetryable = 
        isRateLimitError ||
        isTimeoutError ||
-       error.code === 'ENOTFOUND' ||
        error.code === 'ECONNREFUSED' ||
        (error.status && error.status >= 500) ||
        (error.message && (error.message.includes('timeout') || error.message.includes('ECONNRESET')));
