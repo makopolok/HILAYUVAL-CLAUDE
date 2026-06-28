@@ -397,9 +397,9 @@ async function uploadToYouTubeResumable(youtube, videoFile, videoMetadata, maxRe
          },
        },
        {
-         // Very generous timeout: 15 minutes base + 2 minutes per MB
-         // This ensures the connection doesn't timeout during transfer
-         timeout: Math.max(900000, (fileSize / (1024 * 1024)) * 120000),
+         // Very generous timeout: 15 min base + 5 min per MB of file
+         // For 40MB: 900000 + (40 * 300000) = 13.9 minutes total
+         timeout: Math.max(900000, (fileSize / (1024 * 1024)) * 300000),
          maxRedirects: 5,
        }
      );
