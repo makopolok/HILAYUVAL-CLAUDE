@@ -127,6 +127,15 @@
 
 <script>
 const PROJECT_TAG_COLOR_CLASSES = ['gray', 'red', 'orange', 'yellow', 'green', 'blue', 'purple'].map((color) => `tag-color-${color}`);
+const PROJECT_TAG_COLOR_VALUES = {
+  gray: { base: '#f1f3f5', hover: '#e9ecef' },
+  red: { base: '#fff5f5', hover: '#ffe3e3' },
+  orange: { base: '#fff4e6', hover: '#ffe8cc' },
+  yellow: { base: '#fff9db', hover: '#fff3bf' },
+  green: { base: '#ebfbee', hover: '#d3f9d8' },
+  blue: { base: '#e7f5ff', hover: '#d0ebff' },
+  purple: { base: '#f8f0fc', hover: '#f3d9fa' }
+};
 
 function clearProjectTagColorClasses(row) {
   PROJECT_TAG_COLOR_CLASSES.forEach((className) => row.classList.remove(className));
@@ -135,9 +144,16 @@ function clearProjectTagColorClasses(row) {
 function applyProjectTagColor(row, color) {
   clearProjectTagColorClasses(row);
   const normalized = (color || '').toString().trim().toLowerCase();
+  const cells = row.querySelectorAll('td');
   if (normalized) {
     row.classList.add(`tag-color-${normalized}`);
   }
+  const palette = PROJECT_TAG_COLOR_VALUES[normalized];
+  cells.forEach((cell) => {
+    cell.style.backgroundColor = palette ? palette.base : '';
+  });
+  row.dataset.tagColorBase = palette ? palette.base : '';
+  row.dataset.tagColorHover = palette ? palette.hover : '';
   row.dataset.tagColor = normalized;
 }
 
@@ -161,6 +177,18 @@ document.addEventListener('DOMContentLoaded', function () {
   };
 
   rows.forEach((row) => {
+    applyProjectTagColor(row, row.dataset.tagColor || '');
+    row.addEventListener('mouseenter', () => {
+      if (!row.dataset.tagColorHover) return;
+      row.querySelectorAll('td').forEach((cell) => {
+        cell.style.backgroundColor = row.dataset.tagColorHover;
+      });
+    });
+    row.addEventListener('mouseleave', () => {
+      row.querySelectorAll('td').forEach((cell) => {
+        cell.style.backgroundColor = row.dataset.tagColorBase || '';
+      });
+    });
     row.addEventListener('contextmenu', (event) => {
       event.preventDefault();
       showMenu(event, row);
