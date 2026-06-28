@@ -247,6 +247,8 @@ module.exports = {
       }
       throw error;
     }
+  },
+
   async deleteVideo(videoGuid) {
     if (!BUNNY_STREAM_LIBRARY_ID || !BUNNY_VIDEO_API_KEY) return;
     try {
