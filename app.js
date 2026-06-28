@@ -174,6 +174,62 @@ function isValidRomanName(value) {
   return /^[A-Za-z][A-Za-z\s.'-]*$/.test(value);
 }
 
+function buildAuditionFullName(firstName, lastName) {
+  return [trimToString(firstName), trimToString(lastName)].filter(Boolean).join(' ').trim();
+}
+
+function getAuditionPreferredSortName(audition) {
+  const hebrewName = buildAuditionFullName(audition.first_name_he, audition.last_name_he);
+  if (hebrewName) {
+    return { name: hebrewName, locales: ['he', 'en'] };
+  }
+
+  const englishName = buildAuditionFullName(audition.first_name_en, audition.last_name_en);
+  if (englishName) {
+    return { name: englishName, locales: ['en', 'he'] };
+  }
+
+  return { name: '', locales: ['en', 'he'] };
+}
+
+function compareAuditionsByPreferredName(a, b) {
+  const aName = getAuditionPreferredSortName(a);
+  const bName = getAuditionPreferredSortName(b);
+
+  if (!aName.name && !bName.name) {
+    return (a.id || 0) - (b.id || 0);
+  }
+  if (!aName.name) return 1;
+  if (!bName.name) return -1;
+
+  const locales = aName.locales[0] === 'he' || bName.locales[0] === 'he'
+    ? ['he', 'en']
+    : ['en', 'he'];
+  const nameCompare = aName.name.localeCompare(bName.name, locales, {
+    sensitivity: 'base',
+    ignorePunctuation: true,
+    numeric: true,
+  });
+
+  if (nameCompare !== 0) {
+    return nameCompare;
+  }
+
+  const aEnglishName = buildAuditionFullName(a.first_name_en, a.last_name_en);
+  const bEnglishName = buildAuditionFullName(b.first_name_en, b.last_name_en);
+  const englishCompare = aEnglishName.localeCompare(bEnglishName, ['en', 'he'], {
+    sensitivity: 'base',
+    ignorePunctuation: true,
+    numeric: true,
+  });
+
+  if (englishCompare !== 0) {
+    return englishCompare;
+  }
+
+  return (a.id || 0) - (b.id || 0);
+}
+
 function validateAuditionBody({ body, project, rules }) {
   const errors = [];
 
@@ -2907,7 +2963,7 @@ app.get('/projects/:projectId/auditions', requireAdmin, async (req, res) => {
           return a.role_id === role.id;
         }
         return a.role === role.name;
-      })
+      }).sort(compareAuditionsByPreferredName)
     }));
     const roleFilter = (req.query.role || '').toString().trim();
     const visibleRoles = roleFilter
