@@ -55,7 +55,7 @@
   </div>
   {{/if}}
   {{#if projects.length}}
-    <table class="table table-bordered table-hover">
+    <table class="table table-bordered custom-hover-table">
       <thead>
         <tr>
           <th>Name</th>
@@ -143,9 +143,15 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
     const colorHex = TAG_COLOR_MAP[colorName];
-    row.style.backgroundImage = `linear-gradient(90deg, ${colorHex} 0%, ${colorHex} 6px, transparent 6px)`;
-    row.style.backgroundRepeat = 'repeat-y';
-    row.style.backgroundAttachment = 'local';
+    const gradient = `linear-gradient(90deg, ${colorHex} 0%, ${colorHex} 6px, transparent 6px)`;
+    
+    // Apply to row AND all cells with !important inline styles to defeat Bootstrap table-hover
+    row.style.cssText = `background-image: ${gradient} !important; background-repeat: repeat-y !important; background-attachment: local !important;`;
+    
+    // Also apply to each cell to ensure it persists
+    row.querySelectorAll('td').forEach(cell => {
+      cell.style.backgroundColor = 'transparent';
+    });
   }
 
   document.querySelectorAll('.project-tag-row').forEach(function (row) {
@@ -243,15 +249,19 @@ document.addEventListener('DOMContentLoaded', function () {
 .tag-purple { background: #9c36b5; }
 .project-tag-row {
   background-size: 6px 100%;
-  background-repeat: repeat-y !important;
-  background-attachment: local !important;
 }
-/* Prevent Bootstrap table-hover from overriding our gradient stripe */
-.table-hover tbody tr.project-tag-row:hover {
+/* Custom hover for rows WITHOUT colors */
+.custom-hover-table tbody tr:not(.project-tag-row[data-tag-color]):hover {
+  background-color: rgba(0, 0, 0, 0.075);
+}
+/* Rows WITH colors should ALWAYS show their stripe, never highlight on hover */
+.custom-hover-table tbody tr.project-tag-row[data-tag-color] {
+  transition: none;
+}
+.custom-hover-table tbody tr.project-tag-row[data-tag-color]:hover {
   background-color: transparent !important;
-  background-image: inherit !important;
 }
-.table-hover tbody tr.project-tag-row:hover td {
+.custom-hover-table tbody tr.project-tag-row[data-tag-color]:hover td {
   background-color: transparent !important;
 }
 </style>
