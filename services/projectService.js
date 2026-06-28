@@ -165,7 +165,8 @@ module.exports = {
   getAllProjects,
   getProjectById,
   addRoleToProject,
-  updateProject
+  updateProject,
+  updateProjectTagColor
 };
 
 // Rename a role; also update existing auditions to the new name for this project

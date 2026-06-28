@@ -68,17 +68,17 @@
       </thead>
       <tbody>
         {{#each projects}}
-        <tr class="project-tag-row" data-project-id="{{this.id}}" data-tag-color="{{this.tag_color}}" data-tag-color-bg="{{this.tag_color_bg}}" data-tag-color-hover="{{this.tag_color_hover}}">
-          <td{{#if this.tag_color_bg}} style="background: {{this.tag_color_bg}};"{{/if}}>{{this.name}}</td>
-          <td{{#if this.tag_color_bg}} style="background: {{this.tag_color_bg}};"{{/if}}>{{this.description}}</td>
-          <td{{#if this.tag_color_bg}} style="background: {{this.tag_color_bg}};"{{/if}}>{{this.createdAt}}</td>
-          <td{{#if this.tag_color_bg}} style="background: {{this.tag_color_bg}};"{{/if}}>
+        <tr class="project-tag-row{{#if this.tag_color}} tag-color-{{this.tag_color}}{{/if}}" data-project-id="{{this.id}}" data-tag-color="{{this.tag_color}}" data-tag-color-bg="{{this.tag_color_bg}}" data-tag-color-hover="{{this.tag_color_hover}}"{{#if this.tag_color_bg}} style="--project-tag-bg: {{this.tag_color_bg}}; --project-tag-hover: {{this.tag_color_hover}};"{{/if}}>
+          <td{{#if this.tag_color_bg}} style="background-color: {{this.tag_color_bg}};"{{/if}}>{{this.name}}</td>
+          <td{{#if this.tag_color_bg}} style="background-color: {{this.tag_color_bg}};"{{/if}}>{{this.description}}</td>
+          <td{{#if this.tag_color_bg}} style="background-color: {{this.tag_color_bg}};"{{/if}}>{{this.createdAt}}</td>
+          <td{{#if this.tag_color_bg}} style="background-color: {{this.tag_color_bg}};"{{/if}}>
             <a href="/audition/{{this.id}}" target="_blank">/audition/{{this.id}}</a>
           </td>
-          <td{{#if this.tag_color_bg}} style="background: {{this.tag_color_bg}};"{{/if}}>
+          <td{{#if this.tag_color_bg}} style="background-color: {{this.tag_color_bg}};"{{/if}}>
             <a href="/projects/{{this.id}}/auditions" class="btn btn-outline-danger btn-sm">View Auditions</a>
           </td>
-          <td{{#if this.tag_color_bg}} style="background: {{this.tag_color_bg}};"{{/if}}>
+          <td{{#if this.tag_color_bg}} style="background-color: {{this.tag_color_bg}};"{{/if}}>
             <a href="/projects/{{this.id}}/edit" class="btn btn-outline-secondary btn-sm">Edit</a>
           </td>
         </tr>
@@ -126,18 +126,24 @@
 </div>
 
 <script>
-function setProjectRowColor(row, bgColor) {
-  row.dataset.tagColorBg = bgColor || '';
-  row.querySelectorAll('td').forEach(function (cell) {
-    cell.style.background = bgColor || '';
-  });
+function setProjectRowColor(row, bgColor, hoverColor) {
+ const normalizedBg = bgColor || '';
+ const normalizedHover = hoverColor || normalizedBg || '';
+ row.dataset.tagColorBg = normalizedBg;
+ row.dataset.tagColorHover = normalizedHover;
+ row.style.setProperty('--project-tag-bg', normalizedBg);
+ row.style.setProperty('--project-tag-hover', normalizedHover);
+ row.querySelectorAll('td, th').forEach(function (cell) {
+   cell.style.backgroundColor = normalizedBg;
+ });
 }
 
 document.addEventListener('DOMContentLoaded', function () {
   document.querySelectorAll('.project-tag-row').forEach(function (row) {
     const bg = row.dataset.tagColorBg;
+    const hover = row.dataset.tagColorHover || bg;
     if (bg) {
-      setProjectRowColor(row, bg);
+      setProjectRowColor(row, bg, hover);
     }
   });
 
@@ -176,7 +182,7 @@ document.addEventListener('DOMContentLoaded', function () {
       row.dataset.tagColor = payload.tagColor || '';
       row.dataset.tagColorBg = payload.tagColorBg || '';
       row.dataset.tagColorHover = payload.tagColorHover || '';
-      setProjectRowColor(row, payload.tagColorBg || '');
+      setProjectRowColor(row, payload.tagColorBg || '', payload.tagColorHover || '');
     } catch (err) {
       console.error('[TAG_COLOR]', err);
       alert('Could not save color. Please try again.');
@@ -229,4 +235,12 @@ document.addEventListener('DOMContentLoaded', function () {
 .tag-green  { background: #2f9e44; }
 .tag-blue   { background: #1c7ed6; }
 .tag-purple { background: #9c36b5; }
+.project-tag-row td,
+.project-tag-row th {
+  background-color: var(--project-tag-bg, transparent) !important;
+}
+.table-hover .project-tag-row:hover td,
+.table-hover .project-tag-row:hover th {
+  background-color: var(--project-tag-hover, var(--project-tag-bg, transparent)) !important;
+}
 </style>
