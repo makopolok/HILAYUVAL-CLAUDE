@@ -940,7 +940,10 @@ app.get('/audition/:projectId', async (req, res) => {
 app.get('/audition/:projectId/success', async (req, res) => {
   const successEnvelope = req.session ? req.session.lastAuditionSuccess : null;
   if (!successEnvelope || String(successEnvelope.projectId) !== String(req.params.projectId)) {
-    return res.redirect(`/audition/${req.params.projectId}`);
+    return res.render('audition-success', {
+      upload_confirmation_only: true,
+      actor_name: 'Your audition',
+    });
   }
 
   const submissionData = successEnvelope.submissionData;

@@ -2,6 +2,20 @@
 <div class="container mt-5">
   <div class="row justify-content-center">
     <div class="col-lg-8">
+      {{#if upload_confirmation_only}}
+      <div class="text-center py-5">
+        <div class="success-checkmark">
+          <div class="check-icon">
+            <span class="icon-line line-tip"></span>
+            <span class="icon-line line-long"></span>
+            <div class="icon-circle"></div>
+            <div class="icon-fix"></div>
+          </div>
+        </div>
+        <h1 class="display-5 mt-4 mb-3" style="color: var(--primary-red);">Upload Successful</h1>
+        <p class="lead text-muted mb-0">Your audition file was received successfully.</p>
+      </div>
+      {{else}}
       <!-- Success Animation -->
       <div class="text-center mb-4">
         <div class="success-checkmark">
@@ -344,6 +358,7 @@
           <a href="mailto:casting@hilayuval.com">casting@hilayuval.com</a>
         </p>
       </div>
+      {{/if}}
     </div>
   </div>
 </div>
