@@ -250,7 +250,8 @@ const generalAuditionUpload = multer(multerConfig);
 // Ensure a role has a YouTube playlist. Creates one if missing and persists the ID.
 // A valid YouTube playlist ID starts with 'PL' and is at least 18 chars.
 function isValidYouTubePlaylistId(id) {
-  return typeof id === 'string' && /^PL[a-zA-Z0-9_-]{16,}$/.test(id);
+  // YouTube playlist IDs start with 'PL' and can be any length (typically 13-34 chars total)
+  return typeof id === 'string' && /^PL[a-zA-Z0-9_-]{5,}$/.test(id);
 }
 
 async function createAndPersistYouTubePlaylist(youtube, project, role, maxRetries = 3) {
