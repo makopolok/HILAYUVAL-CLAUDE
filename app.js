@@ -304,7 +304,9 @@ async function uploadToYouTubeResumable(youtube, videoFile, videoMetadata, maxRe
   
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const fileSize = fs.statSync(videoFile.path).size;
+      // Ensure absolute path
+      const filePath = path.isAbsolute(videoFile.path) ? videoFile.path : path.resolve(videoFile.path);
+      const fileSize = fs.statSync(filePath).size;
       console.log(`[YouTube Upload] Attempt ${attempt + 1}/${MAX_RETRIES + 1}: ${videoFile.originalname} (${fileSize} bytes)`);
       
       const response = await youtube.videos.insert(
@@ -312,16 +314,12 @@ async function uploadToYouTubeResumable(youtube, videoFile, videoMetadata, maxRe
           part: ['snippet', 'status'],
           requestBody: videoMetadata,
           media: {
-            body: fs.createReadStream(videoFile.path),
+            body: fs.createReadStream(filePath),
           },
         },
         {
-          // Use resumable protocol for uploads >50MB
-          resumable: fileSize > 50 * 1024 * 1024,
-          // Longer timeout for large files: 5 minutes
+          // Longer timeout for large files: 5 minutes minimum + scaled by file size
           timeout: Math.max(300000, (fileSize / (1024 * 1024)) * 30000),
-          // Enable automatic retry
-          retryStrategy: require('google-auth-library').createRetryStrategy(),
         }
       );
       
@@ -333,17 +331,18 @@ async function uploadToYouTubeResumable(youtube, videoFile, videoMetadata, maxRe
         error.code === 'ECONNRESET' ||
         error.code === 'ETIMEDOUT' ||
         error.code === 'ENOTFOUND' ||
+        error.code === 'ECONNREFUSED' ||
         (error.status && error.status >= 500) ||
-        error.message.includes('timeout');
+        (error.message && (error.message.includes('timeout') || error.message.includes('ECONNRESET')));
       
       if (isRetryable && attempt < MAX_RETRIES) {
         const waitTime = Math.pow(2, attempt) * 1000; // Exponential backoff: 1s, 2s, 4s
-        console.warn(`[YouTube Upload] Retryable error (attempt ${attempt + 1}): ${error.message}. Retrying in ${waitTime}ms...`);
+        console.warn(`[YouTube Upload] Retryable error (attempt ${attempt + 1}/${MAX_RETRIES + 1}): ${error.code || error.message}. Retrying in ${waitTime}ms...`);
         await new Promise(resolve => setTimeout(resolve, waitTime));
         continue;
       }
       
-      console.error(`[YouTube Upload] Non-retryable error or max retries exceeded: ${error.message}`);
+      console.error(`[YouTube Upload] Non-retryable error or max retries exceeded: ${error.code || error.message}`);
       throw error;
     }
   }
@@ -675,7 +674,13 @@ app.post('/audition', generalAuditionUpload.single('video'), async (req, res) =>
   return res.render('audition-success', submissionData);
   } catch (error) {
     console.error('Error uploading audition:', error);
-    res.status(500).send(`<h2>Error uploading audition.</h2><pre>${error && error.message ? error.message : error}</pre><pre>${error && error.response && error.response.data ? JSON.stringify(error.response.data, null, 2) : ''}</pre>`);
+   console.error('Error stack:', error.stack);
+   const errorDetails = error && error.message ? error.message : String(error);
+   const timestamp = new Date().toISOString();
+   res.status(500).render('audition-upload-error', {
+     errorDetails,
+     timestamp
+   });
   }
 });
 
@@ -1892,13 +1897,15 @@ app.post('/audition/:projectId', auditionUpload.fields([
 
     return res.render('audition-success', submissionData);
     
-  } catch (error) {
+   } catch (error) {
     // Enhanced error logging
     console.error(`[App.js POST /audition/:${req.params.projectId}] Critical error in route: ${error.message}`, error);
-    res.status(500).render('error/500', { 
-      error: {
-        message: `An unexpected error occurred during submission. Please try again. If the problem persists, contact support. Error: ${error.message}`
-      }
+    console.error('Error stack:', error.stack);
+    const errorDetails = error && error.message ? error.message : String(error);
+    const timestamp = new Date().toISOString();
+    res.status(500).render('audition-upload-error', {
+      errorDetails,
+      timestamp
     });
   }
 });
