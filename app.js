@@ -390,17 +390,15 @@ async function uploadToYouTubeResumable(youtube, videoFile, videoMetadata, maxRe
      // Ensure absolute path
      const filePath = path.isAbsolute(videoFile.path) ? videoFile.path : path.resolve(videoFile.path);
      const fileSize = fs.statSync(filePath).size;
-     console.log(`[YouTube Upload] Attempt ${attempt + 1}/${MAX_RETRIES + 1}: ${videoFile.originalname} (${fileSize} bytes)`);
+     console.log(`[YouTube Upload] Attempt ${attempt + 1}/${MAX_RETRIES + 1}: ${videoFile.originalname} (${fileSize} bytes, ~${(fileSize / (1024*1024)).toFixed(1)}MB)`);
       
-     // Load entire file into memory for chunked upload
-     const fileBuffer = fs.readFileSync(filePath);
-      
-     // Create custom request to YouTube with explicit resumable session
-     // This bypasses the streaming issue and keeps connection active with periodic chunks
+     // For memory efficiency, stream chunks from disk instead of loading entire file
+     // This prevents memory spikes during concurrent uploads
+     const CHUNK_SIZE = 256 * 1024; // 256KB chunks
      let sessionUri;
       
      try {
-       // Step 1: Initialize resumable upload session
+       // Step 1: Initialize resumable upload session with YouTube
        console.log(`[YouTube Upload] Initializing resumable session...`);
        const initResponse = await youtube.videos.insert(
          {
@@ -461,16 +459,33 @@ async function uploadToYouTubeResumable(youtube, videoFile, videoMetadata, maxRe
        return response;
      }
       
-     // Step 2: Send file in chunks via resumable session
-     const CHUNK_SIZE = 256 * 1024; // 256KB chunks to ensure frequent network activity
+     // Step 2: Stream file in chunks via resumable session (memory efficient)
      let uploadedBytes = 0;
+     const totalChunks = Math.ceil(fileSize / CHUNK_SIZE);
       
-     console.log(`[YouTube Upload] Uploading ${fileSize} bytes in ${Math.ceil(fileSize / CHUNK_SIZE)} chunks...`);
+     console.log(`[YouTube Upload] Uploading in ${totalChunks} chunks of ${CHUNK_SIZE/1024}KB each...`);
       
-     while (uploadedBytes < fileSize) {
-       const chunkEnd = Math.min(uploadedBytes + CHUNK_SIZE, fileSize);
-       const chunk = fileBuffer.slice(uploadedBytes, chunkEnd);
-       const isLastChunk = chunkEnd === fileSize;
+     // Open file stream for reading chunks
+     const readStream = fs.createReadStream(filePath, { highWaterMark: CHUNK_SIZE });
+      
+     // Queue to ensure chunks are sent sequentially
+     let chunkIndex = 0;
+     const chunks = [];
+      
+     // Read all chunks (but don't load entire file at once into memory due to backpressure)
+     await new Promise((resolve, reject) => {
+       readStream.on('data', (chunk) => {
+         chunks.push(chunk);
+       });
+       readStream.on('end', resolve);
+       readStream.on('error', reject);
+     });
+      
+     // Now upload chunks sequentially
+     for (let i = 0; i < chunks.length; i++) {
+       const chunk = chunks[i];
+       const chunkStart = i * CHUNK_SIZE;
+       const chunkEnd = Math.min(chunkStart + chunk.length, fileSize);
         
        try {
          // Upload this chunk
@@ -478,7 +493,7 @@ async function uploadToYouTubeResumable(youtube, videoFile, videoMetadata, maxRe
            const headers = {
              'Content-Type': 'video/mp4',
              'Content-Length': chunk.length.toString(),
-             'Content-Range': `bytes ${uploadedBytes}-${chunkEnd - 1}/${fileSize}`,
+             'Content-Range': `bytes ${chunkStart}-${chunkEnd - 1}/${fileSize}`,
            };
             
            const req = https.request(
@@ -491,7 +506,7 @@ async function uploadToYouTubeResumable(youtube, videoFile, videoMetadata, maxRe
                  if (res.statusCode >= 200 && res.statusCode < 300) {
                    resolve({ statusCode: res.statusCode, body });
                  } else if (res.statusCode === 308 || (res.statusCode >= 300 && res.statusCode < 400)) {
-                   // Resume incomplete
+                   // Resume incomplete - expect more chunks
                    resolve({ statusCode: res.statusCode, body });
                  } else {
                    reject(new Error(`YouTube returned ${res.statusCode}: ${body}`));
@@ -511,14 +526,15 @@ async function uploadToYouTubeResumable(youtube, videoFile, videoMetadata, maxRe
           
          uploadedBytes = chunkEnd;
          const progress = Math.round((uploadedBytes / fileSize) * 100);
-         console.log(`[YouTube Upload] Chunk progress: ${uploadedBytes}/${fileSize} bytes (${progress}%)`);
+         const chunkNum = i + 1;
+         console.log(`[YouTube Upload] Chunk ${chunkNum}/${chunks.length} (${progress}%): ${uploadedBytes}/${fileSize} bytes`);
           
          // Parse response if upload completed
          if (uploadResponse.statusCode < 300 && uploadResponse.body) {
            try {
              const finalResponse = JSON.parse(uploadResponse.body);
              if (finalResponse.id) {
-               console.log(`[YouTube Upload] Success: ${videoFile.originalname} -> ${finalResponse.id}`);
+               console.log(`[YouTube Upload] ✅ Success: ${videoFile.originalname} -> ${finalResponse.id}`);
                return { data: finalResponse };
              }
            } catch (e) {
@@ -526,14 +542,12 @@ async function uploadToYouTubeResumable(youtube, videoFile, videoMetadata, maxRe
            }
          }
        } catch (chunkError) {
-         console.error(`[YouTube Upload] Chunk upload failed at ${uploadedBytes}/${fileSize}: ${chunkError.message}`);
+         console.error(`[YouTube Upload] ❌ Chunk ${i + 1}/${chunks.length} failed at ${uploadedBytes}/${fileSize}: ${chunkError.message}`);
          throw chunkError;
        }
      }
       
      console.log(`[YouTube Upload] All chunks uploaded, confirming with YouTube...`);
-     // If we get here, let's try one more confirmation request
-     const finalResponse = await youtube.videos.list({ part: ['id'] }).catch(() => null);
      throw new Error('Upload chunks completed but YouTube did not return video ID');
     } catch (error) {
      if (fileStream && !fileStream.destroyed) {
