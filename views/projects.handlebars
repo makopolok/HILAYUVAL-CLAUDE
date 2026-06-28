@@ -126,34 +126,15 @@
 </div>
 
 <script>
-const PROJECT_TAG_COLOR_CLASSES = ['gray', 'red', 'orange', 'yellow', 'green', 'blue', 'purple'].map((color) => `tag-color-${color}`);
-const PROJECT_TAG_COLOR_VALUES = {
-  gray: { base: '#f1f3f5', hover: '#e9ecef' },
-  red: { base: '#fff5f5', hover: '#ffe3e3' },
-  orange: { base: '#fff4e6', hover: '#ffe8cc' },
-  yellow: { base: '#fff9db', hover: '#fff3bf' },
-  green: { base: '#ebfbee', hover: '#d3f9d8' },
-  blue: { base: '#e7f5ff', hover: '#d0ebff' },
-  purple: { base: '#f8f0fc', hover: '#f3d9fa' }
-};
-
-function clearProjectTagColorClasses(row) {
-  PROJECT_TAG_COLOR_CLASSES.forEach((className) => row.classList.remove(className));
-}
+const PROJECT_TAG_COLOR_CLASSES = ['gray', 'red', 'orange', 'yellow', 'green', 'blue', 'purple'].map((c) => `tag-color-${c}`);
+const VALID_PROJECT_TAG_COLORS = new Set(['gray', 'red', 'orange', 'yellow', 'green', 'blue', 'purple']);
 
 function applyProjectTagColor(row, color) {
-  clearProjectTagColorClasses(row);
+  PROJECT_TAG_COLOR_CLASSES.forEach((cls) => row.classList.remove(cls));
   const normalized = (color || '').toString().trim().toLowerCase();
-  const cells = row.querySelectorAll('td');
-  if (normalized) {
+  if (normalized && VALID_PROJECT_TAG_COLORS.has(normalized)) {
     row.classList.add(`tag-color-${normalized}`);
   }
-  const palette = PROJECT_TAG_COLOR_VALUES[normalized];
-  cells.forEach((cell) => {
-    cell.style.backgroundColor = palette ? palette.base : '';
-  });
-  row.dataset.tagColorBase = palette ? palette.base : '';
-  row.dataset.tagColorHover = palette ? palette.hover : '';
   row.dataset.tagColor = normalized;
 }
 
@@ -177,18 +158,6 @@ document.addEventListener('DOMContentLoaded', function () {
   };
 
   rows.forEach((row) => {
-    applyProjectTagColor(row, row.dataset.tagColor || '');
-    row.addEventListener('mouseenter', () => {
-      if (!row.dataset.tagColorHover) return;
-      row.querySelectorAll('td').forEach((cell) => {
-        cell.style.backgroundColor = row.dataset.tagColorHover;
-      });
-    });
-    row.addEventListener('mouseleave', () => {
-      row.querySelectorAll('td').forEach((cell) => {
-        cell.style.backgroundColor = row.dataset.tagColorBase || '';
-      });
-    });
     row.addEventListener('contextmenu', (event) => {
       event.preventDefault();
       showMenu(event, row);
@@ -281,40 +250,19 @@ document.addEventListener('DOMContentLoaded', function () {
 .tag-blue { background: #1c7ed6; }
 .tag-purple { background: #9c36b5; }
 
-tr.project-tag-row.tag-color-gray {
-  --project-row-color: #f1f3f5;
-  --project-row-hover-color: #e9ecef;
-}
-tr.project-tag-row.tag-color-red {
-  --project-row-color: #fff5f5;
-  --project-row-hover-color: #ffe3e3;
-}
-tr.project-tag-row.tag-color-orange {
-  --project-row-color: #fff4e6;
-  --project-row-hover-color: #ffe8cc;
-}
-tr.project-tag-row.tag-color-yellow {
-  --project-row-color: #fff9db;
-  --project-row-hover-color: #fff3bf;
-}
-tr.project-tag-row.tag-color-green {
-  --project-row-color: #ebfbee;
-  --project-row-hover-color: #d3f9d8;
-}
-tr.project-tag-row.tag-color-blue {
-  --project-row-color: #e7f5ff;
-  --project-row-hover-color: #d0ebff;
-}
-tr.project-tag-row.tag-color-purple {
-  --project-row-color: #f8f0fc;
-  --project-row-hover-color: #f3d9fa;
-}
+tr.project-tag-row.tag-color-gray > td  { background-color: #f1f3f5 !important; }
+tr.project-tag-row.tag-color-red > td   { background-color: #fff5f5 !important; }
+tr.project-tag-row.tag-color-orange > td { background-color: #fff4e6 !important; }
+tr.project-tag-row.tag-color-yellow > td { background-color: #fff9db !important; }
+tr.project-tag-row.tag-color-green > td { background-color: #ebfbee !important; }
+tr.project-tag-row.tag-color-blue > td  { background-color: #e7f5ff !important; }
+tr.project-tag-row.tag-color-purple > td { background-color: #f8f0fc !important; }
 
-tr.project-tag-row > td {
-  box-shadow: inset 0 0 0 9999px var(--project-row-color, transparent) !important;
-}
-
-tr.project-tag-row:hover > td {
-  box-shadow: inset 0 0 0 9999px var(--project-row-hover-color, var(--project-row-color, transparent)) !important;
-}
+tr.project-tag-row.tag-color-gray:hover > td  { background-color: #e9ecef !important; }
+tr.project-tag-row.tag-color-red:hover > td   { background-color: #ffe3e3 !important; }
+tr.project-tag-row.tag-color-orange:hover > td { background-color: #ffe8cc !important; }
+tr.project-tag-row.tag-color-yellow:hover > td { background-color: #fff3bf !important; }
+tr.project-tag-row.tag-color-green:hover > td { background-color: #d3f9d8 !important; }
+tr.project-tag-row.tag-color-blue:hover > td  { background-color: #d0ebff !important; }
+tr.project-tag-row.tag-color-purple:hover > td { background-color: #f3d9fa !important; }
 </style>
