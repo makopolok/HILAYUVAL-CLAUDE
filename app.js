@@ -374,36 +374,52 @@ async function uploadToYouTubeResumable(youtube, videoFile, videoMetadata, maxRe
   let lastError;
   
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    let fileStream;
     try {
-      // Ensure absolute path
-      const filePath = path.isAbsolute(videoFile.path) ? videoFile.path : path.resolve(videoFile.path);
-      const fileSize = fs.statSync(filePath).size;
-      console.log(`[YouTube Upload] Attempt ${attempt + 1}/${MAX_RETRIES + 1}: ${videoFile.originalname} (${fileSize} bytes)`);
+     // Ensure absolute path
+     const filePath = path.isAbsolute(videoFile.path) ? videoFile.path : path.resolve(videoFile.path);
+     const fileSize = fs.statSync(filePath).size;
+     console.log(`[YouTube Upload] Attempt ${attempt + 1}/${MAX_RETRIES + 1}: ${videoFile.originalname} (${fileSize} bytes)`);
       
-      const response = await youtube.videos.insert(
-        {
-          part: ['snippet', 'status'],
-          requestBody: videoMetadata,
-          media: {
-            body: fs.createReadStream(filePath),
-          },
-        },
-        {
-          // Generous timeout for uploads: 10 minutes base + 1 minute per 5MB
-          // This accounts for slow Heroku network and YouTube server processing
-          timeout: Math.max(600000, (fileSize / (1024 * 1024)) * 60000),
-        }
-      );
+     fileStream = fs.createReadStream(filePath);
       
-      console.log(`[YouTube Upload] Success: ${videoFile.originalname} -> ${response.data.id}`);
-      return response;
+     // Set socket timeout handlers to detect dead connections
+     fileStream.on('error', (err) => {
+       console.error(`[YouTube Upload] Stream error: ${err.message}`);
+     });
+      
+     const response = await youtube.videos.insert(
+       {
+         part: ['snippet', 'status'],
+         requestBody: videoMetadata,
+         media: {
+           body: fileStream,
+         },
+       },
+       {
+         // Very generous timeout: 15 minutes base + 2 minutes per MB
+         // This ensures the connection doesn't timeout during transfer
+         timeout: Math.max(900000, (fileSize / (1024 * 1024)) * 120000),
+         maxRedirects: 5,
+       }
+     );
+      
+     console.log(`[YouTube Upload] Success: ${videoFile.originalname} -> ${response.data.id}`);
+     return response;
     } catch (error) {
-      lastError = error;
+     if (fileStream && !fileStream.destroyed) {
+       fileStream.destroy();
+     }
+      
+     lastError = error;
      const isRateLimitError = error && error.response && error.response.status === 429;
+     const isTimeoutError = error.code === 'ETIMEDOUT' || 
+                            error.code === 'ECONNRESET' ||
+                            (error.message && (error.message.includes('timeout') || error.message.includes('Connection terminated')));
+      
      const isRetryable = 
        isRateLimitError ||
-       error.code === 'ECONNRESET' ||
-       error.code === 'ETIMEDOUT' ||
+       isTimeoutError ||
        error.code === 'ENOTFOUND' ||
        error.code === 'ECONNREFUSED' ||
        (error.status && error.status >= 500) ||
@@ -413,6 +429,8 @@ async function uploadToYouTubeResumable(youtube, videoFile, videoMetadata, maxRe
        const waitTime = Math.pow(2, attempt) * 1000; // Exponential backoff: 1s, 2s, 4s
        if (isRateLimitError) {
          console.warn(`[YouTube Upload] Rate limited (429 attempt ${attempt + 1}/${MAX_RETRIES + 1}): ${error.message}. Retrying in ${waitTime}ms...`);
+       } else if (isTimeoutError) {
+         console.warn(`[YouTube Upload] Connection timeout (attempt ${attempt + 1}/${MAX_RETRIES + 1}): ${error.code || error.message}. Retrying in ${waitTime}ms...`);
        } else {
          console.warn(`[YouTube Upload] Retryable error (attempt ${attempt + 1}/${MAX_RETRIES + 1}): ${error.code || error.message}. Retrying in ${waitTime}ms...`);
        }
@@ -420,7 +438,10 @@ async function uploadToYouTubeResumable(youtube, videoFile, videoMetadata, maxRe
        continue;
      }
       
-     console.error(`[YouTube Upload] Non-retryable error or max retries exceeded: ${error.code || error.message}`);
+     console.error(`[YouTube Upload] Non-retryable error or max retries exceeded (attempt ${attempt + 1}/${MAX_RETRIES + 1}): ${error.code || error.message}`);
+     if (error.response && error.response.status) {
+       console.error(`[YouTube Upload] HTTP Status: ${error.response.status}, Message: ${error.response.statusText || 'Unknown'}`);
+     }
      throw error;
     }
   }
