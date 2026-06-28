@@ -68,7 +68,7 @@
       </thead>
       <tbody>
         {{#each projects}}
-        <tr class="project-tag-row" data-project-id="{{this.id}}" data-tag-color="{{this.tag_color}}" data-tag-color-bg="{{this.tag_color_bg}}" data-tag-color-hover="{{this.tag_color_hover}}"{{#if this.tag_color_bg}} style="--bs-table-bg:{{this.tag_color_bg}};--bs-table-hover-bg:{{this.tag_color_hover}};"{{/if}}>
+        <tr class="project-tag-row" data-project-id="{{this.id}}" data-tag-color="{{this.tag_color}}" data-tag-color-bg="{{this.tag_color_bg}}" data-tag-color-hover="{{this.tag_color_hover}}">
           <td>{{this.name}}</td>
           <td>{{this.description}}</td>
           <td>{{this.createdAt}}</td>
@@ -126,78 +126,77 @@
 </div>
 
 <script>
-function applyProjectTagColor(row, tagColor, bgColor, hoverColor) {
-  row.dataset.tagColor = tagColor || '';
-  row.dataset.tagColorBg = bgColor || '';
-  row.dataset.tagColorHover = hoverColor || '';
+function setProjectRowColor(projectId, bgColor, hoverColor) {
+  const styleId = 'prc-' + projectId;
+  let el = document.getElementById(styleId);
+  if (!el) {
+    el = document.createElement('style');
+    el.id = styleId;
+    document.head.appendChild(el);
+  }
   if (bgColor) {
-    row.style.setProperty('--bs-table-bg', bgColor);
-    row.style.setProperty('--bs-table-hover-bg', hoverColor || bgColor);
+    el.textContent =
+      'tr[data-project-id="' + projectId + '"]>td{background-color:' + bgColor + '!important;box-shadow:none!important}' +
+      'tr[data-project-id="' + projectId + '"]:hover>td{background-color:' + hoverColor + '!important;box-shadow:none!important}';
   } else {
-    row.style.removeProperty('--bs-table-bg');
-    row.style.removeProperty('--bs-table-hover-bg');
+    el.textContent = '';
   }
 }
 
 document.addEventListener('DOMContentLoaded', function () {
-  const menu = document.getElementById('project-tag-menu');
-  const rows = document.querySelectorAll('.project-tag-row');
-  if (!menu || !rows.length) return;
+  // Apply persisted colors on page load
+  document.querySelectorAll('.project-tag-row[data-tag-color-bg]').forEach(function (row) {
+    const bg = row.dataset.tagColorBg;
+    const hover = row.dataset.tagColorHover;
+    if (bg) setProjectRowColor(row.dataset.projectId, bg, hover || bg);
+  });
 
+  const menu = document.getElementById('project-tag-menu');
+  if (!menu) return;
   let activeRow = null;
 
-  const hideMenu = () => {
-    menu.classList.add('d-none');
-    activeRow = null;
-  };
-
-  const showMenu = (event, row) => {
+  const hideMenu = () => { menu.classList.add('d-none'); activeRow = null; };
+  const showMenu = (e, row) => {
     menu.classList.remove('d-none');
-    menu.style.left = `${event.pageX}px`;
-    menu.style.top = `${event.pageY}px`;
+    menu.style.left = e.pageX + 'px';
+    menu.style.top  = e.pageY + 'px';
     activeRow = row;
   };
 
-  rows.forEach((row) => {
-    row.addEventListener('contextmenu', (event) => {
-      event.preventDefault();
-      showMenu(event, row);
-    });
+  document.querySelectorAll('.project-tag-row').forEach(function (row) {
+    row.addEventListener('contextmenu', function (e) { e.preventDefault(); showMenu(e, row); });
   });
 
-  menu.addEventListener('click', async (event) => {
-    const item = event.target.closest('.project-tag-menu-item');
+  menu.addEventListener('click', async function (e) {
+    const item = e.target.closest('.project-tag-menu-item');
     if (!item || !activeRow) return;
-    const selectedRow = activeRow;
-    const projectId = activeRow.dataset.projectId;
+    const row = activeRow;
+    const projectId = row.dataset.projectId;
     const tagColor = (item.dataset.tagColor || '').trim().toLowerCase();
     hideMenu();
 
     try {
-      const response = await fetch(`/projects/${projectId}/tag-color`, {
+      const res = await fetch('/projects/' + projectId + '/tag-color', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tagColor: tagColor || null })
       });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok || !payload.ok) {
-        throw new Error(payload.error || 'Failed to save color');
-      }
-      applyProjectTagColor(selectedRow, payload.tagColor || '', payload.tagColorBg || '', payload.tagColorHover || '');
+      const payload = await res.json().catch(function () { return {}; });
+      if (!res.ok || !payload.ok) throw new Error(payload.error || 'Failed');
+      row.dataset.tagColor = payload.tagColor || '';
+      row.dataset.tagColorBg = payload.tagColorBg || '';
+      row.dataset.tagColorHover = payload.tagColorHover || '';
+      setProjectRowColor(projectId, payload.tagColorBg || '', payload.tagColorHover || '');
     } catch (err) {
-      console.error('[PROJECT_TAG_COLOR_SAVE_ERROR]', err);
-      alert('Could not save project color. Please try again.');
+      console.error('[TAG_COLOR]', err);
+      alert('Could not save color. Please try again.');
     }
   });
 
-  document.addEventListener('click', (event) => {
-    if (!menu.contains(event.target)) hideMenu();
-  });
+  document.addEventListener('click', function (e) { if (!menu.contains(e.target)) hideMenu(); });
   window.addEventListener('scroll', hideMenu, true);
   window.addEventListener('resize', hideMenu);
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') hideMenu();
-  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hideMenu(); });
 });
 </script>
 
@@ -209,10 +208,9 @@ document.addEventListener('DOMContentLoaded', function () {
   background: #fff;
   border: 1px solid #ddd;
   border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  box-shadow: 0 8px 24px rgba(0,0,0,.16);
   padding: 6px;
 }
-
 .project-tag-menu-item {
   display: flex;
   align-items: center;
@@ -224,39 +222,21 @@ document.addEventListener('DOMContentLoaded', function () {
   padding: 7px 8px;
   border-radius: 6px;
   font-size: 14px;
+  cursor: pointer;
 }
-
-.project-tag-menu-item:hover {
-  background: #f2f4f7;
-}
-
+.project-tag-menu-item:hover { background: #f2f4f7; }
 .project-tag-dot {
-  width: 12px;
-  height: 12px;
+  width: 12px; height: 12px;
   border-radius: 50%;
   display: inline-block;
   flex-shrink: 0;
 }
-
-.project-tag-dot-none {
-  border: 1px solid #adb5bd;
-  background: #fff;
-}
-
-.tag-gray { background: #6c757d; }
-.tag-red { background: #e03131; }
+.project-tag-dot-none { border: 1px solid #adb5bd; background: #fff; }
+.tag-gray   { background: #6c757d; }
+.tag-red    { background: #e03131; }
 .tag-orange { background: #f08c00; }
 .tag-yellow { background: #f59f00; }
-.tag-green { background: #2f9e44; }
-.tag-blue { background: #1c7ed6; }
+.tag-green  { background: #2f9e44; }
+.tag-blue   { background: #1c7ed6; }
 .tag-purple { background: #9c36b5; }
-
-/* Override Bootstrap 5 CSS vars so its box-shadow overlay uses our colors */
-tr.project-tag-row.tag-color-gray   { --bs-table-bg: #f1f3f5; --bs-table-hover-bg: #e9ecef; --bs-table-striped-bg: #f1f3f5; }
-tr.project-tag-row.tag-color-red    { --bs-table-bg: #fff5f5; --bs-table-hover-bg: #ffe3e3; --bs-table-striped-bg: #fff5f5; }
-tr.project-tag-row.tag-color-orange { --bs-table-bg: #fff4e6; --bs-table-hover-bg: #ffe8cc; --bs-table-striped-bg: #fff4e6; }
-tr.project-tag-row.tag-color-yellow { --bs-table-bg: #fff9db; --bs-table-hover-bg: #fff3bf; --bs-table-striped-bg: #fff9db; }
-tr.project-tag-row.tag-color-green  { --bs-table-bg: #ebfbee; --bs-table-hover-bg: #d3f9d8; --bs-table-striped-bg: #ebfbee; }
-tr.project-tag-row.tag-color-blue   { --bs-table-bg: #e7f5ff; --bs-table-hover-bg: #d0ebff; --bs-table-striped-bg: #e7f5ff; }
-tr.project-tag-row.tag-color-purple { --bs-table-bg: #f8f0fc; --bs-table-hover-bg: #f3d9fa; --bs-table-striped-bg: #f8f0fc; }
 </style>
