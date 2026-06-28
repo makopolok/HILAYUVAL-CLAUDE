@@ -1,15 +1,22 @@
 const bcrypt = require('bcryptjs');
 
 const normalizeEmail = (value) => (value || '').toString().trim().toLowerCase();
+const parseAdminEmails = () => {
+  const raw = (process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || '').toString();
+  return raw
+    .split(',')
+    .map((email) => email.trim())
+    .filter(Boolean);
+};
 
 const getAdminConfig = () => ({
-  email: (process.env.ADMIN_EMAIL || '').toString().trim(),
+  emails: parseAdminEmails(),
   passwordHash: process.env.ADMIN_PASSWORD_HASH || '',
 });
 
 const isAdminConfigured = () => {
-  const { email, passwordHash } = getAdminConfig();
-  return Boolean(email && passwordHash);
+  const { emails, passwordHash } = getAdminConfig();
+  return Boolean(emails.length && passwordHash);
 };
 
 const sanitizeRedirect = (target, fallback = '/') => {
@@ -27,12 +34,16 @@ const sanitizeRedirect = (target, fallback = '/') => {
 };
 
 async function authenticateAdmin(email, password) {
-  const { email: adminEmail, passwordHash } = getAdminConfig();
-  if (!adminEmail || !passwordHash) {
+  const { emails: adminEmails, passwordHash } = getAdminConfig();
+  if (!adminEmails.length || !passwordHash) {
     return { ok: false, reason: 'not_configured' };
   }
   const normalizedInputEmail = normalizeEmail(email);
-  if (!normalizedInputEmail || normalizedInputEmail !== normalizeEmail(adminEmail)) {
+  if (!normalizedInputEmail) {
+    return { ok: false, reason: 'invalid_credentials' };
+  }
+  const matchedAdminEmail = adminEmails.find((adminEmail) => normalizeEmail(adminEmail) === normalizedInputEmail);
+  if (!matchedAdminEmail) {
     return { ok: false, reason: 'invalid_credentials' };
   }
   if (!password) {
@@ -45,7 +56,7 @@ async function authenticateAdmin(email, password) {
   return {
     ok: true,
     admin: {
-      email: adminEmail,
+      email: matchedAdminEmail,
     },
   };
 }

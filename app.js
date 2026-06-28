@@ -56,6 +56,20 @@ const BUNNY_DIRECT_UPLOAD_MAX_PER_PROJECT_WINDOW = Number.parseInt(process.env.B
 const BUNNY_DIRECT_UPLOAD_PROJECT_WINDOW_MS = Number.parseInt(process.env.BUNNY_DIRECT_UPLOAD_PROJECT_WINDOW_MS || String(60 * 60 * 1000), 10);
 const directUploadIntentStore = new Map();
 const directUploadProjectQuotaStore = new Map();
+const formatTelAvivDateTime = (value = new Date()) => {
+  const date = value instanceof Date ? value : new Date(value);
+  return date.toLocaleString('en-IL', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'Asia/Jerusalem',
+    timeZoneName: 'short'
+  });
+};
 
 // Canonical domain enforcement (optional). Set APP_PRIMARY_DOMAIN=hilayuval.com in env to enable.
 if (process.env.APP_PRIMARY_DOMAIN) {
@@ -592,15 +606,7 @@ app.post('/audition', generalAuditionUpload.single('video'), async (req, res) =>
       video_url: videoId, // For YouTube, we store the video ID
       video_type: 'youtube',
       profile_pictures: [],
-      submitted_time: new Date().toLocaleString('en-IL', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        timeZone: 'Asia/Jerusalem'
-      }),
+      submitted_time: formatTelAvivDateTime(),
       project: { name: 'General Audition', id: 'general' }
     };
     
@@ -903,15 +909,7 @@ app.post('/projects/create', requireAdmin, async (req, res, next) => { // Added 
       project: { id: newProjectId, ...project, roles: finalProjectRoles },
       audition_base_url: auditionBaseUrl,
       used_default_playlist: usedDefault,
-      submitted_time: new Date().toLocaleString('en-IL', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        timeZone: 'Asia/Jerusalem'
-      })
+      submitted_time: formatTelAvivDateTime()
     };
     
     res.render('project-success', projectData);
@@ -1757,15 +1755,7 @@ app.post('/audition/:projectId', auditionUpload.fields([
       video_type: videoType,
       profile_pictures: profilePictureUploadResults || [],
       showreel_url: body.showreel_url,
-      submitted_time: new Date().toLocaleString('en-IL', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        timeZone: 'Asia/Jerusalem'
-      })
+      submitted_time: formatTelAvivDateTime()
     };
 
   // Build optional signed Bunny Stream embed URL if signing key provided
