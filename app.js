@@ -136,14 +136,14 @@ app.set('views', './views');
 // Without this, express-rate-limit throws ERR_ERL_UNEXPECTED_X_FORWARDED_FOR.
 app.set('trust proxy', 1);
 
-// Set global request timeout to 45 minutes (2700000 ms) to accommodate large YouTube uploads
+// Set global request timeout to 1 hour (3600000 ms) to accommodate very large YouTube uploads (90MB+)
 // Individual routes can override this if needed
 app.use((req, res, next) => {
   // Socket timeout: when socket has no data for this long, close it
-  req.socket.setTimeout(45 * 60 * 1000); // 45 minutes
+  req.socket.setTimeout(60 * 60 * 1000); // 1 hour
   // Request timeout: when request processing takes this long, abort
-  req.setTimeout(45 * 60 * 1000); // 45 minutes
-  res.setTimeout(45 * 60 * 1000); // 45 minutes
+  req.setTimeout(60 * 60 * 1000); // 1 hour
+  res.setTimeout(60 * 60 * 1000); // 1 hour
   next();
 });
 
