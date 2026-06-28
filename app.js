@@ -680,8 +680,20 @@ app.get('/projects', requireAdmin, async (req, res) => {
   try {
     const projects = (await projectService.getAllProjects()).map((project) => {
       const colorStyle = project.tag_color ? TAG_COLOR_STYLES[project.tag_color] : null;
+      let created_at_formatted = project.created_at;
+      if (project.created_at) {
+        try {
+          created_at_formatted = new Date(project.created_at).toLocaleString('en-IL', {
+            year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit',
+            timeZone: 'Asia/Jerusalem'
+          });
+        } catch (_) {
+          // Keep raw date if formatting fails
+        }
+      }
       return {
         ...project,
+        created_at_formatted,
         tag_color: project.tag_color || null,
         tag_color_bg: colorStyle ? colorStyle.bg : '',
         tag_color_hover: colorStyle ? colorStyle.hover : ''

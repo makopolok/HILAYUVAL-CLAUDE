@@ -243,5 +243,15 @@ document.addEventListener('DOMContentLoaded', function () {
 .tag-purple { background: #9c36b5; }
 .project-tag-row {
   background-size: 6px 100%;
+  background-repeat: repeat-y !important;
+  background-attachment: local !important;
+}
+/* Prevent Bootstrap table-hover from overriding our gradient stripe */
+.table-hover tbody tr.project-tag-row:hover {
+  background-color: transparent !important;
+  background-image: inherit !important;
+}
+.table-hover tbody tr.project-tag-row:hover td {
+  background-color: transparent !important;
 }
 </style>
