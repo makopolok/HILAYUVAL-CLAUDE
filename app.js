@@ -242,25 +242,69 @@ function isValidYouTubePlaylistId(id) {
   return typeof id === 'string' && /^PL[a-zA-Z0-9_-]{16,}$/.test(id);
 }
 
-async function ensureRolePlaylist(youtube, project, role) {
-  const createAndPersistPlaylist = async () => {
-    const res = await youtube.playlists.insert({
-      part: ['snippet', 'status'],
-      requestBody: {
-        snippet: {
-          title: `${project.name} — ${role.name}`,
-          description: `Auditions for role: ${role.name} | Project: ${project.name}`,
+async function createAndPersistYouTubePlaylist(youtube, project, role, maxRetries = 3) {
+  let lastError;
+  let delay = 1000; // Start with 1 second
+  
+  for (let retries = 0; retries <= maxRetries; retries++) {
+    try {
+      const res = await youtube.playlists.insert({
+        part: ['snippet', 'status'],
+        requestBody: {
+          snippet: {
+            title: `${project.name} — ${role.name}`,
+            description: `Auditions for role: ${role.name} | Project: ${project.name}`,
+          },
+          status: { privacyStatus: 'unlisted' },
         },
-        status: { privacyStatus: 'unlisted' },
-      },
-    });
-    const playlistId = res.data.id;
-    await projectService.updateRolePlaylistId(role.id, playlistId);
-    role.playlist_id = playlistId;
-    console.log(`YOUTUBE_PLAYLIST_CREATED: role=${role.name} project=${project.name} playlistId=${playlistId}`);
-    return playlistId;
-  };
+      });
+      const playlistId = res.data.id;
+      await projectService.updateRolePlaylistId(role.id, playlistId);
+      role.playlist_id = playlistId;
+      console.log(`YOUTUBE_PLAYLIST_CREATED: role=${role.name} project=${project.name} playlistId=${playlistId} (attempt ${retries + 1}/${maxRetries + 1})`);
+      return playlistId;
+    } catch (err) {
+      lastError = err;
+      const isRateLimitError = err && err.response && err.response.status === 429;
+      const isQuotaExceededError = err && err.response && err.response.status === 403 &&
+                                 err.response.data && err.response.data.error &&
+                                 err.response.data.error.errors && err.response.data.error.errors.length > 0 &&
+                                 err.response.data.error.errors[0].reason === 'quotaExceeded';
+      
+      if (isRateLimitError && retries < maxRetries) {
+        console.warn(`YOUTUBE_PLAYLIST_RATE_LIMITED: role=${role.name} project=${project.name}. Retrying in ${delay}ms (attempt ${retries + 1}/${maxRetries + 1})...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay *= 2;
+        continue;
+      }
+      
+      if (isQuotaExceededError) {
+        console.error(`YOUTUBE_PLAYLIST_QUOTA_EXCEEDED: role=${role.name} project=${project.name}`);
+        throw new Error(`YouTube API quota exceeded when creating playlist for ${role.name}. Please contact support.`);
+      }
+      
+      console.error(`YOUTUBE_PLAYLIST_CREATE_ERROR: role=${role.name} project=${project.name} attempt ${retries + 1}/${maxRetries + 1}. Error: ${err.message}`);
+      if (retries >= maxRetries) {
+        throw err;
+      }
+      // For other transient errors, retry
+      await new Promise(resolve => setTimeout(resolve, delay));
+      delay *= 2;
+    }
+  }
+  
+  throw lastError || new Error(`Failed to create playlist for ${role.name} after ${maxRetries + 1} attempts`);
+}
 
+async function ensureRolePlaylist(youtube, project, role, skipValidation = true) {
+  // If we have a valid cached playlist ID and skipValidation is true (default for audition submissions),
+  // just use it without making extra API calls. This reduces rate limit pressure.
+  if (skipValidation && isValidYouTubePlaylistId(role.playlist_id)) {
+    console.log(`YOUTUBE_PLAYLIST_CACHED: role=${role.name} project=${project.name} playlistId=${role.playlist_id}`);
+    return role.playlist_id;
+  }
+
+  // Full validation: check if the playlist still exists on YouTube
   if (isValidYouTubePlaylistId(role.playlist_id)) {
     try {
       const check = await youtube.playlists.list({
@@ -270,31 +314,58 @@ async function ensureRolePlaylist(youtube, project, role) {
         maxResults: 1,
       });
       const items = (check && check.data && Array.isArray(check.data.items)) ? check.data.items : [];
-      if (items.length > 0) return role.playlist_id;
+      if (items.length > 0) {
+        console.log(`YOUTUBE_PLAYLIST_VALIDATED: role=${role.name} project=${project.name} playlistId=${role.playlist_id}`);
+        return role.playlist_id;
+      }
 
       console.warn(`YOUTUBE_PLAYLIST_NOT_OWNED_OR_INACCESSIBLE: role=${role.name} project=${project.name} playlistId=${role.playlist_id}. Recreating.`);
-      return await createAndPersistPlaylist();
+      return await createAndPersistYouTubePlaylist(youtube, project, role);
     } catch (err) {
-      console.warn(`YOUTUBE_PLAYLIST_CHECK_FAILED: role=${role.name} project=${project.name} playlistId=${role.playlist_id} err=${err.message}. Recreating.`);
-      return await createAndPersistPlaylist();
+      console.warn(`YOUTUBE_PLAYLIST_VALIDATION_FAILED: role=${role.name} project=${project.name} playlistId=${role.playlist_id} err=${err.message}. Recreating.`);
+      return await createAndPersistYouTubePlaylist(youtube, project, role);
     }
   }
 
-  return await createAndPersistPlaylist();
+  return await createAndPersistYouTubePlaylist(youtube, project, role);
 }
 
 // Add an already-uploaded YouTube video to a playlist.
-async function addVideoToYouTubePlaylist(youtube, videoId, playlistId) {
-  await youtube.playlistItems.insert({
-    part: ['snippet'],
-    requestBody: {
-      snippet: {
-        playlistId,
-        resourceId: { kind: 'youtube#video', videoId },
-      },
-    },
-  });
-  console.log(`YOUTUBE_PLAYLIST_ITEM_ADDED: videoId=${videoId} playlistId=${playlistId}`);
+async function addVideoToYouTubePlaylist(youtube, videoId, playlistId, maxRetries = 3) {
+  let lastError;
+  let delay = 1000; // Start with 1 second
+  
+  for (let retries = 0; retries <= maxRetries; retries++) {
+    try {
+      await youtube.playlistItems.insert({
+        part: ['snippet'],
+        requestBody: {
+          snippet: {
+            playlistId,
+            resourceId: { kind: 'youtube#video', videoId },
+          },
+        },
+      });
+      console.log(`YOUTUBE_PLAYLIST_ITEM_ADDED: videoId=${videoId} playlistId=${playlistId} (attempt ${retries + 1}/${maxRetries + 1})`);
+      return;
+    } catch (err) {
+      lastError = err;
+      const isRateLimitError = err && err.response && err.response.status === 429;
+      
+      if (isRateLimitError && retries < maxRetries) {
+        console.warn(`YOUTUBE_PLAYLIST_ITEM_RATE_LIMITED: videoId=${videoId} playlistId=${playlistId}. Retrying in ${delay}ms (attempt ${retries + 1}/${maxRetries + 1})...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay *= 2;
+        continue;
+      }
+      
+      // For non-rate-limit errors or final retry exhausted, throw
+      console.error(`YOUTUBE_PLAYLIST_ITEM_ADD_ERROR: videoId=${videoId} playlistId=${playlistId} attempt ${retries + 1}/${maxRetries + 1}. Error: ${err.message}`);
+      throw err;
+    }
+  }
+  
+  throw lastError || new Error(`Failed to add video ${videoId} to playlist ${playlistId} after ${maxRetries + 1} attempts`);
 }
 
 // Resumable upload helper for large files (>50MB)
@@ -327,23 +398,29 @@ async function uploadToYouTubeResumable(youtube, videoFile, videoMetadata, maxRe
       return response;
     } catch (error) {
       lastError = error;
-      const isRetryable = 
-        error.code === 'ECONNRESET' ||
-        error.code === 'ETIMEDOUT' ||
-        error.code === 'ENOTFOUND' ||
-        error.code === 'ECONNREFUSED' ||
-        (error.status && error.status >= 500) ||
-        (error.message && (error.message.includes('timeout') || error.message.includes('ECONNRESET')));
+     const isRateLimitError = error && error.response && error.response.status === 429;
+     const isRetryable = 
+       isRateLimitError ||
+       error.code === 'ECONNRESET' ||
+       error.code === 'ETIMEDOUT' ||
+       error.code === 'ENOTFOUND' ||
+       error.code === 'ECONNREFUSED' ||
+       (error.status && error.status >= 500) ||
+       (error.message && (error.message.includes('timeout') || error.message.includes('ECONNRESET')));
       
-      if (isRetryable && attempt < MAX_RETRIES) {
-        const waitTime = Math.pow(2, attempt) * 1000; // Exponential backoff: 1s, 2s, 4s
-        console.warn(`[YouTube Upload] Retryable error (attempt ${attempt + 1}/${MAX_RETRIES + 1}): ${error.code || error.message}. Retrying in ${waitTime}ms...`);
-        await new Promise(resolve => setTimeout(resolve, waitTime));
-        continue;
-      }
+     if (isRetryable && attempt < MAX_RETRIES) {
+       const waitTime = Math.pow(2, attempt) * 1000; // Exponential backoff: 1s, 2s, 4s
+       if (isRateLimitError) {
+         console.warn(`[YouTube Upload] Rate limited (429 attempt ${attempt + 1}/${MAX_RETRIES + 1}): ${error.message}. Retrying in ${waitTime}ms...`);
+       } else {
+         console.warn(`[YouTube Upload] Retryable error (attempt ${attempt + 1}/${MAX_RETRIES + 1}): ${error.code || error.message}. Retrying in ${waitTime}ms...`);
+       }
+       await new Promise(resolve => setTimeout(resolve, waitTime));
+       continue;
+     }
       
-      console.error(`[YouTube Upload] Non-retryable error or max retries exceeded: ${error.code || error.message}`);
-      throw error;
+     console.error(`[YouTube Upload] Non-retryable error or max retries exceeded: ${error.code || error.message}`);
+     throw error;
     }
   }
   
