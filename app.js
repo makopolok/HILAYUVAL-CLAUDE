@@ -136,6 +136,17 @@ app.set('views', './views');
 // Without this, express-rate-limit throws ERR_ERL_UNEXPECTED_X_FORWARDED_FOR.
 app.set('trust proxy', 1);
 
+// Set global request timeout to 45 minutes (2700000 ms) to accommodate large YouTube uploads
+// Individual routes can override this if needed
+app.use((req, res, next) => {
+  // Socket timeout: when socket has no data for this long, close it
+  req.socket.setTimeout(45 * 60 * 1000); // 45 minutes
+  // Request timeout: when request processing takes this long, abort
+  req.setTimeout(45 * 60 * 1000); // 45 minutes
+  res.setTimeout(45 * 60 * 1000); // 45 minutes
+  next();
+});
+
 // Middleware - Configure for large file uploads
 app.use(express.json({ 
   limit: '10mb' // Increase JSON payload limit
@@ -2010,7 +2021,19 @@ app.post('/audition/:projectId', auditionUpload.fields([
     // Enhanced error logging
     console.error(`[App.js POST /audition/:${req.params.projectId}] Critical error in route: ${error.message}`, error);
     console.error('Error stack:', error.stack);
-    const errorDetails = error && error.message ? error.message : String(error);
+    
+    // Extract meaningful error details
+    let errorDetails = error && error.message ? error.message : String(error);
+    
+    // Add more context for specific error types
+    if (error.code === 'ETIMEDOUT') {
+      errorDetails = 'Upload connection timeout - YouTube API did not respond in time';
+    } else if (error.code === 'ECONNRESET') {
+      errorDetails = 'Connection reset by YouTube API - please try again';
+    } else if (error.response && error.response.status) {
+      errorDetails = `YouTube API error (${error.response.status}): ${errorDetails}`;
+    }
+    
     const timestamp = new Date().toISOString();
     res.status(500).render('audition-upload-error', {
       errorDetails,
