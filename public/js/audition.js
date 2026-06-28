@@ -266,13 +266,15 @@
             return;
           }
 
-          // Step 2: Upload video in 5MB binary chunks — each PUT is a separate short
+          // Step 2: Upload video in 2MB binary chunks — each PUT is a separate short
           // HTTP request so Heroku's 90s idle timeout can never trigger.
-          var CHUNK_SIZE = 5 * 1024 * 1024; // 5MB
+          // Smaller chunks (2MB) ensure the progress bar updates frequently even on slow connections.
+          var CHUNK_SIZE = 2 * 1024 * 1024; // 2MB
           var totalChunks = Math.ceil(videoFile.size / CHUNK_SIZE);
           var currentChunk = 0;
 
-          function uploadNextChunk() {
+          function uploadNextChunk(retryCount) {
+            retryCount = retryCount || 0;
             var start = currentChunk * CHUNK_SIZE;
             var end = Math.min(start + CHUNK_SIZE, videoFile.size);
             var chunk = videoFile.slice(start, end);
@@ -292,7 +294,7 @@
                 setYoutubeUploadUi(uploadUi, pct, pct + '%');
 
                 if (currentChunk < totalChunks) {
-                  uploadNextChunk();
+                  uploadNextChunk(0);
                 } else {
                   // All chunks uploaded — tell server to assemble and start YouTube background job
                   fetch('/upload-chunk/' + submissionId + '/assemble', {
@@ -312,20 +314,31 @@
                       pollUploadJob(result.jobId, form.action, uploadUi, function() { youtubeSubmitInFlight = false; });
                     })
                     .catch(function(err) {
-                      console.error('Assemble error:', err);
-                      youtubeSubmitInFlight = false;
-                      window.location.href = '/audition/' + projectId + '/error';
+                      if (retryCount < 3) {
+                        console.warn('Assemble error, retrying...', err);
+                        setTimeout(function() { uploadNextChunk(retryCount + 1); }, 2000);
+                      } else {
+                        console.error('Assemble error final:', err);
+                        youtubeSubmitInFlight = false;
+                        window.location.href = '/audition/' + projectId + '/error';
+                      }
                     });
                 }
               })
               .catch(function(err) {
-                console.error('Chunk upload error:', err);
-                youtubeSubmitInFlight = false;
-                window.location.href = '/audition/' + projectId + '/error';
+                console.warn('Chunk ' + currentChunk + ' upload error, retry ' + retryCount + ':', err);
+                if (retryCount < 5) {
+                  // Wait longer between retries: 2s, 4s, 6s, etc.
+                  setTimeout(function() { uploadNextChunk(retryCount + 1); }, (retryCount + 1) * 2000);
+                } else {
+                  console.error('Chunk upload error final:', err);
+                  youtubeSubmitInFlight = false;
+                  window.location.href = '/audition/' + projectId + '/error';
+                }
               });
           }
 
-          uploadNextChunk();
+          uploadNextChunk(0);
         })
         .catch(function(err) {
           console.error('Fields submit error:', err);
