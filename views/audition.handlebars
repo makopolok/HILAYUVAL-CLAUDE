@@ -10,7 +10,7 @@
     {{/if}}
   </h1>
   {{!-- Form action is dynamic: /audition/:projectId for project-specific, /audition for generic --}}
-  <form id="audition-form" action="{{#if project}}/audition/{{project.id}}{{else}}/audition{{/if}}" method="POST" enctype="multipart/form-data" class="needs-validation" novalidate data-upload-method="{{upload_method}}" data-bunny-library-id="{{bunny_stream_library_id}}" data-direct-captcha-required="{{direct_upload_require_captcha}}" onsubmit="if(((this.dataset.uploadMethod||'').toLowerCase())==='youtube' && this.checkValidity()){var sb=document.getElementById('submit-btn');var st=document.getElementById('submit-text');var ss=document.getElementById('submit-spinner');var ov=document.getElementById('loading-overlay');var opt=document.getElementById('overlay-upload-progress-text');var opb=document.getElementById('overlay-upload-progress-bar');if(sb)sb.disabled=true;if(st)st.classList.add('d-none');if(ss)ss.classList.remove('d-none');if(ov)ov.classList.remove('d-none');if(opt)opt.textContent='Starting upload...';if(opb){opb.classList.add('progress-bar-animated');opb.style.width='0%';}}">
+  <form id="audition-form" action="{{#if project}}/audition/{{project.id}}{{else}}/audition{{/if}}" method="POST" enctype="multipart/form-data" class="needs-validation" novalidate data-upload-method="{{upload_method}}" data-bunny-library-id="{{bunny_stream_library_id}}" data-direct-captcha-required="{{direct_upload_require_captcha}}">
     <div class="row">
       <div class="col-md-6 mb-3">
         <label for="first_name_he" class="form-label">שם פרטי (First Name, Hebrew)</label>
@@ -73,7 +73,8 @@
       <label for="role" class="form-label">Role (optional)</label>
       <input type="text" class="form-control" id="role" name="role">
     </div>
-    {{/if}}    <div class="mb-3">
+    {{/if}}
+    <div class="mb-3">
       <label for="profile_pictures" class="form-label">Profile Picture(s) <span class="text-muted">(optional)</span></label>
       <input type="file" class="form-control" id="profile_pictures" name="profile_pictures" accept="image/*" multiple>
       <div class="invalid-feedback">If you wish, you may upload a profile picture.</div>
@@ -85,7 +86,8 @@
       <div id="profile-pictures-preview" class="mt-2 d-none">
         <div class="row g-2" id="profile-pictures-list"></div>
       </div>
-    </div>    {{#if project}}
+    </div>
+    {{#if project}}
       {{#if (eq project.upload_method "youtube")}}
         <div class="mb-3">
           <label for="video" class="form-label">Self-Tape Video <span class="text-danger">(required)</span></label>
@@ -112,7 +114,7 @@
                       <div class="progress-bar bg-success" role="progressbar" style="width: 100%"></div>
                     </div>
                   </div>
-                  <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearVideoSelection()">
+                  <button type="button" class="btn btn-sm btn-outline-danger" data-clear-video>
                     <i class="fas fa-times"></i>
                   </button>
                 </div>
@@ -160,7 +162,7 @@
                       <div class="progress-bar bg-success" role="progressbar" style="width: 100%"></div>
                     </div>
                   </div>
-                  <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearVideoSelection()">
+                  <button type="button" class="btn btn-sm btn-outline-danger" data-clear-video>
                     <i class="fas fa-times"></i>
                   </button>
                 </div>
@@ -177,7 +179,8 @@
             </div>
           </div>
         </div>
-      {{/if}}    {{else}}
+      {{/if}}
+    {{else}}
     <div class="mb-3">
       <label for="video" class="form-label">Self-Tape Video <span class="text-muted">(optional)</span></label>
       <input type="file" class="form-control" id="video" name="video" accept="video/*">
@@ -203,7 +206,7 @@
                   <div class="progress-bar bg-success" role="progressbar" style="width: 100%"></div>
                 </div>
               </div>
-              <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearVideoSelection()">
+              <button type="button" class="btn btn-sm btn-outline-danger" data-clear-video>
                 <i class="fas fa-times"></i>
               </button>
             </div>
@@ -238,7 +241,8 @@
     <div class="mb-3">
       <label for="showreel_url" class="form-label">Showreel Link (optional)</label>
       <input type="url" class="form-control" id="showreel_url" name="showreel_url" placeholder="https://...">
-    </div>    <button type="submit" class="btn btn-primary" id="submit-btn">
+    </div>
+    <button type="submit" class="btn btn-primary" id="submit-btn">
       <span id="submit-text">Submit Audition</span>
       <span id="submit-spinner" class="d-none">
         <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
@@ -261,51 +265,13 @@
       </h4>
       <p class="text-light">Please don't close this tab. Large video files may take several minutes to upload securely to our servers.</p>
       
-      <!-- Enhanced progress information -->
       <div class="mt-4">
-            <div id="resume-upload-hint" class="alert alert-warning d-none mt-3">
-              Looks like a previous upload was interrupted: <strong data-name></strong> (<span data-size></span>). If you reselect the same file, the upload can resume.
-            </div>
-            <div id="resume-upload-hint" class="alert alert-warning d-none mt-3">
-              Looks like a previous upload was interrupted: <strong data-name></strong> (<span data-size></span>). If you reselect the same file, the upload can resume.
-            </div>
-        <div class="card bg-dark border-secondary" style="max-width: 400px; margin: 0 auto;">
-          <div class="card-body p-3">
-            <h6 class="text-white mb-3">
-              <i class="fas fa-shield-alt me-2" style="color: var(--primary-red);"></i>
-              Secure Video Upload
-            </h6>
-            <div class="text-start">
-              <div class="d-flex justify-content-between mb-2">
-                <span class="small text-muted">Upload Method:</span>
-                <span class="small text-white">Private & Secure</span>
-              </div>
-              <div class="d-flex justify-content-between mb-2">
-                <span class="small text-muted">Processing:</span>
-                <span class="small text-white">Uploading now</span>
-              </div>
-              <div class="d-flex justify-content-between">
-                <span class="small text-muted">Accessibility:</span>
-                <span class="small text-white">Private review only</span>
-              </div>
-            </div>
-          </div>
+        <div class="progress mx-auto" style="width: 300px; height: 8px;">
+          <div class="progress-bar progress-bar-striped progress-bar-animated" id="overlay-upload-progress-bar" role="progressbar" style="background-color: var(--primary-red); width: 0%"></div>
         </div>
-      </div>
-      
-      <div class="progress mx-auto mt-3" style="width: 300px; height: 8px;">
-        <div class="progress-bar progress-bar-striped progress-bar-animated" id="overlay-upload-progress-bar" role="progressbar" style="background-color: var(--primary-red); width: 0%"></div>
-      </div>
-      <div class="text-center mt-2">
-        <small class="text-light fw-bold" style="letter-spacing:0.3px">Upload Progress: <span id="overlay-upload-progress-text">0%</span></small>
-      </div>
-      
-      <!-- Tips for large uploads -->
-      <div class="mt-3">
-        <small class="text-muted">
-          <i class="fas fa-lightbulb me-1"></i>
-          Tip: For best results, ensure stable internet connection during upload
-        </small>
+        <div class="text-center mt-2">
+          <small class="text-light fw-bold" style="letter-spacing:0.3px">Upload Progress: <span id="overlay-upload-progress-text">0%</span></small>
+        </div>
       </div>
     </div>
   </div>
@@ -314,297 +280,4 @@
 {{#if (and direct_upload_require_captcha turnstile_site_key)}}
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 {{/if}}
-
-<script>
-// File size constants (matching backend limits)
-const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
-const MAX_PROFILE_PICTURES = 10;
-
-// Supported file types
-const VIDEO_TYPES = [
-  'video/mp4', 'video/avi', 'video/mov', 'video/wmv', 
-  'video/flv', 'video/webm', 'video/mkv', 'video/quicktime'
-];
-const IMAGE_TYPES = [
-  'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg'
-];
-
-// Utility functions
-function formatFileSize(bytes) {
-  if (bytes === 0) return '0 Bytes';
-  const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
-
-function validateFileSize(file) {
-  return file.size <= MAX_FILE_SIZE;
-}
-
-function validateVideoType(file) {
-  return VIDEO_TYPES.includes(file.type);
-}
-
-function validateImageType(file) {
-  return IMAGE_TYPES.includes(file.type);
-}
-
-// Video file handling
-function handleVideoSelection(event) {
-  const file = event.target.files[0];
-  const preview = document.getElementById('video-preview');
-  
-  if (!file) {
-    preview.classList.add('d-none');
-    return;
-  }
-
-  // Validate file type
-  if (!validateVideoType(file)) {
-    showFileError('video', 'Please select a valid video file (MP4, MOV, AVI, WMV, FLV, WebM, MKV)');
-    event.target.value = '';
-    preview.classList.add('d-none');
-    return;
-  }
-
-  // Validate file size
-  if (!validateFileSize(file)) {
-    showFileError('video', `Video file is too large (${formatFileSize(file.size)}). Maximum size is 500MB.`);
-    event.target.value = '';
-    preview.classList.add('d-none');
-    return;
-  }
-
-  // Show preview
-  document.getElementById('video-name').textContent = file.name;
-  document.getElementById('video-size').textContent = formatFileSize(file.size);
-  document.getElementById('video-type').textContent = file.type;
-  preview.classList.remove('d-none');
-  
-  // Clear any previous errors
-  clearFileError('video');
-}
-
-// Profile pictures handling
-function handleProfilePicturesSelection(event) {
-  const files = Array.from(event.target.files);
-  const preview = document.getElementById('profile-pictures-preview');
-  const list = document.getElementById('profile-pictures-list');
-  
-  if (!files.length) {
-    preview.classList.add('d-none');
-    return;
-  }
-
-  // Validate file count
-  if (files.length > MAX_PROFILE_PICTURES) {
-    showFileError('profile_pictures', `Too many files selected. Maximum ${MAX_PROFILE_PICTURES} profile pictures allowed.`);
-    event.target.value = '';
-    preview.classList.add('d-none');
-    return;
-  }
-
-  // Validate each file
-  let hasErrors = false;
-  const validFiles = [];
-
-  files.forEach((file, index) => {
-    if (!validateImageType(file)) {
-      showFileError('profile_pictures', `File "${file.name}" is not a valid image type.`);
-      hasErrors = true;
-      return;
-    }
-
-    if (!validateFileSize(file)) {
-      showFileError('profile_pictures', `File "${file.name}" is too large (${formatFileSize(file.size)}). Maximum size is 500MB.`);
-      hasErrors = true;
-      return;
-    }
-
-    validFiles.push(file);
-  });
-
-  if (hasErrors) {
-    event.target.value = '';
-    preview.classList.add('d-none');
-    return;
-  }
-
-  // Show preview
-  list.innerHTML = '';
-  validFiles.forEach((file, index) => {
-    const col = document.createElement('div');
-    col.className = 'col-6 col-md-4 col-lg-3';
-    
-    col.innerHTML = `
-      <div class="card border-success">
-        <div class="card-body p-2">
-          <div class="d-flex align-items-center">
-            <i class="fas fa-image text-success me-2"></i>
-            <div class="flex-grow-1">
-              <div class="small fw-bold text-truncate">${file.name}</div>
-              <div class="small text-muted">${formatFileSize(file.size)}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-    
-    list.appendChild(col);
-  });
-  
-  preview.classList.remove('d-none');
-  clearFileError('profile_pictures');
-}
-
-// Error handling
-function showFileError(fieldName, message) {
-  const field = document.getElementById(fieldName);
-  const existingError = field.parentNode.querySelector('.file-error');
-  
-  if (existingError) {
-    existingError.remove();
-  }
-  
-  const errorDiv = document.createElement('div');
-  errorDiv.className = 'file-error alert alert-danger mt-2 p-2';
-  errorDiv.innerHTML = `<i class="fas fa-exclamation-triangle me-1"></i> ${message}`;
-  
-  field.parentNode.appendChild(errorDiv);
-  field.classList.add('is-invalid');
-}
-
-function clearFileError(fieldName) {
-  const field = document.getElementById(fieldName);
-  const existingError = field.parentNode.querySelector('.file-error');
-  
-  if (existingError) {
-    existingError.remove();
-  }
-  
-  field.classList.remove('is-invalid');
-}
-
-// Clear video selection
-function clearVideoSelection() {
-  document.getElementById('video').value = '';
-  document.getElementById('video-preview').classList.add('d-none');
-  clearFileError('video');
-}
-
-// Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', function() {
-  // Attach file handlers
-  const videoInput = document.getElementById('video');
-  const profileInput = document.getElementById('profile_pictures');
-  const form = document.getElementById('audition-form');
-
-  if (videoInput) {
-    videoInput.addEventListener('change', handleVideoSelection);
-  }
-
-  if (profileInput) {
-    profileInput.addEventListener('change', handleProfilePicturesSelection);
-  }
-
-  if (form) {
-    const method = (form.getAttribute('data-upload-method') || '').toLowerCase();
-    if (method === 'youtube') {
-      let youtubeSubmitInFlight = false;
-      form.addEventListener('submit', async function(event) {
-        if (youtubeSubmitInFlight) {
-          event.preventDefault();
-          return;
-        }
-
-        if (!form.checkValidity()) {
-          event.preventDefault();
-          event.stopPropagation();
-          form.classList.add('was-validated');
-          return;
-        }
-
-        event.preventDefault();
-        youtubeSubmitInFlight = true;
-
-        const submitBtn = document.getElementById('submit-btn');
-        const submitText = document.getElementById('submit-text');
-        const submitSpinner = document.getElementById('submit-spinner');
-        const overlay = document.getElementById('loading-overlay');
-        const overlayTitle = overlay ? overlay.querySelector('h4') : null;
-        const overlayProgressText = document.getElementById('overlay-upload-progress-text');
-        const overlayProgressBar = document.getElementById('overlay-upload-progress-bar');
-
-        const setUi = (pct, text) => {
-          if (submitBtn) submitBtn.disabled = true;
-          if (submitText) submitText.classList.add('d-none');
-          if (submitSpinner) submitSpinner.classList.remove('d-none');
-          if (overlay) overlay.classList.remove('d-none');
-          if (overlayTitle) {
-            overlayTitle.innerHTML = '<i class="fas fa-cloud-upload-alt me-2"></i>Uploading...';
-          }
-          if (overlayProgressText) overlayProgressText.textContent = text || `${pct || 0}%`;
-          if (overlayProgressBar && typeof pct === 'number') {
-            overlayProgressBar.style.width = `${pct}%`;
-          }
-        };
-
-        const updatePct = (pct) => {
-          setUi(pct, `${pct}%`);
-        };
-
-        setUi(0, '0%');
-
-        try {
-          const formData = new FormData(form);
-          const xhr = new XMLHttpRequest();
-          xhr.open('POST', form.action, true);
-          xhr.withCredentials = true;
-          xhr.responseType = 'text';
-          xhr.upload.onprogress = (e) => {
-            if (!e.lengthComputable) return;
-            const pct = Math.max(1, Math.min(99, Math.round((e.loaded / e.total) * 100)));
-            updatePct(pct);
-          };
-          xhr.onerror = () => {
-            youtubeSubmitInFlight = false;
-            if (submitBtn) submitBtn.disabled = false;
-            if (submitText) submitText.classList.remove('d-none');
-            if (submitSpinner) submitSpinner.classList.add('d-none');
-            if (overlay) overlay.classList.add('d-none');
-            if (overlayProgressText) overlayProgressText.textContent = '0%';
-            if (overlayProgressBar) overlayProgressBar.style.width = '0%';
-          };
-          xhr.onload = () => {
-            youtubeSubmitInFlight = false;
-            if (xhr.status >= 200 && xhr.status < 400) {
-              window.location.assign(xhr.responseURL || form.action.replace(/\/audition\/(\d+)$/, '/audition/$1/success'));
-              return;
-            }
-            if (submitBtn) submitBtn.disabled = false;
-            if (submitText) submitText.classList.remove('d-none');
-            if (submitSpinner) submitSpinner.classList.add('d-none');
-            if (overlay) overlay.classList.add('d-none');
-            if (overlayProgressText) overlayProgressText.textContent = '0%';
-            if (overlayProgressBar) overlayProgressBar.style.width = '0%';
-          };
-          xhr.send(formData);
-        } catch (err) {
-          youtubeSubmitInFlight = false;
-          if (submitBtn) submitBtn.disabled = false;
-          if (submitText) submitText.classList.remove('d-none');
-          if (submitSpinner) submitSpinner.classList.add('d-none');
-          if (overlay) overlay.classList.add('d-none');
-          if (overlayProgressText) overlayProgressText.textContent = '0%';
-          if (overlayProgressBar) overlayProgressBar.style.width = '0%';
-          throw err;
-        }
-      });
-    }
-  }
-});
-
-// Make clearVideoSelection global for onclick handler
-window.clearVideoSelection = clearVideoSelection;
-</script>
+<script src="/js/audition.js"></script>

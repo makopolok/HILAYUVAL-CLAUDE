@@ -3,3 +3,8 @@ node_modules
 references/
 upload/
 build-info.json
+# Google OAuth Secrets
+client_secret.json
+client_secret_*.json
+credentials.json
+.env
