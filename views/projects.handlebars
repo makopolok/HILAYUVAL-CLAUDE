@@ -69,16 +69,16 @@
       <tbody>
         {{#each projects}}
         <tr class="project-tag-row" data-project-id="{{this.id}}" data-tag-color="{{this.tag_color}}" data-tag-color-bg="{{this.tag_color_bg}}" data-tag-color-hover="{{this.tag_color_hover}}">
-          <td>{{this.name}}</td>
-          <td>{{this.description}}</td>
-          <td>{{this.createdAt}}</td>
-          <td>
+          <td{{#if this.tag_color_bg}} style="background-color: {{this.tag_color_bg}};"{{/if}}>{{this.name}}</td>
+          <td{{#if this.tag_color_bg}} style="background-color: {{this.tag_color_bg}};"{{/if}}>{{this.description}}</td>
+          <td{{#if this.tag_color_bg}} style="background-color: {{this.tag_color_bg}};"{{/if}}>{{this.createdAt}}</td>
+          <td{{#if this.tag_color_bg}} style="background-color: {{this.tag_color_bg}};"{{/if}}>
             <a href="/audition/{{this.id}}" target="_blank">/audition/{{this.id}}</a>
           </td>
-          <td>
+          <td{{#if this.tag_color_bg}} style="background-color: {{this.tag_color_bg}};"{{/if}}>
             <a href="/projects/{{this.id}}/auditions" class="btn btn-outline-danger btn-sm">View Auditions</a>
           </td>
-          <td>
+          <td{{#if this.tag_color_bg}} style="background-color: {{this.tag_color_bg}};"{{/if}}>
             <a href="/projects/{{this.id}}/edit" class="btn btn-outline-secondary btn-sm">Edit</a>
           </td>
         </tr>
@@ -126,29 +126,19 @@
 </div>
 
 <script>
-function setProjectRowColor(projectId, bgColor, hoverColor) {
-  const styleId = 'prc-' + projectId;
-  let el = document.getElementById(styleId);
-  if (!el) {
-    el = document.createElement('style');
-    el.id = styleId;
-    document.head.appendChild(el);
-  }
-  if (bgColor) {
-    el.textContent =
-      'tr[data-project-id="' + projectId + '"]>td{background-color:' + bgColor + '!important;box-shadow:none!important}' +
-      'tr[data-project-id="' + projectId + '"]:hover>td{background-color:' + hoverColor + '!important;box-shadow:none!important}';
-  } else {
-    el.textContent = '';
-  }
+function setProjectRowColor(row, bgColor) {
+  row.dataset.tagColorBg = bgColor || '';
+  row.querySelectorAll('td').forEach(function (cell) {
+    cell.style.backgroundColor = bgColor || '';
+  });
 }
 
 document.addEventListener('DOMContentLoaded', function () {
-  // Apply persisted colors on page load
-  document.querySelectorAll('.project-tag-row[data-tag-color-bg]').forEach(function (row) {
+  document.querySelectorAll('.project-tag-row').forEach(function (row) {
     const bg = row.dataset.tagColorBg;
-    const hover = row.dataset.tagColorHover;
-    if (bg) setProjectRowColor(row.dataset.projectId, bg, hover || bg);
+    if (bg) {
+      setProjectRowColor(row, bg);
+    }
   });
 
   const menu = document.getElementById('project-tag-menu');
@@ -186,7 +176,7 @@ document.addEventListener('DOMContentLoaded', function () {
       row.dataset.tagColor = payload.tagColor || '';
       row.dataset.tagColorBg = payload.tagColorBg || '';
       row.dataset.tagColorHover = payload.tagColorHover || '';
-      setProjectRowColor(projectId, payload.tagColorBg || '', payload.tagColorHover || '');
+      setProjectRowColor(row, payload.tagColorBg || '');
     } catch (err) {
       console.error('[TAG_COLOR]', err);
       alert('Could not save color. Please try again.');

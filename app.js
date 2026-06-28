@@ -32,6 +32,15 @@ const { closePool } = require('./utils/database');
 console.log('INFO: app.js version 2025-06-08_2100_DEBUG running');
 
 const BUILD_INFO_PATH = path.join(__dirname, 'build-info.json');
+const TAG_COLOR_STYLES = {
+  gray: { bg: '#f1f3f5', hover: '#e9ecef' },
+  red: { bg: '#fff5f5', hover: '#ffe3e3' },
+  orange: { bg: '#fff4e6', hover: '#ffe8cc' },
+  yellow: { bg: '#fff9db', hover: '#fff3bf' },
+  green: { bg: '#ebfbee', hover: '#d3f9d8' },
+  blue: { bg: '#e7f5ff', hover: '#d0ebff' },
+  purple: { bg: '#f8f0fc', hover: '#f3d9fa' }
+};
 const getBuildInfo = () => {
   try {
     if (fs.existsSync(BUILD_INFO_PATH)) {
@@ -669,7 +678,15 @@ app.get('/oauth2callback', async (req, res) => {
 // Route to display all projects with version information
 app.get('/projects', requireAdmin, async (req, res) => {
   try {
-    const projects = await projectService.getAllProjects();
+    const projects = (await projectService.getAllProjects()).map((project) => {
+      const colorStyle = project.tag_color ? TAG_COLOR_STYLES[project.tag_color] : null;
+      return {
+        ...project,
+        tag_color: project.tag_color || null,
+        tag_color_bg: colorStyle ? colorStyle.bg : '',
+        tag_color_hover: colorStyle ? colorStyle.hover : ''
+      };
+    });
     
     // Resolve deployment metadata from environment variables (Heroku-safe)
     const shortHash = (value) => (value && typeof value === 'string' ? value.trim().substring(0, 7) : null);
