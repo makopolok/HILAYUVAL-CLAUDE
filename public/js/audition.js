@@ -246,69 +246,59 @@
 
       setYoutubeUploadUi(uploadUi, 0, '0%');
 
-      try {
-        const formData = new FormData(form);
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', form.action, true);
-        xhr.withCredentials = true;
-        xhr.responseType = 'text';
-        xhr.upload.onprogress = (e) => {
-          if (!e.lengthComputable) return;
-          const pct = Math.max(1, Math.min(99, Math.round((e.loaded / e.total) * 100)));
-          setYoutubeUploadUi(uploadUi, pct, `${pct}%`);
-        };
-        xhr.onerror = () => {
-          youtubeSubmitInFlight = false;
-          resetYoutubeUploadUi(uploadUi);
-        };
-        xhr.onload = () => {
-          // Check if server returned a background job (YouTube upload)
-          if (xhr.status === 200 && xhr.responseText && xhr.responseText.includes('"jobId"')) {
-            try {
-              const data = JSON.parse(xhr.responseText);
-              if (data.jobId) {
-                // YouTube upload is running in the background — poll for completion
-                setYoutubeUploadUi(uploadUi, 99, 'Processing on YouTube...');
-                pollUploadJob(data.jobId, form.action, uploadUi, function() {
-                  youtubeSubmitInFlight = false;
-                });
-                return;
-              }
-            } catch (e) { /* not JSON, fall through */ }
+      const videoInput = form.querySelector('input[name="video"]');
+      const videoFile = videoInput && videoInput.files && videoInput.files[0];
+      const projectId = form.action.split('/').filter(Boolean).pop();
+
+      // Step 1: POST form fields + profile pictures (no video) → get submissionId
+      var fieldsData = new FormData(form);
+      if (videoFile) fieldsData.delete('video'); // Remove video, we upload it separately via tus
+
+      fetch('/audition/' + projectId + '/fields', { method: 'POST', body: fieldsData })
+        .then(function(r) { return r.json(); })
+        .then(function(fieldsResult) {
+          if (!fieldsResult.submissionId) throw new Error('No submissionId from server');
+          var submissionId = fieldsResult.submissionId;
+
+          if (!videoFile) {
+            // No video - just poll immediately
+            pollUploadJob(submissionId, form.action, uploadUi, function() { youtubeSubmitInFlight = false; });
+            return;
           }
 
+          // Step 2: Upload video via tus in 5MB chunks (each chunk is a short request - no H28 timeout)
+          var upload = new tus.Upload(videoFile, {
+            endpoint: '/tus',
+            chunkSize: 5 * 1024 * 1024, // 5MB chunks
+            retryDelays: [0, 3000, 5000, 10000],
+            metadata: {
+              filename: videoFile.name,
+              filetype: videoFile.type,
+              submissionId: submissionId,
+              projectId: projectId,
+            },
+            onProgress: function(bytesUploaded, bytesTotal) {
+              var pct = Math.max(1, Math.min(98, Math.round((bytesUploaded / bytesTotal) * 100)));
+              setYoutubeUploadUi(uploadUi, pct, pct + '%');
+            },
+            onSuccess: function() {
+              // Video uploaded to server — now background job uploads to YouTube
+              setYoutubeUploadUi(uploadUi, 99, 'Processing on YouTube...');
+              pollUploadJob(submissionId, form.action, uploadUi, function() { youtubeSubmitInFlight = false; });
+            },
+            onError: function(err) {
+              console.error('Tus upload error:', err);
+              youtubeSubmitInFlight = false;
+              window.location.href = '/audition/' + projectId + '/error';
+            },
+          });
+          upload.start();
+        })
+        .catch(function(err) {
+          console.error('Fields submit error:', err);
           youtubeSubmitInFlight = false;
-          if (xhr.status >= 200 && xhr.status < 400) {
-            window.location.assign(getAuditionSuccessUrl(form.action));
-            return;
-          }
-          // On error, check if response is HTML (error page) or JSON
-          if (xhr.status >= 400) {
-            console.error('Upload error - Status:', xhr.status);
-            console.error('Response:', xhr.responseText?.substring(0, 500));
-            
-            // If response is HTML (error page), write it to the document
-            if (xhr.responseText && (xhr.responseText.includes('<!DOCTYPE') || xhr.responseText.includes('<html'))) {
-              // Server sent an error page - display it
-              document.open();
-              document.write(xhr.responseText);
-              document.close();
-              return;
-            }
-            
-            // Otherwise, redirect to error page
-            const projectId = form.action.split('/').filter(Boolean).pop();
-            window.location.href = `/audition/${projectId || ''}/error`;
-            return;
-          }
-          resetYoutubeUploadUi(uploadUi);
-        };
-        xhr.send(formData);
-      } catch (err) {
-        youtubeSubmitInFlight = false;
-        resetYoutubeUploadUi(uploadUi);
-        throw err;
-      }
+          window.location.href = '/audition/' + projectId + '/error';
+        });
     });
   });
 

@@ -27,6 +27,8 @@ const flash = require('connect-flash');
 const adminRoutes = require('./routes/adminRoutes');
 const { attachAdminToLocals, requireAdmin } = require('./middleware/auth');
 const { closePool } = require('./utils/database');
+const { Server: TusServer } = require('@tus/server');
+const { FileStore } = require('@tus/file-store');
 
 // Add a version log at the top for deployment verification
 console.log('INFO: app.js version 2025-06-08_2100_DEBUG running');
@@ -34,6 +36,10 @@ console.log('INFO: app.js version 2025-06-08_2100_DEBUG running');
 // In-memory job store for background YouTube uploads
 // Keys are jobId strings, values: { status, videoId, videoUrl, error, auditionData }
 const uploadJobs = new Map();
+
+// Pending form submissions waiting for video upload (tus protocol)
+// Keys are submissionId, values: { projectId, body, profilePictures, expiry }
+const pendingSubmissions = new Map();
 
 const BUILD_INFO_PATH = path.join(__dirname, 'build-info.json');
 const TAG_COLOR_STYLES = {
@@ -1854,11 +1860,156 @@ app.get('/debug/stream-adv-path/:guid', async (req, res) => {
 const auditionUpload = multer(multerConfig);
 
 // Polling endpoint for background YouTube upload jobs
+// Supports both jobId and submissionId (prefixed with "sub:")
 app.get('/upload-status/:jobId', (req, res) => {
-  const job = uploadJobs.get(req.params.jobId);
+  let key = req.params.jobId;
+  // If client polls by submissionId, resolve to actual jobId first
+  if (uploadJobs.has(`sub:${key}`)) {
+    key = uploadJobs.get(`sub:${key}`);
+  }
+  const job = uploadJobs.get(key);
   if (!job) return res.json({ status: 'not_found' });
   res.json(job);
 });
+
+// Step 1: Receive form fields before the tus video upload
+// Returns a submissionId that the browser passes as tus metadata
+app.post('/audition/:projectId/fields', auditionUpload.fields([
+  { name: 'profile_pictures', maxCount: 10 }
+]), async (req, res) => {
+  try {
+    const project = await projectService.getProjectById(req.params.projectId);
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+
+    const submissionId = crypto.randomBytes(16).toString('hex');
+    const profilePictureFiles = req.files && req.files.profile_pictures ? req.files.profile_pictures : [];
+
+    // Upload profile pictures now (they're small and fast)
+    let profilePictureUploadResults = [];
+    if (profilePictureFiles.length > 0) {
+      profilePictureUploadResults = await Promise.all(profilePictureFiles.map(async (file) => {
+        const result = await bunnyUploadService.uploadImage(file);
+        return result;
+      }));
+    }
+
+    pendingSubmissions.set(submissionId, {
+      projectId: req.params.projectId,
+      body: req.body,
+      profilePictures: profilePictureUploadResults,
+      expiry: Date.now() + 3600000, // 1 hour
+    });
+    // Clean up expired submissions
+    setTimeout(() => pendingSubmissions.delete(submissionId), 3600000);
+
+    res.json({ submissionId });
+  } catch (err) {
+    console.error(`[fields] Error: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Tus upload server — receives video in 5MB chunks, each chunk is a short request
+// This prevents Heroku H28 idle timeout for large files (>42MB)
+const TUS_UPLOAD_DIR = path.join('/tmp', 'tus-uploads');
+if (!fs.existsSync(TUS_UPLOAD_DIR)) fs.mkdirSync(TUS_UPLOAD_DIR, { recursive: true });
+
+const tusServer = new TusServer({
+  path: '/tus',
+  datastore: new FileStore({ directory: TUS_UPLOAD_DIR }),
+  onUploadFinish: async (req, res, upload) => {
+    const meta = upload.metadata || {};
+    const submissionId = meta.submissionId;
+    const projectId = meta.projectId;
+    const submission = submissionId && pendingSubmissions.get(submissionId);
+
+    if (!submission) {
+      console.error(`[tus] onUploadFinish: no pending submission for id=${submissionId}`);
+      return res;
+    }
+
+    pendingSubmissions.delete(submissionId);
+
+    const jobId = crypto.randomBytes(16).toString('hex');
+    uploadJobs.set(jobId, { status: 'processing', jobId });
+    // Also index by submissionId so client can find it
+    uploadJobs.set(`sub:${submissionId}`, jobId);
+
+    const videoFilePath = path.join(TUS_UPLOAD_DIR, upload.id);
+    const videoFile = {
+      path: videoFilePath,
+      originalname: meta.filename || 'video.mp4',
+      mimetype: meta.filetype || 'video/mp4',
+    };
+
+    // Fire background YouTube upload
+    (async () => {
+      try {
+        const project = await projectService.getProjectById(submission.projectId);
+        const selectedRole = project.roles.find(r => r.name === submission.body.role);
+        if (!selectedRole) throw new Error(`Role not found: ${submission.body.role}`);
+
+        oauth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
+        const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
+        const playlistId = await ensureRolePlaylist(youtube, project, selectedRole);
+
+        const body = submission.body;
+        const videoTitle = `Audition: ${body.first_name_en || body.first_name_he} ${body.last_name_en || body.last_name_he} for ${selectedRole.name} in ${project.name}`;
+        const videoDescription = `Audition by ${body.first_name_en || body.first_name_he} ${body.last_name_en || body.last_name_he} for ${selectedRole.name} in ${project.name}. Project ID: ${project.id}. Submitted: ${new Date().toISOString()}`;
+        const videoMetadata = {
+          snippet: { title: videoTitle, description: videoDescription },
+          status: { privacyStatus: 'unlisted' },
+        };
+
+        const youtubeResponse = await uploadToYouTubeResumable(youtube, videoFile, videoMetadata);
+        if (fs.existsSync(videoFilePath)) fs.unlinkSync(videoFilePath);
+
+        const youtubeVideoId = youtubeResponse.data.id;
+        const ytUrl = `https://www.youtube.com/watch?v=${youtubeVideoId}`;
+        console.log(`[tus] BACKGROUND_YOUTUBE_SUCCESS: jobId=${jobId} videoId=${youtubeVideoId}`);
+
+        try { await addVideoToYouTubePlaylist(youtube, youtubeVideoId, playlistId); }
+        catch (pe) { console.warn(`[tus] playlist add warn: ${pe.message}`); }
+
+        const auditionObj = {
+          project_id: project.id,
+          role_id: selectedRole.id,
+          role: selectedRole.name,
+          first_name_he: body.first_name_he, last_name_he: body.last_name_he,
+          first_name_en: body.first_name_en, last_name_en: body.last_name_en,
+          phone: body.phone, email: body.email, agency: body.agency,
+          age: body.age, height: body.height,
+          profile_pictures: submission.profilePictures,
+          showreel_url: body.showreel_url,
+          video_url: ytUrl, video_type: 'youtube',
+        };
+        await auditionService.insertAudition(auditionObj);
+        console.log(`[tus] AUDITION_SAVED: jobId=${jobId}`);
+
+        uploadJobs.set(jobId, { status: 'done', videoId: youtubeVideoId, videoUrl: ytUrl });
+        setTimeout(() => uploadJobs.delete(jobId), 3600000);
+      } catch (err) {
+        console.error(`[tus] BACKGROUND_ERROR: jobId=${jobId} err=${err.message}`);
+        if (fs.existsSync(videoFilePath)) try { fs.unlinkSync(videoFilePath); } catch(e) {}
+        uploadJobs.set(jobId, { status: 'error', error: err.message });
+        setTimeout(() => uploadJobs.delete(jobId), 3600000);
+      }
+    })();
+
+    return res;
+  },
+});
+
+// Expose jobId after tus upload finishes — client polls this after tus completes
+app.get('/tus-job/:uploadId', (req, res) => {
+  // Find the job by scanning uploadJobs for the tus upload ID (stored in metadata)
+  // Since we set jobId in upload.metadata during onUploadFinish, we need another way
+  // Simplest: client gets jobId from a header we set
+  res.json({ status: 'unknown' });
+});
+
+app.all('/tus', (req, res) => tusServer.handle(req, res));
+app.all('/tus/*', (req, res) => tusServer.handle(req, res));
 
 // Updated POST route to handle project-specific audition form submission and upload
 app.post('/audition/:projectId', auditionUpload.fields([
