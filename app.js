@@ -230,6 +230,29 @@ function compareAuditionsByPreferredName(a, b) {
   return (a.id || 0) - (b.id || 0);
 }
 
+function compareRolesByName(a, b) {
+  const aName = trimToString(a && a.name);
+  const bName = trimToString(b && b.name);
+
+  if (!aName && !bName) {
+    return (a && a.id ? a.id : 0) - (b && b.id ? b.id : 0);
+  }
+  if (!aName) return 1;
+  if (!bName) return -1;
+
+  const nameCompare = aName.localeCompare(bName, ['he', 'en'], {
+    sensitivity: 'base',
+    ignorePunctuation: true,
+    numeric: true,
+  });
+
+  if (nameCompare !== 0) {
+    return nameCompare;
+  }
+
+  return (a && a.id ? a.id : 0) - (b && b.id ? b.id : 0);
+}
+
 function validateAuditionBody({ body, project, rules }) {
   const errors = [];
 
@@ -2956,7 +2979,8 @@ app.get('/projects/:projectId/auditions', requireAdmin, async (req, res) => {
         }
       }
     }
-    const rolesWithAuditions = project.roles.map(role => ({
+    const sortedRoles = (Array.isArray(project.roles) ? [...project.roles] : []).sort(compareRolesByName);
+    const rolesWithAuditions = sortedRoles.map(role => ({
       ...role,
       auditions: auditions.filter(a => {
         if (a.role_id) {
@@ -2976,7 +3000,7 @@ app.get('/projects/:projectId/auditions', requireAdmin, async (req, res) => {
 
     res.render('auditions', {
       project: { ...project, roles: rolesWithAuditions },
-      role_options: project.roles,
+      role_options: sortedRoles,
       visible_roles: visibleRoles,
       query: req.query,
       bunny_stream_library_id: process.env.BUNNY_STREAM_LIBRARY_ID, // Pass library ID to the template
