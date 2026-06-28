@@ -79,6 +79,7 @@
             <a href="/projects/{{this.id}}/auditions" class="btn btn-outline-danger btn-sm">View Auditions</a>
           </td>
           <td>
+            <button type="button" class="btn btn-outline-info btn-sm project-tag-trigger" data-project-id="{{this.id}}">Color</button>
             <a href="/projects/{{this.id}}/edit" class="btn btn-outline-secondary btn-sm">Edit</a>
           </td>
         </tr>
@@ -172,15 +173,29 @@ document.addEventListener('DOMContentLoaded', function () {
   let activeRow = null;
 
   const hideMenu = () => { menu.classList.add('d-none'); activeRow = null; };
-  const showMenu = (e, row) => {
+  const showMenu = (row, x, y) => {
     menu.classList.remove('d-none');
-    menu.style.left = e.pageX + 'px';
-    menu.style.top  = e.pageY + 'px';
+    menu.style.left = x + 'px';
+    menu.style.top  = y + 'px';
     activeRow = row;
   };
 
   document.querySelectorAll('.project-tag-row').forEach(function (row) {
-    row.addEventListener('contextmenu', function (e) { e.preventDefault(); showMenu(e, row); });
+    row.addEventListener('contextmenu', function (e) {
+      e.preventDefault();
+      showMenu(row, e.clientX, e.clientY);
+    });
+  });
+
+  document.querySelectorAll('.project-tag-trigger').forEach(function (button) {
+    button.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      const row = button.closest('.project-tag-row');
+      if (!row) return;
+      const rect = button.getBoundingClientRect();
+      showMenu(row, rect.left, rect.bottom + 6);
+    });
   });
 
   menu.addEventListener('click', async function (e) {
@@ -216,7 +231,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 <style>
 .project-tag-menu {
-  position: absolute;
+  position: fixed;
   z-index: 2100;
   min-width: 170px;
   background: #fff;
