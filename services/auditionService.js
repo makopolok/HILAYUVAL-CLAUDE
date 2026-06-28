@@ -241,6 +241,16 @@ async function updateAuditionTagColor(projectId, auditionId, tagColor) {
   return { ok: true, row: rows[0] };
 }
 
+async function deleteAudition(projectId, auditionId) {
+  const sql = `
+    DELETE FROM auditions
+    WHERE id = $1 AND project_id = $2
+    RETURNING id
+  `;
+  const { rows } = await pool.query(sql, [auditionId, projectId]);
+  return rows.length > 0;
+}
+
 module.exports = {
   insertAudition,
   pool,
@@ -248,6 +258,7 @@ module.exports = {
   getAuditionsByProjectId,
   searchAuditions,
   getAuditionById,
+  deleteAudition,
   updateAuditionYoutubeData,
   updateAuditionTagColor,
 };

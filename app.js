@@ -2491,6 +2491,61 @@ app.post('/projects/:projectId/auditions/:auditionId/upload-to-youtube', require
   return res.redirect(redirectTarget);
 });
 
+// Route to delete an audition
+app.post('/projects/:projectId/auditions/:auditionId/delete', requireAdmin, async (req, res) => {
+  try {
+    const projectId = req.params.projectId;
+    const auditionId = req.params.auditionId;
+
+    // Get the audition first to delete from third-party services
+    const audition = await auditionService.getAuditionById(auditionId);
+    if (!audition || audition.project_id != projectId) {
+      return res.status(404).json({ ok: false, error: 'Audition not found.' });
+    }
+
+    // Try to delete from Bunny Stream
+    if (audition.video_type === 'bunny_stream' && audition.video_url) {
+      try {
+        await bunnyUploadService.deleteVideo(audition.video_url);
+      } catch (e) {
+        console.warn(`Could not delete Bunny video for audition ${auditionId}:`, e.message);
+      }
+    }
+
+    // Try to delete from YouTube
+    const ytVideoId = audition.youtube_video_id || (audition.video_type === 'youtube' ? audition.video_url : null);
+    if (ytVideoId && REFRESH_TOKEN) {
+      try {
+        oauth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
+        const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
+        // The youtube_video_id might just be the ID, but video_url might be "https://www.youtube.com/watch?v=..."
+        let videoIdToDelete = ytVideoId;
+        if (ytVideoId.includes('v=')) {
+          const match = ytVideoId.match(/v=([^&]+)/);
+          if (match) videoIdToDelete = match[1];
+        } else if (ytVideoId.includes('youtu.be/')) {
+          const match = ytVideoId.match(/youtu\.be\/([^?]+)/);
+          if (match) videoIdToDelete = match[1];
+        }
+        
+        await youtube.videos.delete({ id: videoIdToDelete });
+      } catch (e) {
+        console.warn(`Could not delete YouTube video for audition ${auditionId}:`, e.message);
+      }
+    }
+
+    const deleted = await auditionService.deleteAudition(projectId, auditionId);
+    if (deleted) {
+      res.json({ ok: true });
+    } else {
+      res.status(404).json({ ok: false, error: 'Audition not found.' });
+    }
+  } catch (error) {
+    console.error(`[App.js POST /projects/:projectId/auditions/:auditionId/delete] Error:`, error);
+    res.status(500).json({ ok: false, error: 'Failed to delete audition.' });
+  }
+});
+
 app.post('/projects/:projectId/auditions/:auditionId/tag-color', requireAdmin, async (req, res) => {
   try {
     const projectId = Number(req.params.projectId);

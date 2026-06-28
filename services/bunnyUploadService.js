@@ -247,5 +247,15 @@ module.exports = {
       }
       throw error;
     }
+  async deleteVideo(videoGuid) {
+    if (!BUNNY_STREAM_LIBRARY_ID || !BUNNY_VIDEO_API_KEY) return;
+    try {
+      await axios.delete(
+        `https://video.bunnycdn.com/library/${BUNNY_STREAM_LIBRARY_ID}/videos/${videoGuid}`,
+        { headers: { AccessKey: BUNNY_VIDEO_API_KEY } }
+      );
+    } catch (e) {
+      console.warn(`Failed to delete Bunny video ${videoGuid}:`, e.message);
+    }
   },
 };
