@@ -2883,6 +2883,12 @@ app.get('/projects/:projectId/auditions', requireAdmin, async (req, res) => {
 
     // Format timestamps to Tel Aviv time and group auditions by role for structured display
     for (const a of auditions) {
+      const pictures = Array.isArray(a.profile_pictures)
+        ? a.profile_pictures
+        : (a.profile_pictures || []);
+      const firstPicture = pictures.find((item) => item && typeof item === 'object' && item.url) || null;
+      a.profile_picture_url = firstPicture ? firstPicture.url : null;
+
       if (a && a.created_at) {
         try {
           a.created_at_formatted = new Date(a.created_at).toLocaleString('en-IL', {
