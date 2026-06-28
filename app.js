@@ -389,8 +389,9 @@ async function uploadToYouTubeResumable(youtube, videoFile, videoMetadata, maxRe
           },
         },
         {
-          // Longer timeout for large files: 5 minutes minimum + scaled by file size
-          timeout: Math.max(300000, (fileSize / (1024 * 1024)) * 30000),
+          // Generous timeout for uploads: 10 minutes base + 1 minute per 5MB
+          // This accounts for slow Heroku network and YouTube server processing
+          timeout: Math.max(600000, (fileSize / (1024 * 1024)) * 60000),
         }
       );
       
