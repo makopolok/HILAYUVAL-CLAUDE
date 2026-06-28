@@ -262,6 +262,21 @@
           resetYoutubeUploadUi(uploadUi);
         };
         xhr.onload = () => {
+          // Check if server returned a background job (YouTube upload)
+          if (xhr.status === 200 && xhr.responseText && xhr.responseText.includes('"jobId"')) {
+            try {
+              const data = JSON.parse(xhr.responseText);
+              if (data.jobId) {
+                // YouTube upload is running in the background — poll for completion
+                setYoutubeUploadUi(uploadUi, 99, 'Processing on YouTube...');
+                pollUploadJob(data.jobId, form.action, uploadUi, function() {
+                  youtubeSubmitInFlight = false;
+                });
+                return;
+              }
+            } catch (e) { /* not JSON, fall through */ }
+          }
+
           youtubeSubmitInFlight = false;
           if (xhr.status >= 200 && xhr.status < 400) {
             window.location.assign(getAuditionSuccessUrl(form.action));
@@ -296,4 +311,26 @@
       }
     });
   });
+
+  function pollUploadJob(jobId, formAction, uploadUi, onDone) {
+    fetch('/upload-status/' + jobId)
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.status === 'done') {
+          onDone();
+          window.location.assign(getAuditionSuccessUrl(formAction));
+        } else if (data.status === 'error' || data.status === 'not_found') {
+          onDone();
+          const projectId = formAction.split('/').filter(Boolean).pop();
+          window.location.href = '/audition/' + (projectId || '') + '/error';
+        } else {
+          // Still processing — poll again in 3 seconds
+          setTimeout(function() { pollUploadJob(jobId, formAction, uploadUi, onDone); }, 3000);
+        }
+      })
+      .catch(function() {
+        // Network error while polling — retry
+        setTimeout(function() { pollUploadJob(jobId, formAction, uploadUi, onDone); }, 5000);
+      });
+  }
 })();

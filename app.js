@@ -31,6 +31,10 @@ const { closePool } = require('./utils/database');
 // Add a version log at the top for deployment verification
 console.log('INFO: app.js version 2025-06-08_2100_DEBUG running');
 
+// In-memory job store for background YouTube uploads
+// Keys are jobId strings, values: { status, videoId, videoUrl, error, auditionData }
+const uploadJobs = new Map();
+
 const BUILD_INFO_PATH = path.join(__dirname, 'build-info.json');
 const TAG_COLOR_STYLES = {
   gray: { bg: '#f1f3f5', hover: '#e9ecef' },
@@ -1849,6 +1853,13 @@ app.get('/debug/stream-adv-path/:guid', async (req, res) => {
 // Update multer to handle multiple profile pictures and a video with enhanced configuration
 const auditionUpload = multer(multerConfig);
 
+// Polling endpoint for background YouTube upload jobs
+app.get('/upload-status/:jobId', (req, res) => {
+  const job = uploadJobs.get(req.params.jobId);
+  if (!job) return res.json({ status: 'not_found' });
+  res.json(job);
+});
+
 // Updated POST route to handle project-specific audition form submission and upload
 app.post('/audition/:projectId', auditionUpload.fields([
   { name: 'video', maxCount: 1 },
@@ -1940,51 +1951,76 @@ app.post('/audition/:projectId', auditionUpload.fields([
           throw new Error('Google Refresh Token not configured. Cannot upload to YouTube.');
         }
 
-        oauth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
-        const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
+        // Generate a unique job ID and respond immediately to the browser.
+        // The actual YouTube upload runs in the background so Heroku H28 idle
+        // timeout (90s) never kills the browser connection.
+        const jobId = crypto.randomBytes(16).toString('hex');
+        uploadJobs.set(jobId, { status: 'processing' });
 
-        // Ensure the role has a playlist, creating one if needed
-        const playlistId = await ensureRolePlaylist(youtube, project, selectedRole);
+        // Capture everything needed for background processing
+        const bgBody = body;
+        const bgVideoFile = videoFile;
+        const bgProject = project;
+        const bgSelectedRole = selectedRole;
+        const bgProfilePictures = profilePictureUploadResults;
 
-        const videoTitle = `Audition: ${body.first_name_en || body.first_name_he} ${body.last_name_en || body.last_name_he} for ${selectedRole.name} in ${project.name}`;
-        const videoDescription = `Audition by ${body.first_name_en || body.first_name_he} ${body.last_name_en || body.last_name_he} for ${selectedRole.name} in ${project.name}. Project ID: ${project.id}. Submitted: ${new Date().toISOString()}`;
-
-        try {
-          const videoMetadata = {
-            snippet: {
-              title: videoTitle,
-              description: videoDescription,
-            },
-            status: {
-              privacyStatus: 'unlisted',
-            },
-          };
-          
-          const youtubeResponse = await uploadToYouTubeResumable(youtube, videoFile, videoMetadata);
-
-          if (fs.existsSync(videoFile.path)) {
-            fs.unlinkSync(videoFile.path);
-          }
-
-          const youtubeVideoId = youtubeResponse.data.id;
-          finalVideoUrl = `https://www.youtube.com/watch?v=${youtubeVideoId}`;
-          videoType = 'youtube';
-          videoUploadResult = { id: youtubeVideoId, url: finalVideoUrl };
-          console.log(`POST_AUDITION_VIDEO_UPLOADED_YOUTUBE: ${videoFile.originalname}, ID: ${youtubeVideoId}, URL: ${finalVideoUrl}`);
-
-          // Add the video to the role's playlist (best effort; don't fail full submission if this step fails)
+        // Fire and forget — do NOT await this
+        (async () => {
           try {
-            await addVideoToYouTubePlaylist(youtube, youtubeVideoId, playlistId);
-          } catch (playlistErr) {
-            console.warn(`POST_AUDITION_YOUTUBE_PLAYLIST_ADD_WARN: videoId=${youtubeVideoId} playlistId=${playlistId} reason=${playlistErr.message}`);
+            oauth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
+            const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
+
+            const playlistId = await ensureRolePlaylist(youtube, bgProject, bgSelectedRole);
+
+            const videoTitle = `Audition: ${bgBody.first_name_en || bgBody.first_name_he} ${bgBody.last_name_en || bgBody.last_name_he} for ${bgSelectedRole.name} in ${bgProject.name}`;
+            const videoDescription = `Audition by ${bgBody.first_name_en || bgBody.first_name_he} ${bgBody.last_name_en || bgBody.last_name_he} for ${bgSelectedRole.name} in ${bgProject.name}. Project ID: ${bgProject.id}. Submitted: ${new Date().toISOString()}`;
+
+            const videoMetadata = {
+              snippet: { title: videoTitle, description: videoDescription },
+              status: { privacyStatus: 'unlisted' },
+            };
+
+            const youtubeResponse = await uploadToYouTubeResumable(youtube, bgVideoFile, videoMetadata);
+
+            if (fs.existsSync(bgVideoFile.path)) fs.unlinkSync(bgVideoFile.path);
+
+            const youtubeVideoId = youtubeResponse.data.id;
+            const ytUrl = `https://www.youtube.com/watch?v=${youtubeVideoId}`;
+            console.log(`BACKGROUND_YOUTUBE_UPLOAD_SUCCESS: jobId=${jobId} videoId=${youtubeVideoId}`);
+
+            try { await addVideoToYouTubePlaylist(youtube, youtubeVideoId, playlistId); }
+            catch (pe) { console.warn(`BACKGROUND_PLAYLIST_ADD_WARN: ${pe.message}`); }
+
+            // Save audition to DB
+            const auditionObj = {
+              project_id: bgProject.id,
+              role_id: bgSelectedRole ? bgSelectedRole.id : null,
+              role: bgSelectedRole ? bgSelectedRole.name : bgBody.role,
+              first_name_he: bgBody.first_name_he, last_name_he: bgBody.last_name_he,
+              first_name_en: bgBody.first_name_en, last_name_en: bgBody.last_name_en,
+              phone: bgBody.phone, email: bgBody.email, agency: bgBody.agency,
+              age: bgBody.age, height: bgBody.height,
+              profile_pictures: bgProfilePictures,
+              showreel_url: bgBody.showreel_url,
+              video_url: ytUrl,
+              video_type: 'youtube',
+            };
+            await auditionService.insertAudition(auditionObj);
+            console.log(`BACKGROUND_AUDITION_SAVED: jobId=${jobId}`);
+
+            uploadJobs.set(jobId, { status: 'done', videoId: youtubeVideoId, videoUrl: ytUrl });
+            // Clean up job after 1 hour
+            setTimeout(() => uploadJobs.delete(jobId), 3600000);
+          } catch (err) {
+            console.error(`BACKGROUND_YOUTUBE_UPLOAD_ERROR: jobId=${jobId} err=${err.message}`);
+            if (bgVideoFile && fs.existsSync(bgVideoFile.path)) fs.unlinkSync(bgVideoFile.path);
+            uploadJobs.set(jobId, { status: 'error', error: err.message });
+            setTimeout(() => uploadJobs.delete(jobId), 3600000);
           }
-        } catch (ytError) {
-          console.error('POST_AUDITION_YOUTUBE_UPLOAD_ERROR: Failed to upload video to YouTube.', ytError);
-          if (fs.existsSync(videoFile.path)) {
-            fs.unlinkSync(videoFile.path);
-          }
-          throw ytError;
-        }      } else { // Default to Bunny.net Stream (if uploadMethod is 'cloudflare' or anything else)
+        })();
+
+        // Respond immediately — browser will poll /upload-status/:jobId
+        return res.json({ status: 'processing', jobId });      } else { // Default to Bunny.net Stream (if uploadMethod is 'cloudflare' or anything else)
         console.log(`POST_AUDITION_UPLOADING_TO_BUNNY_STREAM: ${videoFile.originalname}`);
         try {
           // Ensure the role has a Bunny collection, creating one if needed
