@@ -4,6 +4,23 @@ const { getPool, withClient } = require('../utils/database');
 const pool = getPool();
 const ALLOWED_TAG_COLORS = new Set(['gray', 'red', 'orange', 'yellow', 'green', 'blue', 'purple']);
 
+function isTransientDbError(error) {
+  if (!error) return false;
+  const message = (error.message || '').toLowerCase();
+  return (
+    message.includes('connection terminated') ||
+    message.includes('connection timeout') ||
+    message.includes('terminating connection') ||
+    error.code === 'ETIMEDOUT' ||
+    error.code === 'ECONNRESET' ||
+    error.code === '57P01'
+  );
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 // Add a version log at the top for deployment verification
 console.log('INFO: projectService.js version 2025-06-08_2100_DEBUG running');
 
@@ -116,18 +133,31 @@ async function updateProjectTagColor(projectId, tagColor) {
   if (value && !ALLOWED_TAG_COLORS.has(value)) {
     return { ok: false, reason: 'invalid_color' };
   }
-  const { rows } = await pool.query(
-    `UPDATE projects
-     SET tag_color = $2,
-         updated_at = NOW()
-     WHERE id = $1
-     RETURNING id, tag_color`,
-    [projectId, value]
-  );
-  if (!rows[0]) {
-    return { ok: false, reason: 'not_found' };
+  const sql = `
+    UPDATE projects
+    SET tag_color = $2,
+        updated_at = NOW()
+    WHERE id = $1
+    RETURNING id, tag_color
+  `;
+  let lastError = null;
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      const { rows } = await pool.query(sql, [projectId, value]);
+      if (!rows[0]) {
+        return { ok: false, reason: 'not_found' };
+      }
+      return { ok: true, row: rows[0] };
+    } catch (error) {
+      lastError = error;
+      if (attempt < 2 && isTransientDbError(error)) {
+        await sleep(120);
+        continue;
+      }
+      throw error;
+    }
   }
-  return { ok: true, row: rows[0] };
+  throw lastError;
 }
 
 module.exports = {
