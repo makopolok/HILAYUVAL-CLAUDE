@@ -17,20 +17,35 @@ router.get('/', async (req, res) => {
 
 router.use('/projects', requireAdmin);
 
+const TAG_COLOR_STYLES = {
+    gray:   { bg: '#f1f3f5', hover: '#e9ecef' },
+    red:    { bg: '#fff5f5', hover: '#ffe3e3' },
+    orange: { bg: '#fff4e6', hover: '#ffe8cc' },
+    yellow: { bg: '#fff9db', hover: '#fff3bf' },
+    green:  { bg: '#ebfbee', hover: '#d3f9d8' },
+    blue:   { bg: '#e7f5ff', hover: '#d0ebff' },
+    purple: { bg: '#f8f0fc', hover: '#f3d9fa' }
+};
+
 router.get('/projects', async (req, res) => {
     try {
         // Use DB-backed projects for the Projects admin page
         const dbProjects = await projectService.getAllProjects();
         // Normalize/format fields for the template
-        const projects = dbProjects.map(p => ({
-            id: p.id,
-            name: p.name || p.title || '',
-            description: p.description || p.storyline || '',
-            createdAt: p.created_at ? new Date(p.created_at).toLocaleString('en-IL', { year:'numeric', month:'short', day:'2-digit', hour:'2-digit', minute:'2-digit', timeZone:'Asia/Jerusalem' }) : '',
-            upload_method: p.upload_method,
-            tag_color: p.tag_color || null,
-            roles: Array.isArray(p.roles) ? p.roles : []
-        }));
+        const projects = dbProjects.map(p => {
+            const colorStyle = p.tag_color ? TAG_COLOR_STYLES[p.tag_color] : null;
+            return {
+                id: p.id,
+                name: p.name || p.title || '',
+                description: p.description || p.storyline || '',
+                createdAt: p.created_at ? new Date(p.created_at).toLocaleString('en-IL', { year:'numeric', month:'short', day:'2-digit', hour:'2-digit', minute:'2-digit', timeZone:'Asia/Jerusalem' }) : '',
+                upload_method: p.upload_method,
+                tag_color: p.tag_color || null,
+                tag_color_bg: colorStyle ? colorStyle.bg : '',
+                tag_color_hover: colorStyle ? colorStyle.hover : '',
+                roles: Array.isArray(p.roles) ? p.roles : []
+            };
+        });
 
         // Get current Git commit hash and branch dynamically
         let currentCommit = 'unknown';
@@ -162,7 +177,13 @@ router.post('/projects/:projectId/tag-color', async (req, res) => {
             }
             return res.status(400).json({ ok: false, error: 'Unable to update color.' });
         }
-        return res.json({ ok: true, tagColor: result.row.tag_color });
+        const colorStyle = result.row.tag_color ? TAG_COLOR_STYLES[result.row.tag_color] : null;
+        return res.json({
+            ok: true,
+            tagColor: result.row.tag_color,
+            tagColorBg: colorStyle ? colorStyle.bg : '',
+            tagColorHover: colorStyle ? colorStyle.hover : ''
+        });
     } catch (err) {
         console.error('PROJECT_TAG_COLOR_ROUTE_ERROR:', err);
         return res.status(500).json({ ok: false, error: 'Failed to save color.' });
