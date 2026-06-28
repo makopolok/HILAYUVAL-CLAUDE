@@ -399,8 +399,10 @@ async function uploadToYouTubeResumable(youtube, videoFile, videoMetadata, maxRe
        console.error(`[YouTube Upload] Stream error: ${err.message}`);
      });
       
-     // Use resumable protocol which handles chunking automatically
-     // This keeps the connection alive with periodic progress updates
+     // Use googleapis' built-in resumable upload protocol
+     // This automatically chunks files and keeps connection alive during upload
+     fileStream = fs.createReadStream(filePath);
+       
      const response = await youtube.videos.insert(
        {
          part: ['snippet', 'status'],
@@ -411,14 +413,19 @@ async function uploadToYouTubeResumable(youtube, videoFile, videoMetadata, maxRe
          },
        },
        {
-         // Use resumable upload for files > 5MB
-         // This automatically chunks the file and maintains connection
+         // Critical: specify resumable upload to prevent H28 idle timeout
          resumable: true,
-         // Per-chunk timeout (googleapis will retry individual chunks)
-         timeout: 60000, // 1 minute per chunk
+         // Chunk size in bytes - 10MB is a good balance for Heroku
+         chunksize: 10 * 1024 * 1024, // 10MB chunks
+         // Long timeout for the entire operation (includes Heroku network delays)
+         timeout: 3600000, // 60 minutes for full upload
+         // Per-request timeout for individual chunk operations
+         onUploadProgress: (evt) => {
+           console.log(`[YouTube Upload Progress] ${evt.bytesRead} bytes transferred`);
+         },
        }
      );
-      
+       
      console.log(`[YouTube Upload] Success: ${videoFile.originalname} -> ${response.data.id}`);
      return response;
     } catch (error) {
