@@ -392,42 +392,149 @@ async function uploadToYouTubeResumable(youtube, videoFile, videoMetadata, maxRe
      const fileSize = fs.statSync(filePath).size;
      console.log(`[YouTube Upload] Attempt ${attempt + 1}/${MAX_RETRIES + 1}: ${videoFile.originalname} (${fileSize} bytes)`);
       
-     fileStream = fs.createReadStream(filePath);
+     // Load entire file into memory for chunked upload
+     const fileBuffer = fs.readFileSync(filePath);
       
-     // Set socket timeout handlers to detect dead connections
-     fileStream.on('error', (err) => {
-       console.error(`[YouTube Upload] Stream error: ${err.message}`);
-     });
+     // Create custom request to YouTube with explicit resumable session
+     // This bypasses the streaming issue and keeps connection active with periodic chunks
+     let sessionUri;
       
-     // Use googleapis' built-in resumable upload protocol
-     // This automatically chunks files and keeps connection alive during upload
-     fileStream = fs.createReadStream(filePath);
-       
-     const response = await youtube.videos.insert(
-       {
-         part: ['snippet', 'status'],
-         requestBody: videoMetadata,
-         media: {
-           mimeType: 'video/mp4',
-           body: fileStream,
+     try {
+       // Step 1: Initialize resumable upload session
+       console.log(`[YouTube Upload] Initializing resumable session...`);
+       const initResponse = await youtube.videos.insert(
+         {
+           part: ['snippet', 'status'],
+           requestBody: videoMetadata,
+           media: {
+             mimeType: 'video/mp4',
+             body: Buffer.from(''), // Empty body for initialization
+           },
          },
-       },
-       {
-         // Critical: specify resumable upload to prevent H28 idle timeout
-         resumable: true,
-         // Chunk size in bytes - 10MB is a good balance for Heroku
-         chunksize: 10 * 1024 * 1024, // 10MB chunks
-         // Long timeout for the entire operation (includes Heroku network delays)
-         timeout: 3600000, // 60 minutes for full upload
-         // Per-request timeout for individual chunk operations
-         onUploadProgress: (evt) => {
-           console.log(`[YouTube Upload Progress] ${evt.bytesRead} bytes transferred`);
-         },
+         {
+           // Request resumable upload initialization only
+           headers: {
+             'X-Goog-Upload-Protocol': 'resumable',
+             'X-Goog-Upload-Command': 'start',
+             'X-Goog-Upload-Header-Content-Length': fileSize.toString(),
+             'X-Goog-Upload-Header-Content-Type': 'video/mp4',
+           },
+         }
+       ).catch(err => {
+         // If YouTube returns a session URI in the Location header
+         if (err && err.response && err.response.headers && err.response.headers['x-goog-upload-session-uri']) {
+           return { 
+             sessionUri: err.response.headers['x-goog-upload-session-uri'],
+             initialized: true
+           };
+         }
+         throw err;
+       });
+        
+       if (initResponse.sessionUri) {
+         sessionUri = initResponse.sessionUri;
+       } else if (initResponse.data && initResponse.data.id) {
+         // Upload completed immediately (unlikely for large files)
+         console.log(`[YouTube Upload] Success: ${videoFile.originalname} -> ${initResponse.data.id}`);
+         return initResponse;
        }
-     );
-       
-     console.log(`[YouTube Upload] Success: ${videoFile.originalname} -> ${response.data.id}`);
-     return response;
+     } catch (initError) {
+       console.warn(`[YouTube Upload] Failed to initialize resumable session: ${initError.message}`);
+       // Fall back to regular upload
+       fileStream = fs.createReadStream(filePath);
+     }
+      
+     // If no session URI, do regular upload
+     if (!sessionUri) {
+       fileStream = fs.createReadStream(filePath);
+       const response = await youtube.videos.insert(
+         {
+           part: ['snippet', 'status'],
+           requestBody: videoMetadata,
+           media: {
+             mimeType: 'video/mp4',
+             body: fileStream,
+           },
+         }
+       );
+       console.log(`[YouTube Upload] Success: ${videoFile.originalname} -> ${response.data.id}`);
+       return response;
+     }
+      
+     // Step 2: Send file in chunks via resumable session
+     const CHUNK_SIZE = 256 * 1024; // 256KB chunks to ensure frequent network activity
+     let uploadedBytes = 0;
+      
+     console.log(`[YouTube Upload] Uploading ${fileSize} bytes in ${Math.ceil(fileSize / CHUNK_SIZE)} chunks...`);
+      
+     while (uploadedBytes < fileSize) {
+       const chunkEnd = Math.min(uploadedBytes + CHUNK_SIZE, fileSize);
+       const chunk = fileBuffer.slice(uploadedBytes, chunkEnd);
+       const isLastChunk = chunkEnd === fileSize;
+        
+       try {
+         // Upload this chunk
+         const uploadResponse = await new Promise((resolve, reject) => {
+           const headers = {
+             'Content-Type': 'video/mp4',
+             'Content-Length': chunk.length.toString(),
+             'Content-Range': `bytes ${uploadedBytes}-${chunkEnd - 1}/${fileSize}`,
+           };
+            
+           const req = https.request(
+             sessionUri,
+             { method: 'PUT', headers, timeout: 30000 },
+             (res) => {
+               let body = '';
+               res.on('data', (chunk) => { body += chunk; });
+               res.on('end', () => {
+                 if (res.statusCode >= 200 && res.statusCode < 300) {
+                   resolve({ statusCode: res.statusCode, body });
+                 } else if (res.statusCode === 308 || (res.statusCode >= 300 && res.statusCode < 400)) {
+                   // Resume incomplete
+                   resolve({ statusCode: res.statusCode, body });
+                 } else {
+                   reject(new Error(`YouTube returned ${res.statusCode}: ${body}`));
+                 }
+               });
+             }
+           );
+            
+           req.on('timeout', () => {
+             req.destroy();
+             reject(new Error('Chunk upload timeout'));
+           });
+           req.on('error', reject);
+           req.write(chunk);
+           req.end();
+         });
+          
+         uploadedBytes = chunkEnd;
+         const progress = Math.round((uploadedBytes / fileSize) * 100);
+         console.log(`[YouTube Upload] Chunk progress: ${uploadedBytes}/${fileSize} bytes (${progress}%)`);
+          
+         // Parse response if upload completed
+         if (uploadResponse.statusCode < 300 && uploadResponse.body) {
+           try {
+             const finalResponse = JSON.parse(uploadResponse.body);
+             if (finalResponse.id) {
+               console.log(`[YouTube Upload] Success: ${videoFile.originalname} -> ${finalResponse.id}`);
+               return { data: finalResponse };
+             }
+           } catch (e) {
+             // JSON parse error, likely not final response yet
+           }
+         }
+       } catch (chunkError) {
+         console.error(`[YouTube Upload] Chunk upload failed at ${uploadedBytes}/${fileSize}: ${chunkError.message}`);
+         throw chunkError;
+       }
+     }
+      
+     console.log(`[YouTube Upload] All chunks uploaded, confirming with YouTube...`);
+     // If we get here, let's try one more confirmation request
+     const finalResponse = await youtube.videos.list({ part: ['id'] }).catch(() => null);
+     throw new Error('Upload chunks completed but YouTube did not return video ID');
     } catch (error) {
      if (fileStream && !fileStream.destroyed) {
        fileStream.destroy();
