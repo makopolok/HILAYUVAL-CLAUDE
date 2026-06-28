@@ -157,6 +157,11 @@ app.use((req, res, next) => {
   next();
 });
 
+// Tus upload server must be mounted BEFORE any body-parsing middleware
+// because body-parsers consume the request stream, making it unreadable by tus
+app.all('/tus', (req, res) => tusServer.handle(req, res));
+app.all('/tus/*', (req, res) => tusServer.handle(req, res));
+
 // Middleware - Configure for large file uploads
 app.use(express.json({ 
   limit: '10mb' // Increase JSON payload limit
@@ -1999,17 +2004,6 @@ const tusServer = new TusServer({
     return res;
   },
 });
-
-// Expose jobId after tus upload finishes — client polls this after tus completes
-app.get('/tus-job/:uploadId', (req, res) => {
-  // Find the job by scanning uploadJobs for the tus upload ID (stored in metadata)
-  // Since we set jobId in upload.metadata during onUploadFinish, we need another way
-  // Simplest: client gets jobId from a header we set
-  res.json({ status: 'unknown' });
-});
-
-app.all('/tus', (req, res) => tusServer.handle(req, res));
-app.all('/tus/*', (req, res) => tusServer.handle(req, res));
 
 // Updated POST route to handle project-specific audition form submission and upload
 app.post('/audition/:projectId', auditionUpload.fields([
