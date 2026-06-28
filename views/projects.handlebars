@@ -139,16 +139,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function applyColorStripe(row, colorName) {
     if (!colorName || !TAG_COLOR_MAP[colorName]) {
-      row.style.backgroundImage = '';
+      row.style.backgroundColor = '';
       return;
     }
     const colorHex = TAG_COLOR_MAP[colorName];
-    const gradient = `linear-gradient(90deg, ${colorHex} 0%, ${colorHex} 6px, transparent 6px)`;
     
-    // Apply to row AND all cells with !important inline styles to defeat Bootstrap table-hover
-    row.style.cssText = `background-image: ${gradient} !important; background-repeat: repeat-y !important; background-attachment: local !important;`;
+    // Convert hex to rgba with 15% opacity for subtle background
+    const rgb = parseInt(colorHex.slice(1), 16);
+    const r = (rgb >> 16) & 255;
+    const g = (rgb >> 8) & 255;
+    const b = rgb & 255;
+    const rgbaColor = `rgba(${r}, ${g}, ${b}, 0.15)`;
     
-    // Also apply to each cell to ensure it persists
+    // Apply background color to entire row with !important
+    row.style.cssText = `background-color: ${rgbaColor} !important;`;
+    
+    // Apply to each cell to ensure it persists
     row.querySelectorAll('td').forEach(cell => {
       cell.style.backgroundColor = 'transparent';
     });
@@ -248,18 +254,18 @@ document.addEventListener('DOMContentLoaded', function () {
 .tag-blue   { background: #1c7ed6; }
 .tag-purple { background: #9c36b5; }
 .project-tag-row {
-  background-size: 6px 100%;
+  /* No background size needed for full-row color */
 }
 /* Custom hover for rows WITHOUT colors */
 .custom-hover-table tbody tr:not(.project-tag-row[data-tag-color]):hover {
   background-color: rgba(0, 0, 0, 0.075);
 }
-/* Rows WITH colors should ALWAYS show their stripe, never highlight on hover */
+/* Rows WITH colors should ALWAYS show their background, never highlight on hover */
 .custom-hover-table tbody tr.project-tag-row[data-tag-color] {
   transition: none;
 }
 .custom-hover-table tbody tr.project-tag-row[data-tag-color]:hover {
-  background-color: transparent !important;
+  background-color: inherit !important;
 }
 .custom-hover-table tbody tr.project-tag-row[data-tag-color]:hover td {
   background-color: transparent !important;
