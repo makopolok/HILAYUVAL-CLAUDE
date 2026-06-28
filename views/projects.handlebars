@@ -254,52 +254,39 @@ document.addEventListener('DOMContentLoaded', function () {
 .tag-purple { background: #9c36b5; }
 
 tr.project-tag-row.tag-color-gray {
-  --bs-table-bg: #f1f3f5;
-  --bs-table-accent-bg: #f1f3f5;
-  --bs-table-hover-bg: #e9ecef;
+  --project-row-color: #f1f3f5;
+  --project-row-hover-color: #e9ecef;
 }
-tr.project-tag-row.tag-color-gray > td { background-color: #f1f3f5 !important; }
-tr.project-tag-row.tag-color-gray:hover > td { background-color: #e9ecef !important; }
 tr.project-tag-row.tag-color-red {
-  --bs-table-bg: #fff5f5;
-  --bs-table-accent-bg: #fff5f5;
-  --bs-table-hover-bg: #ffe3e3;
+  --project-row-color: #fff5f5;
+  --project-row-hover-color: #ffe3e3;
 }
-tr.project-tag-row.tag-color-red > td { background-color: #fff5f5 !important; }
-tr.project-tag-row.tag-color-red:hover > td { background-color: #ffe3e3 !important; }
 tr.project-tag-row.tag-color-orange {
-  --bs-table-bg: #fff4e6;
-  --bs-table-accent-bg: #fff4e6;
-  --bs-table-hover-bg: #ffe8cc;
+  --project-row-color: #fff4e6;
+  --project-row-hover-color: #ffe8cc;
 }
-tr.project-tag-row.tag-color-orange > td { background-color: #fff4e6 !important; }
-tr.project-tag-row.tag-color-orange:hover > td { background-color: #ffe8cc !important; }
 tr.project-tag-row.tag-color-yellow {
-  --bs-table-bg: #fff9db;
-  --bs-table-accent-bg: #fff9db;
-  --bs-table-hover-bg: #fff3bf;
+  --project-row-color: #fff9db;
+  --project-row-hover-color: #fff3bf;
 }
-tr.project-tag-row.tag-color-yellow > td { background-color: #fff9db !important; }
-tr.project-tag-row.tag-color-yellow:hover > td { background-color: #fff3bf !important; }
 tr.project-tag-row.tag-color-green {
-  --bs-table-bg: #ebfbee;
-  --bs-table-accent-bg: #ebfbee;
-  --bs-table-hover-bg: #d3f9d8;
+  --project-row-color: #ebfbee;
+  --project-row-hover-color: #d3f9d8;
 }
-tr.project-tag-row.tag-color-green > td { background-color: #ebfbee !important; }
-tr.project-tag-row.tag-color-green:hover > td { background-color: #d3f9d8 !important; }
 tr.project-tag-row.tag-color-blue {
-  --bs-table-bg: #e7f5ff;
-  --bs-table-accent-bg: #e7f5ff;
-  --bs-table-hover-bg: #d0ebff;
+  --project-row-color: #e7f5ff;
+  --project-row-hover-color: #d0ebff;
 }
-tr.project-tag-row.tag-color-blue > td { background-color: #e7f5ff !important; }
-tr.project-tag-row.tag-color-blue:hover > td { background-color: #d0ebff !important; }
 tr.project-tag-row.tag-color-purple {
-  --bs-table-bg: #f8f0fc;
-  --bs-table-accent-bg: #f8f0fc;
-  --bs-table-hover-bg: #f3d9fa;
+  --project-row-color: #f8f0fc;
+  --project-row-hover-color: #f3d9fa;
 }
-tr.project-tag-row.tag-color-purple > td { background-color: #f8f0fc !important; }
-tr.project-tag-row.tag-color-purple:hover > td { background-color: #f3d9fa !important; }
+
+tr.project-tag-row > td {
+  box-shadow: inset 0 0 0 9999px var(--project-row-color, transparent) !important;
+}
+
+tr.project-tag-row:hover > td {
+  box-shadow: inset 0 0 0 9999px var(--project-row-hover-color, var(--project-row-color, transparent)) !important;
+}
 </style>
