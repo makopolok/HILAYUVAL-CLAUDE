@@ -28,6 +28,7 @@ router.get('/projects', async (req, res) => {
             description: p.description || p.storyline || '',
             createdAt: p.created_at ? new Date(p.created_at).toLocaleString('en-IL', { year:'numeric', month:'short', day:'2-digit', hour:'2-digit', minute:'2-digit', timeZone:'Asia/Jerusalem' }) : '',
             upload_method: p.upload_method,
+            tag_color: p.tag_color || null,
             roles: Array.isArray(p.roles) ? p.roles : []
         }));
 
@@ -98,6 +99,7 @@ router.get('/projects', async (req, res) => {
                     limit,
                     offset,
                 });
+
                 const formatOpts = { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' };
                 searchResults = rawResults.map((row) => {
                     const enName = [row.first_name_en, row.last_name_en].filter(Boolean).join(' ').trim();
@@ -140,6 +142,30 @@ router.get('/projects', async (req, res) => {
     } catch (err) {
         console.error('PROJECTS_ROUTE_ERROR:', err);
         res.status(500).render('error/500', { message: 'Failed to load projects.' });
+    }
+});
+
+router.post('/projects/:projectId/tag-color', async (req, res) => {
+    try {
+        const projectId = Number(req.params.projectId);
+        if (!Number.isInteger(projectId)) {
+            return res.status(400).json({ ok: false, error: 'Invalid project id.' });
+        }
+        const tagColor = req.body ? req.body.tagColor : null;
+        const result = await projectService.updateProjectTagColor(projectId, tagColor);
+        if (!result.ok) {
+            if (result.reason === 'invalid_color') {
+                return res.status(400).json({ ok: false, error: 'Invalid color value.' });
+            }
+            if (result.reason === 'not_found') {
+                return res.status(404).json({ ok: false, error: 'Project not found.' });
+            }
+            return res.status(400).json({ ok: false, error: 'Unable to update color.' });
+        }
+        return res.json({ ok: true, tagColor: result.row.tag_color });
+    } catch (err) {
+        console.error('PROJECT_TAG_COLOR_ROUTE_ERROR:', err);
+        return res.status(500).json({ ok: false, error: 'Failed to save color.' });
     }
 });
 

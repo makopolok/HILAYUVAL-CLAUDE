@@ -2,6 +2,7 @@
 // Forcing a new build by adding a comment
 const { getPool, withClient } = require('../utils/database');
 const pool = getPool();
+const ALLOWED_TAG_COLORS = new Set(['gray', 'red', 'orange', 'yellow', 'green', 'blue', 'purple']);
 
 // Add a version log at the top for deployment verification
 console.log('INFO: projectService.js version 2025-06-08_2100_DEBUG running');
@@ -109,6 +110,26 @@ async function updateProject(projectId, { description }) {
   });
 }
 
+async function updateProjectTagColor(projectId, tagColor) {
+  const normalized = (tagColor || '').toString().trim().toLowerCase();
+  const value = normalized ? normalized : null;
+  if (value && !ALLOWED_TAG_COLORS.has(value)) {
+    return { ok: false, reason: 'invalid_color' };
+  }
+  const { rows } = await pool.query(
+    `UPDATE projects
+     SET tag_color = $2,
+         updated_at = NOW()
+     WHERE id = $1
+     RETURNING id, tag_color`,
+    [projectId, value]
+  );
+  if (!rows[0]) {
+    return { ok: false, reason: 'not_found' };
+  }
+  return { ok: true, row: rows[0] };
+}
+
 module.exports = {
   addProject,
   getAllProjects,
@@ -208,3 +229,4 @@ module.exports.softDeleteRole = softDeleteRole;
 module.exports.restoreRole = restoreRole;
 module.exports.purgeRole = purgeRole;
 module.exports.updateRolePlaylistId = updateRolePlaylistId;
+module.exports.updateProjectTagColor = updateProjectTagColor;

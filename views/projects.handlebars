@@ -68,7 +68,7 @@
       </thead>
       <tbody>
         {{#each projects}}
-        <tr>
+        <tr class="project-tag-row{{#if this.tag_color}} tag-color-{{this.tag_color}}{{/if}}" data-project-id="{{this.id}}" data-tag-color="{{this.tag_color}}">
           <td>{{this.name}}</td>
           <td>{{this.description}}</td>
           <td>{{this.createdAt}}</td>
@@ -110,3 +110,154 @@
     Deployed: {{deploymentInfo.deployDate}}
   </div>
 </div>
+
+<div id="project-tag-menu" class="project-tag-menu d-none" role="menu" aria-label="Set project row color">
+  <button type="button" class="project-tag-menu-item" data-tag-color="">
+    <span class="project-tag-dot project-tag-dot-none"></span>
+    No color
+  </button>
+  <button type="button" class="project-tag-menu-item" data-tag-color="gray"><span class="project-tag-dot tag-gray"></span>Gray</button>
+  <button type="button" class="project-tag-menu-item" data-tag-color="red"><span class="project-tag-dot tag-red"></span>Red</button>
+  <button type="button" class="project-tag-menu-item" data-tag-color="orange"><span class="project-tag-dot tag-orange"></span>Orange</button>
+  <button type="button" class="project-tag-menu-item" data-tag-color="yellow"><span class="project-tag-dot tag-yellow"></span>Yellow</button>
+  <button type="button" class="project-tag-menu-item" data-tag-color="green"><span class="project-tag-dot tag-green"></span>Green</button>
+  <button type="button" class="project-tag-menu-item" data-tag-color="blue"><span class="project-tag-dot tag-blue"></span>Blue</button>
+  <button type="button" class="project-tag-menu-item" data-tag-color="purple"><span class="project-tag-dot tag-purple"></span>Purple</button>
+</div>
+
+<script>
+const PROJECT_TAG_COLOR_CLASSES = ['gray', 'red', 'orange', 'yellow', 'green', 'blue', 'purple'].map((color) => `tag-color-${color}`);
+
+function clearProjectTagColorClasses(row) {
+  PROJECT_TAG_COLOR_CLASSES.forEach((className) => row.classList.remove(className));
+}
+
+function applyProjectTagColor(row, color) {
+  clearProjectTagColorClasses(row);
+  const normalized = (color || '').toString().trim().toLowerCase();
+  if (normalized) {
+    row.classList.add(`tag-color-${normalized}`);
+  }
+  row.dataset.tagColor = normalized;
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  const menu = document.getElementById('project-tag-menu');
+  const rows = document.querySelectorAll('.project-tag-row');
+  if (!menu || !rows.length) return;
+
+  let activeRow = null;
+
+  const hideMenu = () => {
+    menu.classList.add('d-none');
+    activeRow = null;
+  };
+
+  const showMenu = (event, row) => {
+    menu.classList.remove('d-none');
+    menu.style.left = `${event.pageX}px`;
+    menu.style.top = `${event.pageY}px`;
+    activeRow = row;
+  };
+
+  rows.forEach((row) => {
+    row.addEventListener('contextmenu', (event) => {
+      event.preventDefault();
+      showMenu(event, row);
+    });
+  });
+
+  menu.addEventListener('click', async (event) => {
+    const item = event.target.closest('.project-tag-menu-item');
+    if (!item || !activeRow) return;
+    const selectedRow = activeRow;
+    const projectId = activeRow.dataset.projectId;
+    const tagColor = (item.dataset.tagColor || '').trim().toLowerCase();
+    hideMenu();
+
+    try {
+      const response = await fetch(`/projects/${projectId}/tag-color`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tagColor: tagColor || null })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error || 'Failed to save color');
+      }
+      applyProjectTagColor(selectedRow, payload.tagColor || '');
+    } catch (err) {
+      console.error('[PROJECT_TAG_COLOR_SAVE_ERROR]', err);
+      alert('Could not save project color. Please try again.');
+    }
+  });
+
+  document.addEventListener('click', (event) => {
+    if (!menu.contains(event.target)) hideMenu();
+  });
+  window.addEventListener('scroll', hideMenu, true);
+  window.addEventListener('resize', hideMenu);
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') hideMenu();
+  });
+});
+</script>
+
+<style>
+.project-tag-menu {
+  position: absolute;
+  z-index: 2100;
+  min-width: 170px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  padding: 6px;
+}
+
+.project-tag-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 7px 8px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.project-tag-menu-item:hover {
+  background: #f2f4f7;
+}
+
+.project-tag-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.project-tag-dot-none {
+  border: 1px solid #adb5bd;
+  background: #fff;
+}
+
+.tag-gray { background: #6c757d; }
+.tag-red { background: #e03131; }
+.tag-orange { background: #f08c00; }
+.tag-yellow { background: #f59f00; }
+.tag-green { background: #2f9e44; }
+.tag-blue { background: #1c7ed6; }
+.tag-purple { background: #9c36b5; }
+
+tr.project-tag-row.tag-color-gray > * { background: #f1f3f5 !important; }
+tr.project-tag-row.tag-color-red > * { background: #fff5f5 !important; }
+tr.project-tag-row.tag-color-orange > * { background: #fff4e6 !important; }
+tr.project-tag-row.tag-color-yellow > * { background: #fff9db !important; }
+tr.project-tag-row.tag-color-green > * { background: #ebfbee !important; }
+tr.project-tag-row.tag-color-blue > * { background: #e7f5ff !important; }
+tr.project-tag-row.tag-color-purple > * { background: #f8f0fc !important; }
+</style>
