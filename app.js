@@ -1933,6 +1933,33 @@ app.post('/projects/:projectId/auditions/:auditionId/upload-to-youtube', require
   return res.redirect(redirectTarget);
 });
 
+app.post('/projects/:projectId/auditions/:auditionId/tag-color', requireAdmin, async (req, res) => {
+  try {
+    const projectId = Number(req.params.projectId);
+    const auditionId = Number(req.params.auditionId);
+    if (!Number.isInteger(projectId) || !Number.isInteger(auditionId)) {
+      return res.status(400).json({ ok: false, error: 'Invalid project or audition id.' });
+    }
+
+    const tagColor = req.body ? req.body.tagColor : null;
+    const result = await auditionService.updateAuditionTagColor(projectId, auditionId, tagColor);
+    if (!result.ok) {
+      if (result.reason === 'invalid_color') {
+        return res.status(400).json({ ok: false, error: 'Invalid color value.' });
+      }
+      if (result.reason === 'not_found') {
+        return res.status(404).json({ ok: false, error: 'Audition not found.' });
+      }
+      return res.status(400).json({ ok: false, error: 'Unable to update color.' });
+    }
+
+    return res.json({ ok: true, tagColor: result.row.tag_color });
+  } catch (error) {
+    console.error('[App.js POST /projects/:projectId/auditions/:auditionId/tag-color]', error);
+    return res.status(500).json({ ok: false, error: 'Failed to save color.' });
+  }
+});
+
 
 // Route to view all auditions for a specific project
 app.get('/projects/:projectId/auditions', requireAdmin, async (req, res) => {

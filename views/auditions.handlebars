@@ -32,7 +32,11 @@
             <div class="row">
               {{#each this.auditions}}
                 <div class="col-md-6 col-lg-4 mb-4">
-                  <div class="card h-100 border-danger audition-video-card">
+                  <div
+                    class="card h-100 border-danger audition-video-card audition-tag-card{{#if tag_color}} tag-color-{{tag_color}}{{/if}}"
+                    data-audition-id="{{id}}"
+                    data-project-id="{{../../project.id}}"
+                    data-tag-color="{{tag_color}}">
                     <div class="card-body">
                       <!-- Actor Name -->
                       <h6 class="card-title text-danger">
@@ -173,6 +177,20 @@
   <a href="/projects" class="btn btn-outline-danger mt-4">Back to Projects</a>
 </div>
 
+<div id="audition-tag-menu" class="audition-tag-menu d-none" role="menu" aria-label="Set row color">
+  <button type="button" class="audition-tag-menu-item" data-tag-color="">
+    <span class="audition-tag-dot audition-tag-dot-none"></span>
+    No color
+  </button>
+  <button type="button" class="audition-tag-menu-item" data-tag-color="gray"><span class="audition-tag-dot tag-gray"></span>Gray</button>
+  <button type="button" class="audition-tag-menu-item" data-tag-color="red"><span class="audition-tag-dot tag-red"></span>Red</button>
+  <button type="button" class="audition-tag-menu-item" data-tag-color="orange"><span class="audition-tag-dot tag-orange"></span>Orange</button>
+  <button type="button" class="audition-tag-menu-item" data-tag-color="yellow"><span class="audition-tag-dot tag-yellow"></span>Yellow</button>
+  <button type="button" class="audition-tag-menu-item" data-tag-color="green"><span class="audition-tag-dot tag-green"></span>Green</button>
+  <button type="button" class="audition-tag-menu-item" data-tag-color="blue"><span class="audition-tag-dot tag-blue"></span>Blue</button>
+  <button type="button" class="audition-tag-menu-item" data-tag-color="purple"><span class="audition-tag-dot tag-purple"></span>Purple</button>
+</div>
+
 <!-- Video Player Enhancement Script -->
 <script>
 function retryVideo(element) {
@@ -266,6 +284,54 @@ function testIframeLoad(container) {
   document.body.appendChild(testIframe);
 }
 
+const TAG_COLOR_CLASSES = ['gray', 'red', 'orange', 'yellow', 'green', 'blue', 'purple'].map((color) => `tag-color-${color}`);
+
+function clearTagColorClasses(card) {
+  TAG_COLOR_CLASSES.forEach((className) => card.classList.remove(className));
+}
+
+function applyTagColor(card, color) {
+  clearTagColorClasses(card);
+  const normalized = (color || '').toString().trim().toLowerCase();
+  if (normalized) {
+    card.classList.add(`tag-color-${normalized}`);
+  }
+  card.dataset.tagColor = normalized;
+}
+
+function hideTagMenu() {
+  const menu = document.getElementById('audition-tag-menu');
+  if (!menu) return;
+  menu.classList.add('d-none');
+  delete menu.dataset.auditionId;
+}
+
+function showTagMenu(event, card) {
+  const menu = document.getElementById('audition-tag-menu');
+  if (!menu) return;
+  menu.classList.remove('d-none');
+  menu.style.left = `${event.pageX}px`;
+  menu.style.top = `${event.pageY}px`;
+  menu.dataset.auditionId = card.dataset.auditionId;
+}
+
+async function saveTagColor(card, tagColor) {
+  const projectId = card.dataset.projectId;
+  const auditionId = card.dataset.auditionId;
+  if (!projectId || !auditionId) return;
+
+  const response = await fetch(`/projects/${projectId}/auditions/${auditionId}/tag-color`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tagColor: tagColor || null })
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload.ok) {
+    throw new Error(payload.error || 'Failed to save color');
+  }
+  applyTagColor(card, payload.tagColor || '');
+}
+
 // Load all videos when page loads
 document.addEventListener('DOMContentLoaded', function() {
   const roleSelect = document.getElementById('role-filter-select');
@@ -293,5 +359,106 @@ document.addEventListener('DOMContentLoaded', function() {
       loadVideo(container);
     }, index * 1000); // 1 second delay between each video
   });
+
+  let activeTagCard = null;
+  const tagMenu = document.getElementById('audition-tag-menu');
+  const tagCards = document.querySelectorAll('.audition-tag-card');
+  if (tagMenu && tagCards.length) {
+    tagCards.forEach((card) => {
+      card.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+        activeTagCard = card;
+        showTagMenu(event, card);
+      });
+    });
+
+    tagMenu.addEventListener('click', async (event) => {
+      const item = event.target.closest('.audition-tag-menu-item');
+      if (!item || !activeTagCard) return;
+      const newColor = (item.dataset.tagColor || '').trim().toLowerCase();
+      tagMenu.classList.add('d-none');
+      try {
+        await saveTagColor(activeTagCard, newColor);
+      } catch (error) {
+        console.error('[AUDITION_TAG_COLOR_SAVE_ERROR]', error);
+        alert('Could not save row color. Please try again.');
+      } finally {
+        activeTagCard = null;
+      }
+    });
+
+    document.addEventListener('click', (event) => {
+      if (!tagMenu.contains(event.target)) {
+        hideTagMenu();
+      }
+    });
+
+    window.addEventListener('scroll', hideTagMenu, true);
+    window.addEventListener('resize', hideTagMenu);
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        hideTagMenu();
+      }
+    });
+  }
 });
 </script>
+
+<style>
+.audition-tag-menu {
+  position: absolute;
+  z-index: 2000;
+  min-width: 170px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  padding: 6px;
+}
+
+.audition-tag-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 7px 8px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.audition-tag-menu-item:hover {
+  background: #f2f4f7;
+}
+
+.audition-tag-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.audition-tag-dot-none {
+  border: 1px solid #adb5bd;
+  background: #fff;
+}
+
+.tag-gray { background: #6c757d; }
+.tag-red { background: #e03131; }
+.tag-orange { background: #f08c00; }
+.tag-yellow { background: #f59f00; }
+.tag-green { background: #2f9e44; }
+.tag-blue { background: #1c7ed6; }
+.tag-purple { background: #9c36b5; }
+
+.audition-tag-card.tag-color-gray { background: #f1f3f5; }
+.audition-tag-card.tag-color-red { background: #fff5f5; }
+.audition-tag-card.tag-color-orange { background: #fff4e6; }
+.audition-tag-card.tag-color-yellow { background: #fff9db; }
+.audition-tag-card.tag-color-green { background: #ebfbee; }
+.audition-tag-card.tag-color-blue { background: #e7f5ff; }
+.audition-tag-card.tag-color-purple { background: #f8f0fc; }
+</style>

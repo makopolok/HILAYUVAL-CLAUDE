@@ -25,6 +25,7 @@ const NAME_SEARCH_SQL = `COALESCE(
   ),
   ''
 )`;
+const ALLOWED_TAG_COLORS = new Set(['gray', 'red', 'orange', 'yellow', 'green', 'blue', 'purple']);
 
 async function insertAudition(audition) {
   const profilePictures = Array.isArray(audition.profile_pictures)
@@ -218,6 +219,28 @@ async function searchAuditions(filters = {}) {
   return rows;
 }
 
+async function updateAuditionTagColor(projectId, auditionId, tagColor) {
+  const normalized = (tagColor || '').toString().trim().toLowerCase();
+  const value = normalized ? normalized : null;
+  if (value && !ALLOWED_TAG_COLORS.has(value)) {
+    return { ok: false, reason: 'invalid_color' };
+  }
+
+  const sql = `
+    UPDATE auditions
+    SET tag_color = $3,
+        updated_at = NOW()
+    WHERE id = $1
+      AND project_id = $2
+    RETURNING id, project_id, tag_color
+  `;
+  const { rows } = await pool.query(sql, [auditionId, projectId, value]);
+  if (!rows[0]) {
+    return { ok: false, reason: 'not_found' };
+  }
+  return { ok: true, row: rows[0] };
+}
+
 module.exports = {
   insertAudition,
   pool,
@@ -226,4 +249,5 @@ module.exports = {
   searchAuditions,
   getAuditionById,
   updateAuditionYoutubeData,
+  updateAuditionTagColor,
 };
