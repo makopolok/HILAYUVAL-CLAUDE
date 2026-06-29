@@ -127,7 +127,7 @@ main {
 .panel-visual img {
   display: block;
   width: 100%;
-  height: 180px;
+  height: 230px;
   object-fit: cover;
 }
 
@@ -436,7 +436,7 @@ footer {
   }
 
   .panel-visual img {
-    height: 170px;
+    height: 200px;
   }
 
   .panel-visual-overlay strong {
