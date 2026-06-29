@@ -324,10 +324,9 @@
 					throw new Error('Step 2 failed (upload): ' + (uploadErr && uploadErr.message ? uploadErr.message : uploadErr));
 				}
 				updateProgress(100);
-
+				if (progressText) progressText.textContent = 'Upload complete. Finalizing submission...';
+				if (overlayText) overlayText.textContent = 'Upload complete. Finalizing submission...';
 				setControls({ pauseDisabled: true, resumeDisabled: true, cancelDisabled: true });
-				setUploadActive(false);
-				videoInput.disabled = false;
 				clearError();
 
 				let hidden = form.querySelector('input[name="video_url"]');
@@ -348,6 +347,7 @@
 				intentHidden.value = meta.uploadIntent || '';
 
 				videoInput.value = '';
+				videoInput.disabled = true;
 				form.submit();
 			} catch (error) {
 				videoInput.disabled = false;

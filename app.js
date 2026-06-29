@@ -2575,15 +2575,17 @@ app.post('/audition/:projectId', auditionUpload.fields([
         finalVideoUrl = guidFromForm;
         videoType = 'bunny_stream';
 
-        // Assign to the role's Bunny collection (direct upload path)
-        if (project.upload_method !== 'youtube') {
-          try {
-            const collectionGuid = await ensureBunnyCollection(project, selectedRole);
-            await bunnyUploadService.assignVideoToCollection(guidFromForm, collectionGuid);
-            console.log(`BUNNY_COLLECTION_ITEM_ADDED (direct): videoGuid=${guidFromForm} collectionGuid=${collectionGuid}`);
-          } catch (colErr) {
-            console.warn(`BUNNY_COLLECTION_ASSIGN_WARN (direct): ${colErr.message}`);
-          }
+        // Assign to the role's Bunny collection in the background so user redirect is immediate.
+        if (project.upload_method !== 'youtube' && selectedRole) {
+          (async () => {
+            try {
+              const collectionGuid = await ensureBunnyCollection(project, selectedRole);
+              await bunnyUploadService.assignVideoToCollection(guidFromForm, collectionGuid);
+              console.log(`BUNNY_COLLECTION_ITEM_ADDED (direct): videoGuid=${guidFromForm} collectionGuid=${collectionGuid}`);
+            } catch (colErr) {
+              console.warn(`BUNNY_COLLECTION_ASSIGN_WARN (direct): ${colErr.message}`);
+            }
+          })();
         }
       } else {
         console.log('POST_AUDITION_NO_VIDEO_UPLOADED: User submitted audition without video');
@@ -2619,6 +2621,7 @@ app.post('/audition/:projectId', auditionUpload.fields([
       .filter(name => name && name.trim())
       .join(' ') || 'Actor';
     
+    const shouldShowVideoPreview = false;
     const submissionData = {
       project: { ...project },
       bunny_stream_library_id: process.env.BUNNY_STREAM_LIBRARY_ID, // Correctly access from process.env
@@ -2626,15 +2629,16 @@ app.post('/audition/:projectId', auditionUpload.fields([
       actor_name: actorName,
       email: body.email,
       phone: body.phone,
-      video_url: finalVideoUrl,
-      video_type: videoType,
+      video_url: shouldShowVideoPreview ? finalVideoUrl : null,
+      video_type: shouldShowVideoPreview ? videoType : null,
+      show_video_preview: shouldShowVideoPreview,
       profile_pictures: profilePictureUploadResults || [],
       showreel_url: body.showreel_url,
       submitted_time: formatTelAvivDateTime()
     };
 
   // Build optional signed Bunny Stream embed URL if signing key provided
-  if (videoType === 'bunny_stream' && finalVideoUrl && process.env.BUNNY_STREAM_LIBRARY_ID) {
+  if (shouldShowVideoPreview && videoType === 'bunny_stream' && finalVideoUrl && process.env.BUNNY_STREAM_LIBRARY_ID) {
       try {
         const libId = process.env.BUNNY_STREAM_LIBRARY_ID;
     let embedBase = `https://iframe.mediadelivery.net/embed/${libId}/${finalVideoUrl}`;
