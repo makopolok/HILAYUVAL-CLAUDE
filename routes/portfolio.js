@@ -27,10 +27,59 @@ const TAG_COLOR_STYLES = {
     purple: { bg: '#f8f0fc', hover: '#f3d9fa' }
 };
 
+const TRANSIENT_DB_ERROR_PATTERN = /(connection terminated|timeout|econnreset|etimedout|57p01|53300)/i;
+
+function isTransientDbError(error) {
+    if (!error) return false;
+    const code = (error.code || '').toString();
+    const message = (error.message || '').toString();
+    if (TRANSIENT_DB_ERROR_PATTERN.test(code)) return true;
+    if (TRANSIENT_DB_ERROR_PATTERN.test(message)) return true;
+    if (error.cause) {
+        const causeMessage = (error.cause.message || '').toString();
+        if (TRANSIENT_DB_ERROR_PATTERN.test(causeMessage)) return true;
+    }
+    return false;
+}
+
+function delay(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function withDbRetry(operation, label, options = {}) {
+    const maxAttempts = Number(options.maxAttempts || 3);
+    const baseDelayMs = Number(options.baseDelayMs || 200);
+    let attempt = 1;
+    let lastError = null;
+
+    while (attempt <= maxAttempts) {
+        try {
+            return await operation();
+        } catch (error) {
+            lastError = error;
+            const shouldRetry = attempt < maxAttempts && isTransientDbError(error);
+            if (!shouldRetry) {
+                throw error;
+            }
+            console.warn(`[${label}] transient database error; retrying attempt ${attempt + 1}/${maxAttempts}`, {
+                message: error.message,
+                code: error.code,
+            });
+            await delay(baseDelayMs * attempt);
+            attempt += 1;
+        }
+    }
+
+    throw lastError;
+}
+
 router.get('/projects', async (req, res) => {
     try {
         // Use DB-backed projects for the Projects admin page
-        const dbProjects = await projectService.getAllProjects();
+        const dbProjects = await withDbRetry(
+            () => projectService.getAllProjects(),
+            'projects.getAllProjects'
+        );
         const projectIds = dbProjects
             .map((project) => Number(project.id))
             .filter((id) => Number.isInteger(id));
@@ -64,7 +113,10 @@ router.get('/projects', async (req, res) => {
             const countParams = hasValidPreviousLoginTime
                 ? [projectIds, previousAdminLoginTime.toISOString()]
                 : [projectIds];
-            const countResult = await pool.query(countQuery, countParams);
+            const countResult = await withDbRetry(
+                () => pool.query(countQuery, countParams),
+                'projects.countAuditions'
+            );
             countResult.rows.forEach((row) => {
                 auditionCountsByProjectId.set(Number(row.project_id), {
                     total: Number(row.total_auditions) || 0,
