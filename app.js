@@ -72,7 +72,7 @@ const BUNNY_DIRECT_UPLOAD_MAX_PER_PROJECT_WINDOW = Number.parseInt(process.env.B
 const BUNNY_DIRECT_UPLOAD_PROJECT_WINDOW_MS = Number.parseInt(process.env.BUNNY_DIRECT_UPLOAD_PROJECT_WINDOW_MS || String(60 * 60 * 1000), 10);
 const directUploadIntentStore = new Map();
 const directUploadProjectQuotaStore = new Map();
-const SPECIAL_AUDITION_PROJECT_ID = 265;
+const STRICT_AUDITION_PROJECT_IDS = new Set([265, 299]);
 const DEFAULT_AUDITION_FORM_RULES = Object.freeze({
   requireHebrewName: true,
   requireProfilePicture: false,
@@ -104,7 +104,7 @@ function getAuditionFormRules(projectOrId) {
     : projectOrId;
   const projectId = Number(rawProjectId);
 
-  if (projectId === SPECIAL_AUDITION_PROJECT_ID) {
+  if (STRICT_AUDITION_PROJECT_IDS.has(projectId)) {
     return {
       ...DEFAULT_AUDITION_FORM_RULES,
       requireHebrewName: false,
