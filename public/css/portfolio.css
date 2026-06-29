@@ -174,14 +174,14 @@ details.has-visual {
 details.has-visual::before {
   content: "";
   position: absolute;
-  top: 16px;
+  top: 17px;
   left: 0;
-  width: 9px;
-  height: 9px;
+  width: 6px;
+  height: 6px;
   border-radius: 1px;
-  background: rgba(199,0,57,.32);
-  box-shadow: 0 0 0 1px rgba(199,0,57,.05);
-  opacity: .75;
+  background: rgba(199,0,57,.24);
+  box-shadow: 0 0 0 1px rgba(199,0,57,.03);
+  opacity: .65;
   pointer-events: none;
 }
 
