@@ -183,6 +183,7 @@
 			btnResume.classList.add('d-none');
 			btnResume.disabled = true;
 		}
+		let directSubmitInFlight = false;
 
 		function setControls(state) {
 			if (btnPause) btnPause.disabled = !!state.pauseDisabled;
@@ -267,6 +268,11 @@
 		});
 
 		form.addEventListener('submit', async (event) => {
+			if (directSubmitInFlight) {
+				event.preventDefault();
+				return;
+			}
+
 			// Block submission if the user selected a video that was rejected
 			if (videoInput.getAttribute('data-rejected')) {
 				event.preventDefault();
@@ -278,16 +284,22 @@
 			if (!file) return;
 
 			event.preventDefault();
+			directSubmitInFlight = true;
+			if (submitBtn) submitBtn.disabled = true;
 			clearError();
 			const captchaRequired = (form.getAttribute('data-direct-captcha-required') || '').toLowerCase() === 'true';
 			const captchaInput = form.querySelector('input[name="cf-turnstile-response"]');
 			const captchaToken = captchaInput ? (captchaInput.value || '').trim() : '';
 			if (captchaRequired && !captchaToken) {
+				directSubmitInFlight = false;
+				if (submitBtn) submitBtn.disabled = false;
 				showError('Please complete the human verification check before uploading.');
 				return;
 			}
 			const validationMessage = await enforceVideoLimits(file);
 			if (validationMessage) {
+				directSubmitInFlight = false;
+				if (submitBtn) submitBtn.disabled = false;
 				showError(validationMessage);
 				return;
 			}
@@ -350,6 +362,7 @@
 				videoInput.disabled = true;
 				form.submit();
 			} catch (error) {
+				directSubmitInFlight = false;
 				videoInput.disabled = false;
 				setUploadActive(false);
 				setControls({ pauseDisabled: true, resumeDisabled: true, cancelDisabled: true });
