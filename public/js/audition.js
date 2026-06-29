@@ -268,7 +268,7 @@
 
   function showUploadError(message) {
     const formatted = formatUploadErrorMessage(message);
-    const box = document.querySelector('#upload-error');
+    const box = document.querySelector('#upload-error-global') || document.querySelector('#upload-error');
     if (!box) {
       alert(formatted);
       return;
@@ -278,10 +278,10 @@
   }
 
   function clearUploadError() {
-    const box = document.querySelector('#upload-error');
-    if (!box) return;
-    box.textContent = '';
-    box.classList.add('d-none');
+    document.querySelectorAll('#upload-error-global, #upload-error').forEach((box) => {
+      box.textContent = '';
+      box.classList.add('d-none');
+    });
   }
 
   function readJsonResponse(response, defaultError, options) {
