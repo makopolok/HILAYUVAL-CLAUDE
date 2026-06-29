@@ -14,6 +14,7 @@
     'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg'
   ];
   const ROMAN_NAME_REGEX = /^[A-Za-z][A-Za-z\s.'-]*$/;
+  const PHONE_ALLOWED_CHARS_REGEX = /^[0-9\-+() ]+$/;
 
   function formatFileSize(bytes) {
     if (bytes === 0) return '0 Bytes';
@@ -74,11 +75,29 @@
     field.setCustomValidity(ROMAN_NAME_REGEX.test(value) ? '' : 'Please use Roman letters only.');
   }
 
+  function applyPhoneConstraint(field) {
+    if (!field) return;
+    const value = (field.value || '').trim();
+    if (!value) {
+      field.setCustomValidity('');
+      return;
+    }
+    if (!PHONE_ALLOWED_CHARS_REGEX.test(value)) {
+      field.setCustomValidity('Please enter a valid phone number.');
+      return;
+    }
+    const digits = value.replace(/\D/g, '');
+    field.setCustomValidity(digits.length >= 7 && digits.length <= 15 ? '' : 'Please enter a valid phone number.');
+  }
+
   function updateFieldValidationState(field, forceShow) {
     if (!field) return true;
 
     if (field.id === 'first_name_en' || field.id === 'last_name_en') {
       applyRomanNameConstraint(field);
+    }
+    if (field.id === 'phone') {
+      applyPhoneConstraint(field);
     }
 
     const value = (field.value || '').trim();
