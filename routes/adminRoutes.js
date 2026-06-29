@@ -55,34 +55,40 @@ router.post('/login', loginLimiter, async (req, res) => {
     const currentLoginAt = new Date();
     const currentLoginAtIso = currentLoginAt.toISOString();
     let previousLoginAtIso = null;
-
-    const previousLoginResult = await pool.query(
-      `
-        SELECT last_login_at
-        FROM admin_session_state
-        WHERE admin_email = $1
-        LIMIT 1
-      `,
-      [adminEmail]
-    );
-    if (previousLoginResult.rows.length > 0 && previousLoginResult.rows[0].last_login_at) {
-      const parsedPreviousLoginAt = new Date(previousLoginResult.rows[0].last_login_at);
-      if (!Number.isNaN(parsedPreviousLoginAt.getTime())) {
-        previousLoginAtIso = parsedPreviousLoginAt.toISOString();
+    try {
+      const previousLoginResult = await pool.query(
+        `
+          SELECT last_login_at
+          FROM admin_session_state
+          WHERE admin_email = $1
+          LIMIT 1
+        `,
+        [adminEmail]
+      );
+      if (previousLoginResult.rows.length > 0 && previousLoginResult.rows[0].last_login_at) {
+        const parsedPreviousLoginAt = new Date(previousLoginResult.rows[0].last_login_at);
+        if (!Number.isNaN(parsedPreviousLoginAt.getTime())) {
+          previousLoginAtIso = parsedPreviousLoginAt.toISOString();
+        }
       }
-    }
 
-    await pool.query(
-      `
-        INSERT INTO admin_session_state (admin_email, last_login_at)
-        VALUES ($1, $2)
-        ON CONFLICT (admin_email)
-        DO UPDATE SET
-          last_login_at = EXCLUDED.last_login_at,
-          updated_at = NOW()
-      `,
-      [adminEmail, currentLoginAtIso]
-    );
+      await pool.query(
+        `
+          INSERT INTO admin_session_state (admin_email, last_login_at)
+          VALUES ($1, $2)
+          ON CONFLICT (admin_email)
+          DO UPDATE SET
+            last_login_at = EXCLUDED.last_login_at,
+            updated_at = NOW()
+        `,
+        [adminEmail, currentLoginAtIso]
+      );
+    } catch (stateError) {
+      console.error('[ADMIN_LOGIN_STATE_TRACKING_ERROR]', {
+        message: stateError.message,
+        code: stateError.code,
+      });
+    }
 
     return req.session.regenerate((regenErr) => {
       if (regenErr) {
