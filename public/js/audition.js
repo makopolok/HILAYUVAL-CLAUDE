@@ -253,13 +253,27 @@
     return action.replace(/\/audition\/(\d+)$/, '/audition/$1/success');
   }
 
+  function formatUploadErrorMessage(rawMessage) {
+    const message = (rawMessage || 'Upload failed.').toString().trim();
+    let normalized = message;
+
+    if (/unexpected token|not valid json|unexpected response/i.test(message)) {
+      normalized = 'Upload failed because the server returned an invalid response.';
+    } else if (/network|failed to fetch|http 5\d\d/i.test(message)) {
+      normalized = 'Upload failed due to a temporary network/server issue.';
+    }
+
+    return `${normalized} Please refresh the page and try again. If it repeats, send us a screenshot and the exact time. / ההעלאה נכשלה. נא לרענן את הדף ולנסות שוב. אם זה חוזר, שלחו צילום מסך ושעה מדויקת.`;
+  }
+
   function showUploadError(message) {
+    const formatted = formatUploadErrorMessage(message);
     const box = document.querySelector('#upload-error');
     if (!box) {
-      alert(message);
+      alert(formatted);
       return;
     }
-    box.textContent = message;
+    box.textContent = formatted;
     box.classList.remove('d-none');
   }
 
