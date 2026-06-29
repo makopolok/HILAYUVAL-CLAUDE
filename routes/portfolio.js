@@ -31,9 +31,51 @@ router.get('/projects', async (req, res) => {
     try {
         // Use DB-backed projects for the Projects admin page
         const dbProjects = await projectService.getAllProjects();
+        const projectIds = dbProjects
+            .map((project) => Number(project.id))
+            .filter((id) => Number.isInteger(id));
+        const adminLoginTime = req.session && req.session.admin && req.session.admin.loggedInAt
+            ? new Date(req.session.admin.loggedInAt)
+            : null;
+        const hasValidLoginTime = adminLoginTime instanceof Date && !Number.isNaN(adminLoginTime.getTime());
+
+        const auditionCountsByProjectId = new Map();
+        if (projectIds.length > 0) {
+            const countQuery = hasValidLoginTime
+                ? `
+                    SELECT
+                        a.project_id,
+                        COUNT(*)::int AS total_auditions,
+                        COUNT(*) FILTER (WHERE a.created_at > $2)::int AS new_since_login
+                    FROM auditions a
+                    WHERE a.project_id = ANY($1::int[])
+                    GROUP BY a.project_id
+                  `
+                : `
+                    SELECT
+                        a.project_id,
+                        COUNT(*)::int AS total_auditions,
+                        0::int AS new_since_login
+                    FROM auditions a
+                    WHERE a.project_id = ANY($1::int[])
+                    GROUP BY a.project_id
+                  `;
+
+            const countParams = hasValidLoginTime
+                ? [projectIds, adminLoginTime.toISOString()]
+                : [projectIds];
+            const countResult = await pool.query(countQuery, countParams);
+            countResult.rows.forEach((row) => {
+                auditionCountsByProjectId.set(Number(row.project_id), {
+                    total: Number(row.total_auditions) || 0,
+                    newSinceLogin: Number(row.new_since_login) || 0,
+                });
+            });
+        }
         // Normalize/format fields for the template
         const projects = dbProjects.map(p => {
             const colorStyle = p.tag_color ? TAG_COLOR_STYLES[p.tag_color] : null;
+            const counts = auditionCountsByProjectId.get(Number(p.id)) || { total: 0, newSinceLogin: 0 };
             return {
                 id: p.id,
                 name: p.name || p.title || '',
@@ -43,7 +85,9 @@ router.get('/projects', async (req, res) => {
                 tag_color: p.tag_color || null,
                 tag_color_bg: colorStyle ? colorStyle.bg : '',
                 tag_color_hover: colorStyle ? colorStyle.hover : '',
-                roles: Array.isArray(p.roles) ? p.roles : []
+                roles: Array.isArray(p.roles) ? p.roles : [],
+                auditionsCount: counts.total,
+                newAuditionsCount: counts.newSinceLogin,
             };
         });
 

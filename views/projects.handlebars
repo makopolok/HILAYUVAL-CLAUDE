@@ -59,7 +59,7 @@
       <thead>
         <tr>
           <th>Name</th>
-          <th>Description</th>
+          <th>Auditions</th>
           <th>Created</th>
           <th>Audition Form Link</th>
           <th>Audition Playlist</th>
@@ -68,9 +68,14 @@
       </thead>
       <tbody>
         {{#each projects}}
-        <tr class="project-tag-row{{#if this.tag_color}} tag-color-{{this.tag_color}}{{/if}}" data-project-id="{{this.id}}" data-tag-color="{{this.tag_color}}">
+        <tr>
           <td>{{this.name}}</td>
-          <td>{{this.description}}</td>
+          <td>
+            <span class="fw-semibold">{{this.auditionsCount}}</span>
+            {{#if this.newAuditionsCount}}
+              <span class="badge text-bg-danger ms-2">+{{this.newAuditionsCount}} new</span>
+            {{/if}}
+          </td>
           <td>{{this.createdAt}}</td>
           <td>
             <a href="/audition/{{this.id}}" target="_blank">/audition/{{this.id}}</a>
@@ -79,7 +84,6 @@
             <a href="/projects/{{this.id}}/auditions" class="btn btn-outline-danger btn-sm">View Auditions</a>
           </td>
           <td>
-            <button type="button" class="btn btn-outline-info btn-sm project-tag-trigger" data-project-id="{{this.id}}">Color</button>
             <a href="/projects/{{this.id}}/edit" class="btn btn-outline-secondary btn-sm">Edit</a>
           </td>
         </tr>
@@ -111,178 +115,3 @@
     Deployed: {{deploymentInfo.deployDate}}
   </div>
 </div>
-
-<div id="project-tag-menu" class="project-tag-menu d-none" role="menu" aria-label="Set project row color">
-  <button type="button" class="project-tag-menu-item" data-tag-color="">
-    <span class="project-tag-dot project-tag-dot-none"></span>
-    No color
-  </button>
-  <button type="button" class="project-tag-menu-item" data-tag-color="gray"><span class="project-tag-dot tag-gray"></span>Gray</button>
-  <button type="button" class="project-tag-menu-item" data-tag-color="red"><span class="project-tag-dot tag-red"></span>Red</button>
-  <button type="button" class="project-tag-menu-item" data-tag-color="orange"><span class="project-tag-dot tag-orange"></span>Orange</button>
-  <button type="button" class="project-tag-menu-item" data-tag-color="yellow"><span class="project-tag-dot tag-yellow"></span>Yellow</button>
-  <button type="button" class="project-tag-menu-item" data-tag-color="green"><span class="project-tag-dot tag-green"></span>Green</button>
-  <button type="button" class="project-tag-menu-item" data-tag-color="blue"><span class="project-tag-dot tag-blue"></span>Blue</button>
-  <button type="button" class="project-tag-menu-item" data-tag-color="purple"><span class="project-tag-dot tag-purple"></span>Purple</button>
-</div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-  const TAG_COLOR_MAP = {
-    gray: '#6c757d',
-    red: '#e03131',
-    orange: '#f08c00',
-    yellow: '#f59f00',
-    green: '#2f9e44',
-    blue: '#1c7ed6',
-    purple: '#9c36b5'
-  };
-
-  function applyColorStripe(row, colorName) {
-    if (!colorName || !TAG_COLOR_MAP[colorName]) {
-      row.style.backgroundColor = '';
-      return;
-    }
-    const colorHex = TAG_COLOR_MAP[colorName];
-    
-    // Convert hex to rgba with 15% opacity for subtle background
-    const rgb = parseInt(colorHex.slice(1), 16);
-    const r = (rgb >> 16) & 255;
-    const g = (rgb >> 8) & 255;
-    const b = rgb & 255;
-    const rgbaColor = `rgba(${r}, ${g}, ${b}, 0.15)`;
-    
-    // Apply background color to entire row with !important
-    row.style.cssText = `background-color: ${rgbaColor} !important;`;
-    
-    // Apply to each cell to ensure it persists
-    row.querySelectorAll('td').forEach(cell => {
-      cell.style.backgroundColor = 'transparent';
-    });
-  }
-
-  document.querySelectorAll('.project-tag-row').forEach(function (row) {
-    const colorName = row.dataset.tagColor;
-    if (colorName) {
-      applyColorStripe(row, colorName);
-    }
-  });
-
-  const menu = document.getElementById('project-tag-menu');
-  if (!menu) return;
-  let activeRow = null;
-
-  const hideMenu = () => { menu.classList.add('d-none'); activeRow = null; };
-  const showMenu = (row, x, y) => {
-    menu.classList.remove('d-none');
-    menu.style.left = x + 'px';
-    menu.style.top  = y + 'px';
-    activeRow = row;
-  };
-
-  document.querySelectorAll('.project-tag-row').forEach(function (row) {
-    row.addEventListener('contextmenu', function (e) {
-      e.preventDefault();
-      showMenu(row, e.clientX, e.clientY);
-    });
-  });
-
-  document.querySelectorAll('.project-tag-trigger').forEach(function (button) {
-    button.addEventListener('click', function (e) {
-      e.preventDefault();
-      e.stopPropagation();
-      const row = button.closest('.project-tag-row');
-      if (!row) return;
-      const rect = button.getBoundingClientRect();
-      showMenu(row, rect.left, rect.bottom + 6);
-    });
-  });
-
-  menu.addEventListener('click', async function (e) {
-    const item = e.target.closest('.project-tag-menu-item');
-    if (!item || !activeRow) return;
-    const row = activeRow;
-    const projectId = row.dataset.projectId;
-    const tagColor = (item.dataset.tagColor || '').trim().toLowerCase();
-    hideMenu();
-
-    try {
-      const res = await fetch('/projects/' + projectId + '/tag-color', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tagColor: tagColor || null })
-      });
-      const payload = await res.json().catch(function () { return {}; });
-      if (!res.ok || !payload.ok) throw new Error(payload.error || 'Failed');
-      row.dataset.tagColor = payload.tagColor || '';
-      applyColorStripe(row, payload.tagColor || '');
-    } catch (err) {
-      console.error('[TAG_COLOR]', err);
-      alert('Could not save color. Please try again.');
-    }
-  });
-
-  document.addEventListener('click', function (e) { if (!menu.contains(e.target)) hideMenu(); });
-  window.addEventListener('scroll', hideMenu, true);
-  window.addEventListener('resize', hideMenu);
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hideMenu(); });
-});
-</script>
-
-<style>
-.project-tag-menu {
-  position: fixed;
-  z-index: 2100;
-  min-width: 170px;
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0,0,0,.16);
-  padding: 6px;
-}
-.project-tag-menu-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  border: 0;
-  background: transparent;
-  text-align: left;
-  padding: 7px 8px;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-}
-.project-tag-menu-item:hover { background: #f2f4f7; }
-.project-tag-dot {
-  width: 12px; height: 12px;
-  border-radius: 50%;
-  display: inline-block;
-  flex-shrink: 0;
-}
-.project-tag-dot-none { border: 1px solid #adb5bd; background: #fff; }
-.tag-gray   { background: #6c757d; }
-.tag-red    { background: #e03131; }
-.tag-orange { background: #f08c00; }
-.tag-yellow { background: #f59f00; }
-.tag-green  { background: #2f9e44; }
-.tag-blue   { background: #1c7ed6; }
-.tag-purple { background: #9c36b5; }
-.project-tag-row {
-  /* No background size needed for full-row color */
-}
-/* Custom hover for rows WITHOUT colors */
-.custom-hover-table tbody tr:not(.project-tag-row[data-tag-color]):hover {
-  background-color: rgba(0, 0, 0, 0.075);
-}
-/* Rows WITH colors should ALWAYS show their background, never highlight on hover */
-.custom-hover-table tbody tr.project-tag-row[data-tag-color] {
-  transition: none;
-}
-.custom-hover-table tbody tr.project-tag-row[data-tag-color]:hover {
-  background-color: inherit !important;
-}
-.custom-hover-table tbody tr.project-tag-row[data-tag-color]:hover td {
-  background-color: transparent !important;
-}
-</style>
