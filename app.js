@@ -540,6 +540,10 @@ function isValidYouTubePlaylistId(id) {
   return typeof id === 'string' && /^PL[a-zA-Z0-9_-]{5,}$/.test(id);
 }
 
+function getRolePlaylistTitle(role) {
+  return String(role && role.name ? role.name : '').trim().toUpperCase();
+}
+
 async function createAndPersistYouTubePlaylist(youtube, project, role, maxRetries = 3) {
   let lastError;
   let delay = 1000; // Start with 1 second
@@ -550,7 +554,7 @@ async function createAndPersistYouTubePlaylist(youtube, project, role, maxRetrie
         part: ['snippet', 'status'],
         requestBody: {
           snippet: {
-            title: `${project.name} — ${role.name}`,
+            title: getRolePlaylistTitle(role),
             description: `Auditions for role: ${role.name} | Project: ${project.name}`,
           },
           status: { privacyStatus: 'unlisted' },
