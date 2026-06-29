@@ -1,110 +1,42 @@
-<div class="page">
-  <header>
-    <h1 class="site-title">{{title}}</h1>
-    <p class="subtitle">Selected casting work for film, television and international productions.</p>
-    <div class="rule" aria-hidden="true"></div>
-    <div class="controls">
-      <label for="workFilter">Portfolio index</label>
-      <select id="workFilter" aria-label="Filter portfolio items">
-        <option value="all">All work</option>
-        <option value="TV Series">TV Series</option>
-        <option value="Feature Films">Feature Films</option>
-        <option value="International Productions">International Productions</option>
-        <option value="Comedy">Comedy</option>
-        <option value="Drama">Drama</option>
-      </select>
-    </div>
-  </header>
+<section class="temporary-slide" aria-label="Temporary home slide">
+  <div class="temporary-slide__content">
+    <h1>Hila Yuval Casting</h1>
+    <p>
+      <a href="mailto:hilayuval@gmail.com">hilayuval@gmail.com</a>
+    </p>
+  </div>
+</section>
 
-  <main>
-    <section class="accordion" aria-label="Selected projects">
-      {{#each projects}}
-        <details
-          id="project-{{slug}}"
-          class="{{#if featured_image_url}}has-visual{{/if}}"
-          data-categories="{{portfolio_categories_csv}}"
-        >
-          <summary>
-            <span class="year">{{year}}</span>
-            <span class="meta">
-              <span class="title">{{title}}{{#if hebrew_title}} / <span class="hebrew-title">{{hebrew_title}}</span>{{/if}}</span>
-              <span class="chev">+</span>
-            </span>
-            <span class="type">{{portfolio_label}}</span>
-          </summary>
-          {{#if featured_image_url}}
-            <div class="panel-visual">
-              <img
-                src="{{featured_image_url}}"
-                alt="{{#if featured_image_alt}}{{featured_image_alt}}{{else}}{{title}}{{/if}}"
-                style="{{#if featured_image_object_position}}object-position: {{featured_image_object_position}};{{/if}}"
-                loading="lazy"
-              >
-              <div class="panel-visual-overlay">
-                <span>{{portfolio_label}}</span>
-                <strong>{{title}}{{#if hebrew_title}} / <span class="hebrew-title">{{hebrew_title}}</span>{{/if}}</strong>
-              </div>
-            </div>
-          {{/if}}
-          <div class="panel">
-            <div class="panel-inner">
-              {{#if director}}
-                <p class="field"><strong>Director</strong>{{director}}</p>
-              {{/if}}
-              {{#if creators}}
-                <p class="field"><strong>Creators</strong>{{creators}}</p>
-              {{/if}}
-              {{#if writers}}
-                <p class="field"><strong>Writers</strong>{{writers}}</p>
-              {{/if}}
-              {{#if actors}}
-                <p class="field"><strong>Cast</strong>{{#each actors}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}</p>
-              {{/if}}
-              {{#if storyline}}
-                <p class="story">{{storyline}}</p>
-              {{/if}}
-              <div class="links">
-                {{#if imdb_url}}
-                  <a class="btn primary" href="{{imdb_url}}" target="_blank" rel="noopener">IMDB</a>
-                {{/if}}
-                {{#if trailerUrl}}
-                  <a class="btn" href="{{trailerUrl}}" target="_blank" rel="noopener">Trailer</a>
-                {{/if}}
-              </div>
-            </div>
-          </div>
-        </details>
-      {{/each}}
-    </section>
-  </main>
+<style>
+  .temporary-slide {
+    min-height: calc(100vh - 120px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2rem 1rem;
+    background: #f7f7f7;
+  }
 
-  <footer>
-    © Hila Yuval Casting · Light accordion direction
-  </footer>
-</div>
+  .temporary-slide__content h1 {
+    color: var(--primary-red, #e60000);
+    font-size: clamp(2rem, 4vw, 3.5rem);
+    margin: 0 0 1rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
 
-<script>
-  (() => {
-    const filter = document.getElementById('workFilter');
-    const projects = Array.from(document.querySelectorAll('.accordion details[data-categories]'));
-    if (!filter || projects.length === 0) return;
+  .temporary-slide__content p {
+    margin: 0;
+    font-size: clamp(1.1rem, 2vw, 1.5rem);
+  }
 
-    const applyFilter = () => {
-      const selected = (filter.value || 'all').trim();
-      projects.forEach((project) => {
-        const categories = (project.getAttribute('data-categories') || '')
-          .split(',')
-          .map((value) => value.trim())
-          .filter(Boolean);
-        const show = selected === 'all' || categories.includes(selected);
-        project.hidden = !show;
-        if (!show) {
-          project.removeAttribute('open');
-        }
-      });
-    };
+  .temporary-slide__content a {
+    color: #3b3b3b;
+    text-decoration: none;
+  }
 
-    filter.addEventListener('change', applyFilter);
-    applyFilter();
-  })();
-</script>
+  .temporary-slide__content a:hover {
+    text-decoration: underline;
+  }
+</style>
