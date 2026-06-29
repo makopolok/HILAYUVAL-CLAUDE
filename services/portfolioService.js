@@ -160,6 +160,18 @@ const projectVisuals = {
     },
 };
 
+const INTERNATIONAL_PROJECT_TITLES = new Set([
+    'The Red Sea Diving Resort',
+    'The Spy',
+    'Beirut',
+    'Norman',
+    'Live and Become',
+    'A Tale of Love and Darkness',
+    'The Attaché',
+    'The Conductor',
+    'The Big Special Thing',
+]);
+
 function getFallbackLabel(project) {
     if (project.broadcaster) return project.broadcaster;
     if (project.episodes === null || project.episodes === 'Film' || project.episodes === 'Feature Film') {
@@ -183,17 +195,57 @@ function slugifyTitle(title) {
         .replace(/^-+|-+$/g, '');
 }
 
+function getPortfolioCategories(project, portfolioLabel) {
+    const categories = [];
+    const label = String(portfolioLabel || '').toLowerCase();
+    const episodes = project.episodes;
+
+    if (typeof episodes === 'number' && Number.isFinite(episodes)) {
+        categories.push('TV Series');
+    } else if (episodes === null || episodes === 'Film' || episodes === 'Feature Film') {
+        categories.push('Feature Films');
+    }
+
+    if (label.includes('comedy')) {
+        categories.push('Comedy');
+    }
+
+    if (label.includes('drama')) {
+        categories.push('Drama');
+    }
+
+    if (
+        INTERNATIONAL_PROJECT_TITLES.has(project.title)
+        || label.includes('international')
+        || label.includes('hbo')
+        || label.includes('netflix')
+        || label.includes('american')
+        || label.includes('paris')
+        || label.includes('berlin')
+    ) {
+        categories.push('International Productions');
+    }
+
+    return [...new Set(categories)];
+}
+
 class PortfolioService {
     async getAllProjects() {
         const projects = [...portfolio]
             .sort((a, b) => getSortYear(b) - getSortYear(a))
-            .map((project) => ({
-                ...project,
-                slug: slugifyTitle(project.title),
-                portfolio_label: projectLabels[project.title] || getFallbackLabel(project),
-                hebrew_title: projectHebrewTitles[project.title] || project.hebrew_title,
-                ...(projectVisuals[project.title] || {}),
-            }));
+            .map((project) => {
+                const portfolio_label = projectLabels[project.title] || getFallbackLabel(project);
+                const portfolio_categories = getPortfolioCategories(project, portfolio_label);
+                return {
+                    ...project,
+                    slug: slugifyTitle(project.title),
+                    portfolio_label,
+                    portfolio_categories,
+                    portfolio_categories_csv: portfolio_categories.join(','),
+                    hebrew_title: projectHebrewTitles[project.title] || project.hebrew_title,
+                    ...(projectVisuals[project.title] || {}),
+                };
+            });
         const featuredOrder = ['Manayek', 'Dismissed'];
         const featuredProjects = featuredOrder
             .map((title) => projects.find((project) => project.title === title))

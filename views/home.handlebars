@@ -6,12 +6,12 @@
     <div class="controls">
       <label for="workFilter">Portfolio index</label>
       <select id="workFilter" aria-label="Filter portfolio items">
-        <option>All work</option>
-        <option>TV Series</option>
-        <option>Feature Films</option>
-        <option>International Productions</option>
-        <option>Comedy</option>
-        <option>Drama</option>
+        <option value="all">All work</option>
+        <option value="TV Series">TV Series</option>
+        <option value="Feature Films">Feature Films</option>
+        <option value="International Productions">International Productions</option>
+        <option value="Comedy">Comedy</option>
+        <option value="Drama">Drama</option>
       </select>
     </div>
   </header>
@@ -19,7 +19,11 @@
   <main>
     <section class="accordion" aria-label="Selected projects">
       {{#each projects}}
-        <details id="project-{{slug}}" class="{{#if featured_image_url}}has-visual{{/if}}">
+        <details
+          id="project-{{slug}}"
+          class="{{#if featured_image_url}}has-visual{{/if}}"
+          data-categories="{{portfolio_categories_csv}}"
+        >
           <summary>
             <span class="year">{{year}}</span>
             <span class="meta">
@@ -78,3 +82,29 @@
     © Hila Yuval Casting · Light accordion direction
   </footer>
 </div>
+
+<script>
+  (() => {
+    const filter = document.getElementById('workFilter');
+    const projects = Array.from(document.querySelectorAll('.accordion details[data-categories]'));
+    if (!filter || projects.length === 0) return;
+
+    const applyFilter = () => {
+      const selected = (filter.value || 'all').trim();
+      projects.forEach((project) => {
+        const categories = (project.getAttribute('data-categories') || '')
+          .split(',')
+          .map((value) => value.trim())
+          .filter(Boolean);
+        const show = selected === 'all' || categories.includes(selected);
+        project.hidden = !show;
+        if (!show) {
+          project.removeAttribute('open');
+        }
+      });
+    };
+
+    filter.addEventListener('change', applyFilter);
+    applyFilter();
+  })();
+</script>
