@@ -353,6 +353,28 @@
           <a href="mailto:emmanuel.gandelman@gmail.com">emmanuel.gandelman@gmail.com</a>
         </p>
       </div>
+      <div
+        id="ga-audition-success-event"
+        data-project-id="{{project.id}}"
+        data-project-name="{{project.name}}"
+        data-role="{{role}}"
+        data-video-type="{{analytics_video_type}}"
+        data-upload-method="{{analytics_upload_method}}"
+      ></div>
+      <script>
+        (function () {
+          if (typeof window.gtag !== 'function') return;
+          const eventDataNode = document.getElementById('ga-audition-success-event');
+          if (!eventDataNode) return;
+          window.gtag('event', 'audition_submitted', {
+            project_id: eventDataNode.dataset.projectId || '',
+            project_name: eventDataNode.dataset.projectName || '',
+            role: eventDataNode.dataset.role || '',
+            video_type: eventDataNode.dataset.videoType || '',
+            upload_method: eventDataNode.dataset.uploadMethod || ''
+          });
+        })();
+      </script>
       {{/if}}
     </div>
   </div>

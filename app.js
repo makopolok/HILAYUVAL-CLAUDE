@@ -2649,6 +2649,8 @@ app.post('/audition/:projectId', auditionUpload.fields([
       video_url: shouldShowVideoPreview ? finalVideoUrl : null,
       video_type: shouldShowVideoPreview ? videoType : null,
       show_video_preview: shouldShowVideoPreview,
+      analytics_video_type: videoType || '',
+      analytics_upload_method: (project.upload_method || project.uploadMethod || '').toString(),
       profile_pictures: profilePictureUploadResults || [],
       showreel_url: body.showreel_url,
       submitted_time: formatTelAvivDateTime()
