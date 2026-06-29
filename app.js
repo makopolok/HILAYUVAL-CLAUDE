@@ -99,6 +99,9 @@ const formatTelAvivDateTime = (value = new Date()) => {
 };
 
 function getAuditionFormRules(projectOrId) {
+  const projectUploadMethod = projectOrId && typeof projectOrId === 'object'
+    ? (projectOrId.upload_method || projectOrId.uploadMethod || '').toString().trim().toLowerCase()
+    : '';
   const rawProjectId = projectOrId && typeof projectOrId === 'object'
     ? (projectOrId.id ?? projectOrId.project_id)
     : projectOrId;
@@ -118,6 +121,16 @@ function getAuditionFormRules(projectOrId) {
       maxVideoSizeMb: isBunnyIntakeProject ? 300 : 150,
       maxVideoDurationSeconds: 180,
       maxVideoDurationMinutes: 3,
+    };
+  }
+
+  if (projectUploadMethod === 'bunny_stream') {
+    return {
+      ...DEFAULT_AUDITION_FORM_RULES,
+      maxVideoBytes: 300 * 1024 * 1024,
+      maxVideoSizeMb: 300,
+      profilePictureSingle: false,
+      maxVideoDurationMinutes: 0,
     };
   }
 
@@ -2622,7 +2635,7 @@ app.post('/audition/:projectId', auditionUpload.fields([
       .filter(name => name && name.trim())
       .join(' ') || 'Actor';
     
-    const shouldShowVideoPreview = false;
+    const shouldShowVideoPreview = Boolean(videoType) && videoType !== 'bunny_stream';
     const submissionData = {
       project: { ...project },
       bunny_stream_library_id: process.env.BUNNY_STREAM_LIBRARY_ID, // Correctly access from process.env
