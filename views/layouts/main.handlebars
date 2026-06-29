@@ -18,6 +18,15 @@
     {{#if bunny_stream_library_id}}
     <meta name="bunny-tus-endpoint" content="https://video.bunnycdn.com/library/{{bunny_stream_library_id}}/videos">
     {{/if}}
+    {{#if ga_measurement_id}}
+    <script async src="https://www.googletagmanager.com/gtag/js?id={{ga_measurement_id}}"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', '{{ga_measurement_id}}');
+    </script>
+    {{/if}}
 </head>
 <body>
     {{> header}}

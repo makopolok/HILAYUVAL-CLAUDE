@@ -66,6 +66,7 @@ const PORT = process.env.PORT || 3000;
 const BUNNY_DIRECT_UPLOAD_TTL_SECONDS = Math.max(3600, clampTtl(process.env.BUNNY_DIRECT_UPLOAD_TTL_SECONDS || process.env.BUNNY_STREAM_TOKEN_TTL || '7200'));
 const BUNNY_TURNSTILE_SECRET_KEY = process.env.TURNSTILE_SECRET_KEY || process.env.BUNNY_TURNSTILE_SECRET_KEY || '';
 const BUNNY_TURNSTILE_SITE_KEY = process.env.TURNSTILE_SITE_KEY || process.env.BUNNY_TURNSTILE_SITE_KEY || '';
+const GA_MEASUREMENT_ID = (process.env.GA_MEASUREMENT_ID || process.env.GOOGLE_ANALYTICS_ID || '').trim();
 const BUNNY_DIRECT_UPLOAD_REQUIRE_CAPTCHA = process.env.BUNNY_DIRECT_REQUIRE_CAPTCHA === '1' || Boolean(BUNNY_TURNSTILE_SECRET_KEY);
 const BUNNY_DIRECT_UPLOAD_MAX_PER_IP = Number.parseInt(process.env.BUNNY_DIRECT_UPLOAD_MAX_PER_IP || '12', 10);
 const BUNNY_DIRECT_UPLOAD_MAX_PER_PROJECT_WINDOW = Number.parseInt(process.env.BUNNY_DIRECT_UPLOAD_MAX_PER_PROJECT_WINDOW || '80', 10);
@@ -472,6 +473,8 @@ app.use((req, res, next) => {
     error: req.flash('error'),
     info: req.flash('info')
   };
+  const shouldTrackPage = req.path === '/' || req.path.startsWith('/audition/');
+  res.locals.ga_measurement_id = shouldTrackPage ? GA_MEASUREMENT_ID : '';
   next();
 });
 app.use(attachAdminToLocals);
