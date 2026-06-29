@@ -2203,6 +2203,11 @@ app.post('/audition/:projectId/fields', auditionUpload.fields([
     res.json({ submissionId });
   } catch (err) {
     console.error(`[fields] Error: ${err.message}`);
+    if (/connection timeout|connection terminated|terminating connection/i.test(err.message || '')) {
+      return res.status(503).json({
+        error: 'Temporary server connection issue. Please wait a few seconds and try again.',
+      });
+    }
     res.status(500).json({ error: err.message });
   }
 });

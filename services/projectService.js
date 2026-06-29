@@ -76,7 +76,7 @@ async function getAllProjects() {
 // Get a project by ID
 const getProjectById = async (id) => {
   console.log(`PROJECT_SERVICE_GET_BY_ID_START: Fetching project with id: ${id}, timestamp = ${new Date().toISOString()}`);
-  const maxRetries = 2;
+  const maxRetries = 4;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     let project;
