@@ -253,6 +253,48 @@
     return action.replace(/\/audition\/(\d+)$/, '/audition/$1/success');
   }
 
+  function showUploadError(message) {
+    const box = document.querySelector('#upload-error');
+    if (!box) {
+      alert(message);
+      return;
+    }
+    box.textContent = message;
+    box.classList.remove('d-none');
+  }
+
+  function clearUploadError() {
+    const box = document.querySelector('#upload-error');
+    if (!box) return;
+    box.textContent = '';
+    box.classList.add('d-none');
+  }
+
+  function readJsonResponse(response, defaultError, options) {
+    const opts = options || {};
+    return response.text().then((text) => {
+      let payload = {};
+      if (text) {
+        try {
+          payload = JSON.parse(text);
+        } catch (_) {
+          if (response.ok && opts.allowNonJsonSuccess) {
+            return {};
+          }
+          if (!response.ok) {
+            throw new Error(`${defaultError} (HTTP ${response.status})`);
+          }
+          throw new Error('Server returned an unexpected response. Please refresh and try again.');
+        }
+      }
+
+      if (!response.ok) {
+        throw new Error(payload.error || defaultError);
+      }
+      return payload;
+    });
+  }
+
   function resetYoutubeUploadUi(state) {
     if (state.submitBtn) state.submitBtn.disabled = false;
     if (state.submitText) state.submitText.classList.remove('d-none');
@@ -358,6 +400,7 @@
 
       event.preventDefault();
       youtubeSubmitInFlight = true;
+      clearUploadError();
 
       const uploadUi = {
         submitBtn: document.getElementById('submit-btn'),
@@ -380,14 +423,7 @@
       if (videoFile) fieldsData.delete('video'); // Remove video, we upload it separately via tus
 
       fetch('/audition/' + projectId + '/fields', { method: 'POST', body: fieldsData })
-        .then(function(r) {
-          return r.json().then(function(payload) {
-            if (!r.ok) {
-              throw new Error(payload.error || 'Could not validate the submission.');
-            }
-            return payload;
-          });
-        })
+        .then(function(r) { return readJsonResponse(r, 'Could not validate the submission.'); })
         .then(function(fieldsResult) {
           if (!fieldsResult.submissionId) throw new Error('No submissionId from server');
           var submissionId = fieldsResult.submissionId;
@@ -418,7 +454,7 @@
             })
               .then(function(r) {
                 if (!r.ok) throw new Error('Chunk ' + currentChunk + ' failed: HTTP ' + r.status);
-                return r.json();
+                return readJsonResponse(r, 'Chunk upload failed.', { allowNonJsonSuccess: true });
               })
               .then(function() {
                 currentChunk++;
@@ -439,7 +475,7 @@
                       mimetype: videoFile.type,
                     }),
                   })
-                    .then(function(r) { return r.json(); })
+                    .then(function(r) { return readJsonResponse(r, 'Could not prepare the uploaded video.'); })
                     .then(function(result) {
                       if (!result.jobId) throw new Error('No jobId from assemble');
                       setYoutubeUploadUi(uploadUi, 99, 'Processing on YouTube...');
@@ -475,7 +511,7 @@
         .catch(function(err) {
           console.error('Fields submit error:', err);
           youtubeSubmitInFlight = false;
-          alert(err.message || 'Could not validate the submission.');
+          showUploadError(err.message || 'Could not validate the submission.');
           resetYoutubeUploadUi(uploadUi);
         });
     });
@@ -483,7 +519,7 @@
 
   function pollUploadJob(jobId, formAction, uploadUi, onDone) {
     fetch('/upload-status/' + jobId)
-      .then(function(r) { return r.json(); })
+      .then(function(r) { return readJsonResponse(r, 'Could not check upload status.'); })
       .then(function(data) {
         if (data.status === 'done') {
           onDone();
