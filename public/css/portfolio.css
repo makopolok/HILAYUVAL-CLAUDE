@@ -219,7 +219,7 @@ details[open] summary {
   color: rgba(199,0,57,.72);
   letter-spacing: .11em;
   line-height: 1.4;
-  padding-top: 2px;
+  padding-top: 6px;
 }
 
 .title {
@@ -401,7 +401,7 @@ footer {
   }
   
   .year {
-    padding-top: 0;
+    padding-top: 4px;
   }
   
   .type {
