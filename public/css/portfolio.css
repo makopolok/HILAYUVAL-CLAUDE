@@ -174,8 +174,8 @@ details.has-visual {
 details.has-visual::before {
   content: "";
   position: absolute;
-  top: 17px;
-  left: 0;
+  top: 18px;
+  left: 4px;
   width: 6px;
   height: 6px;
   border-radius: 1px;
@@ -195,8 +195,8 @@ summary {
   display: grid;
   grid-template-columns: 64px minmax(0, 1fr) auto;
   align-items: start;
-  gap: 12px 14px;
-  padding: 20px 2px 18px;
+  gap: 14px 16px;
+  padding: 20px 10px 18px 14px;
   min-height: 78px;
   transition: background .18s ease, color .18s ease;
 }
@@ -218,8 +218,8 @@ details[open] summary {
   font-weight: 400;
   color: rgba(199,0,57,.72);
   letter-spacing: .11em;
-  line-height: 1.25;
-  padding-top: 4px;
+  line-height: 1.4;
+  padding-top: 2px;
 }
 
 .title {
@@ -396,8 +396,8 @@ footer {
   
   summary {
     grid-template-columns: 1fr;
-    gap: 8px;
-    padding: 16px 0 15px;
+    gap: 10px;
+    padding: 16px 8px 15px 14px;
   }
   
   .year {
@@ -413,7 +413,7 @@ footer {
   }
   
   .meta {
-    gap: 12px;
+    gap: 10px;
     padding-right: 0;
   }
 
