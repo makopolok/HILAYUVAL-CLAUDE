@@ -5,8 +5,10 @@ const {
   isAdminConfigured,
   sanitizeRedirect,
 } = require('../middleware/auth');
+const { getPool } = require('../utils/database');
 
 const router = express.Router();
+const pool = getPool();
 
 const loginLimiter = rateLimit({
   windowMs: 10 * 60 * 1000,
@@ -49,6 +51,38 @@ router.post('/login', loginLimiter, async (req, res) => {
 
     const fallback = sanitizeRedirect(req.session?.pendingAdminRedirect, '/projects');
     const redirectTarget = sanitizeRedirect(desiredReturnTo, fallback || '/projects');
+    const adminEmail = (result.admin.email || '').toString().trim().toLowerCase();
+    const currentLoginAt = new Date();
+    const currentLoginAtIso = currentLoginAt.toISOString();
+    let previousLoginAtIso = null;
+
+    const previousLoginResult = await pool.query(
+      `
+        SELECT last_login_at
+        FROM admin_session_state
+        WHERE admin_email = $1
+        LIMIT 1
+      `,
+      [adminEmail]
+    );
+    if (previousLoginResult.rows.length > 0 && previousLoginResult.rows[0].last_login_at) {
+      const parsedPreviousLoginAt = new Date(previousLoginResult.rows[0].last_login_at);
+      if (!Number.isNaN(parsedPreviousLoginAt.getTime())) {
+        previousLoginAtIso = parsedPreviousLoginAt.toISOString();
+      }
+    }
+
+    await pool.query(
+      `
+        INSERT INTO admin_session_state (admin_email, last_login_at)
+        VALUES ($1, $2)
+        ON CONFLICT (admin_email)
+        DO UPDATE SET
+          last_login_at = EXCLUDED.last_login_at,
+          updated_at = NOW()
+      `,
+      [adminEmail, currentLoginAtIso]
+    );
 
     return req.session.regenerate((regenErr) => {
       if (regenErr) {
@@ -59,7 +93,8 @@ router.post('/login', loginLimiter, async (req, res) => {
       req.session.isAdmin = true;
       req.session.admin = {
         email: result.admin.email,
-        loggedInAt: new Date().toISOString(),
+        loggedInAt: currentLoginAtIso,
+        previousLoggedInAt: previousLoginAtIso,
       };
       delete req.session.pendingAdminRedirect;
       req.flash('success', 'Welcome back!');

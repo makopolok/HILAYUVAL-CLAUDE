@@ -34,19 +34,19 @@ router.get('/projects', async (req, res) => {
         const projectIds = dbProjects
             .map((project) => Number(project.id))
             .filter((id) => Number.isInteger(id));
-        const adminLoginTime = req.session && req.session.admin && req.session.admin.loggedInAt
-            ? new Date(req.session.admin.loggedInAt)
+        const previousAdminLoginTime = req.session && req.session.admin && req.session.admin.previousLoggedInAt
+            ? new Date(req.session.admin.previousLoggedInAt)
             : null;
-        const hasValidLoginTime = adminLoginTime instanceof Date && !Number.isNaN(adminLoginTime.getTime());
+        const hasValidPreviousLoginTime = previousAdminLoginTime instanceof Date && !Number.isNaN(previousAdminLoginTime.getTime());
 
         const auditionCountsByProjectId = new Map();
         if (projectIds.length > 0) {
-            const countQuery = hasValidLoginTime
+            const countQuery = hasValidPreviousLoginTime
                 ? `
                     SELECT
                         a.project_id,
                         COUNT(*)::int AS total_auditions,
-                        COUNT(*) FILTER (WHERE a.created_at > $2)::int AS new_since_login
+                        COUNT(*) FILTER (WHERE a.created_at > $2)::int AS new_since_last_session
                     FROM auditions a
                     WHERE a.project_id = ANY($1::int[])
                     GROUP BY a.project_id
@@ -55,27 +55,27 @@ router.get('/projects', async (req, res) => {
                     SELECT
                         a.project_id,
                         COUNT(*)::int AS total_auditions,
-                        0::int AS new_since_login
+                        0::int AS new_since_last_session
                     FROM auditions a
                     WHERE a.project_id = ANY($1::int[])
                     GROUP BY a.project_id
                   `;
 
-            const countParams = hasValidLoginTime
-                ? [projectIds, adminLoginTime.toISOString()]
+            const countParams = hasValidPreviousLoginTime
+                ? [projectIds, previousAdminLoginTime.toISOString()]
                 : [projectIds];
             const countResult = await pool.query(countQuery, countParams);
             countResult.rows.forEach((row) => {
                 auditionCountsByProjectId.set(Number(row.project_id), {
                     total: Number(row.total_auditions) || 0,
-                    newSinceLogin: Number(row.new_since_login) || 0,
+                    newSinceLastSession: Number(row.new_since_last_session) || 0,
                 });
             });
         }
         // Normalize/format fields for the template
         const projects = dbProjects.map(p => {
             const colorStyle = p.tag_color ? TAG_COLOR_STYLES[p.tag_color] : null;
-            const counts = auditionCountsByProjectId.get(Number(p.id)) || { total: 0, newSinceLogin: 0 };
+            const counts = auditionCountsByProjectId.get(Number(p.id)) || { total: 0, newSinceLastSession: 0 };
             return {
                 id: p.id,
                 name: p.name || p.title || '',
@@ -87,7 +87,7 @@ router.get('/projects', async (req, res) => {
                 tag_color_hover: colorStyle ? colorStyle.hover : '',
                 roles: Array.isArray(p.roles) ? p.roles : [],
                 auditionsCount: counts.total,
-                newAuditionsCount: counts.newSinceLogin,
+                newAuditionsCount: counts.newSinceLastSession,
             };
         });
 
