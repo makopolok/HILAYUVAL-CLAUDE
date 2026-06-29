@@ -76,37 +76,43 @@ async function getAllProjects() {
 // Get a project by ID
 const getProjectById = async (id) => {
   console.log(`PROJECT_SERVICE_GET_BY_ID_START: Fetching project with id: ${id}, timestamp = ${new Date().toISOString()}`);
-  let project;
-  try {
+  const maxRetries = 2;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    let project;
+    try {
       const projectResult = await pool.query('SELECT * FROM projects WHERE id = $1', [id]);
       if (projectResult.rows.length > 0) {
-          project = projectResult.rows[0];
-          console.log(`PROJECT_SERVICE_GET_BY_ID_PROJECT_FOUND: Project data for ${id}: ${JSON.stringify(project)}`);
+        project = projectResult.rows[0];
+        console.log(`PROJECT_SERVICE_GET_BY_ID_PROJECT_FOUND: Project data for ${id}: ${JSON.stringify(project)}`);
 
-          const rolesResult = await pool.query('SELECT * FROM roles WHERE project_id = $1 AND COALESCE(is_deleted, FALSE) = FALSE', [id]);
-          project.roles = rolesResult.rows;
-          project.uploadMethod = project.upload_method;
-          console.log(`PROJECT_SERVICE_GET_BY_ID_ROLES_FETCHED: Roles for project ${id}: ${JSON.stringify(project.roles)}. Roles count: ${project.roles.length}. IsArray: ${Array.isArray(project.roles)}`);
-          
-          // Ensure roles is always an array, even if empty, to prevent .find issues later
-          if (!Array.isArray(project.roles)) {
-              console.warn(`PROJECT_SERVICE_GET_BY_ID_ROLES_NOT_ARRAY: Roles for project ${id} was not an array. Initializing to empty array. Original value: ${JSON.stringify(project.roles)}`);
-              project.roles = [];
-          }
+        const rolesResult = await pool.query('SELECT * FROM roles WHERE project_id = $1 AND COALESCE(is_deleted, FALSE) = FALSE', [id]);
+        project.roles = rolesResult.rows;
+        project.uploadMethod = project.upload_method;
+        console.log(`PROJECT_SERVICE_GET_BY_ID_ROLES_FETCHED: Roles for project ${id}: ${JSON.stringify(project.roles)}. Roles count: ${project.roles.length}. IsArray: ${Array.isArray(project.roles)}`);
 
+        if (!Array.isArray(project.roles)) {
+          console.warn(`PROJECT_SERVICE_GET_BY_ID_ROLES_NOT_ARRAY: Roles for project ${id} was not an array. Initializing to empty array. Original value: ${JSON.stringify(project.roles)}`);
+          project.roles = [];
+        }
       } else {
-          console.log(`PROJECT_SERVICE_GET_BY_ID_PROJECT_NOT_FOUND: No project found with id: ${id}`);
-          return null; // Return null if project not found
+        console.log(`PROJECT_SERVICE_GET_BY_ID_PROJECT_NOT_FOUND: No project found with id: ${id}`);
+        return null;
       }
-  } catch (error) {
-      console.error(`PROJECT_SERVICE_GET_BY_ID_DB_ERROR: Error fetching project or roles for id ${id}:`, error);
-      // In case of DB error, it's safer to return null or throw, rather than a potentially incomplete project object.
-      // If we return project here, it might be partially populated, leading to issues like project.roles being undefined.
-      // For now, let's re-throw to make it clear that a DB operation failed.
-      throw error; 
+      console.log(`PROJECT_SERVICE_GET_BY_ID_END: Returning project for id ${id}: ${project ? project.name : 'null'}. Roles count: ${project && project.roles ? project.roles.length : 'N/A'}`);
+      return project;
+    } catch (error) {
+      console.error(`PROJECT_SERVICE_GET_BY_ID_DB_ERROR: Error fetching project or roles for id ${id} (attempt ${attempt + 1}/${maxRetries + 1}):`, error);
+      if (!isTransientDbError(error) || attempt >= maxRetries) {
+        throw error;
+      }
+      const waitMs = 300 * Math.pow(2, attempt);
+      console.warn(`PROJECT_SERVICE_GET_BY_ID_RETRY: Retrying project fetch for id ${id} in ${waitMs}ms due to transient DB error.`);
+      await sleep(waitMs);
+    }
   }
-  console.log(`PROJECT_SERVICE_GET_BY_ID_END: Returning project for id ${id}: ${project ? project.name : 'null'}. Roles count: ${project && project.roles ? project.roles.length : 'N/A'}`);
-  return project;
+
+  return null;
 };
 
 // Add a role to a project
