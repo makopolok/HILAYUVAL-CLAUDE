@@ -105,6 +105,7 @@ function getAuditionFormRules(projectOrId) {
   const projectId = Number(rawProjectId);
 
   if (STRICT_AUDITION_PROJECT_IDS.has(projectId)) {
+    const isBunnyIntakeProject = projectId === 299;
     return {
       ...DEFAULT_AUDITION_FORM_RULES,
       requireHebrewName: false,
@@ -113,8 +114,8 @@ function getAuditionFormRules(projectOrId) {
       profilePictureSingle: true,
       maxProfilePictureBytes: 20 * 1024 * 1024,
       maxProfilePictureSizeMb: 20,
-      maxVideoBytes: 150 * 1024 * 1024,
-      maxVideoSizeMb: 150,
+      maxVideoBytes: (isBunnyIntakeProject ? 300 : 150) * 1024 * 1024,
+      maxVideoSizeMb: isBunnyIntakeProject ? 300 : 150,
       maxVideoDurationSeconds: 180,
       maxVideoDurationMinutes: 3,
     };
