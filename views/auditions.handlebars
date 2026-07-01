@@ -79,6 +79,8 @@
                           <i class="fas fa-film me-2"></i>Open Showreel
                         </a>
                       </div>
+                      {{else}}
+                      <div class="mb-3 audition-showreel-spacer" aria-hidden="true"></div>
                       {{/if}}
                        
                       <!-- Video Player -->
@@ -521,6 +523,10 @@ document.addEventListener('DOMContentLoaded', function() {
 .audition-tag-dot-none {
   border: 1px solid #adb5bd;
   background: #fff;
+}
+
+.audition-showreel-spacer {
+  min-height: 38px;
 }
 
 .tag-gray { background: #6c757d; }
