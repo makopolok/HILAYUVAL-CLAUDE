@@ -467,6 +467,8 @@
             return;
           }
 
+          var submissionToken = fieldsResult.submissionToken || '';
+
           // Step 2: Upload video in 2MB binary chunks — each PUT is a separate short
           // HTTP request so Heroku's 90s idle timeout can never trigger.
           // Smaller chunks (2MB) ensure the progress bar updates frequently even on slow connections.
@@ -498,32 +500,37 @@
                   uploadNextChunk(0);
                 } else {
                   // All chunks uploaded — tell server to assemble and start YouTube background job
-                  fetch('/upload-chunk/' + submissionId + '/assemble', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      submissionId: submissionId,
-                      totalChunks: totalChunks,
-                      filename: videoFile.name,
-                      mimetype: videoFile.type,
-                    }),
-                  })
-                    .then(function(r) { return readJsonResponse(r, 'Could not prepare the uploaded video.'); })
-                    .then(function(result) {
-                      if (!result.jobId) throw new Error('No jobId from assemble');
-                      setYoutubeUploadUi(uploadUi, 99, 'Processing on YouTube...');
-                      pollUploadJob(result.jobId, form.action, uploadUi, function() { youtubeSubmitInFlight = false; });
+                  function requestAssemble(assembleRetryCount) {
+                    fetch('/upload-chunk/' + submissionId + '/assemble', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        submissionId: submissionId,
+                        totalChunks: totalChunks,
+                        filename: videoFile.name,
+                        mimetype: videoFile.type,
+                        submissionToken: submissionToken,
+                      }),
                     })
-                    .catch(function(err) {
-                      if (retryCount < 3) {
-                        console.warn('Assemble error, retrying...', err);
-                        setTimeout(function() { uploadNextChunk(retryCount + 1); }, 2000);
-                      } else {
-                        console.error('Assemble error final:', err);
-                        youtubeSubmitInFlight = false;
-                        window.location.href = '/audition/' + projectId + '/error';
-                      }
-                    });
+                      .then(function(r) { return readJsonResponse(r, 'Could not prepare the uploaded video.'); })
+                      .then(function(result) {
+                        if (!result.jobId) throw new Error('No jobId from assemble');
+                        setYoutubeUploadUi(uploadUi, 99, 'Processing on YouTube...');
+                        pollUploadJob(result.jobId, form.action, uploadUi, function() { youtubeSubmitInFlight = false; });
+                      })
+                      .catch(function(err) {
+                        if (assembleRetryCount < 3) {
+                          console.warn('Assemble error, retrying...', err);
+                          setTimeout(function() { requestAssemble(assembleRetryCount + 1); }, 2000);
+                        } else {
+                          console.error('Assemble error final:', err);
+                          youtubeSubmitInFlight = false;
+                          window.location.href = '/audition/' + projectId + '/error';
+                        }
+                      });
+                  }
+
+                  requestAssemble(0);
                 }
               })
               .catch(function(err) {

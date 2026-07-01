@@ -56,11 +56,36 @@ const getBuildInfo = () => {
       const parsed = JSON.parse(raw);
       return parsed;
     }
+
   } catch (error) {
     console.warn('[VERSION_DEBUG] Failed to read build-info.json:', error.message);
   }
   return null;
 };
+
+function createSignedSubmissionToken(payload) {
+  const secret = process.env.SESSION_SECRET || process.env.COOKIE_SECRET || 'default_submission_secret_change_me';
+  const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const signature = crypto.createHmac('sha256', secret).update(body).digest('base64url');
+  return `${body}.${signature}`;
+}
+
+function parseSignedSubmissionToken(token) {
+  if (!token || typeof token !== 'string') return null;
+  const [body, signature] = token.split('.');
+  if (!body || !signature) return null;
+  const secret = process.env.SESSION_SECRET || process.env.COOKIE_SECRET || 'default_submission_secret_change_me';
+  const expected = crypto.createHmac('sha256', secret).update(body).digest('base64url');
+  if (expected !== signature) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
+    if (!parsed || typeof parsed !== 'object') return null;
+    if (!parsed.expiresAt || parsed.expiresAt <= Date.now()) return null;
+    return parsed;
+  } catch (_) {
+    return null;
+  }
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -2357,7 +2382,14 @@ app.post('/audition/:projectId/fields', auditionUpload.fields([
     // Clean up expired submissions
     setTimeout(() => pendingSubmissions.delete(submissionId), 3600000);
 
-    res.json({ submissionId });
+    const submissionToken = createSignedSubmissionToken({
+      submissionId,
+      uploadId: submissionId,
+      expiresAt: Date.now() + 3600000,
+      payload: pendingSubmissions.get(submissionId),
+    });
+
+    res.json({ submissionId, submissionToken });
   } catch (err) {
     console.error(`[fields] Error: ${err.message}`);
     if (/connection timeout|connection terminated|terminating connection/i.test(err.message || '')) {
@@ -2395,14 +2427,27 @@ app.put('/upload-chunk/:uploadId/:chunkIndex',
 // Step 3: All chunks received — assemble file, start background YouTube job
 app.post('/upload-chunk/:uploadId/assemble', async (req, res) => {
   const { uploadId } = req.params;
-  const { submissionId, totalChunks, filename, mimetype } = req.body;
+  const { submissionId, totalChunks, filename, mimetype, submissionToken } = req.body;
 
   if (!/^[a-f0-9]{32}$/.test(uploadId)) return res.status(400).json({ error: 'Invalid uploadId' });
 
-  const submission = pendingSubmissions.get(submissionId);
+  let submission = pendingSubmissions.get(submissionId);
+  if (!submission && submissionToken) {
+    const tokenPayload = parseSignedSubmissionToken(submissionToken);
+    if (
+      tokenPayload
+      && tokenPayload.submissionId === submissionId
+      && tokenPayload.uploadId === uploadId
+      && tokenPayload.payload
+    ) {
+      submission = tokenPayload.payload;
+      console.warn(`[chunk] assemble: recovered submission from signed token submissionId=${submissionId}`);
+    }
+  }
+
   if (!submission) {
     console.error(`[chunk] assemble: no pending submission for submissionId=${submissionId}`);
-    return res.status(404).json({ error: 'Submission not found or expired' });
+    return res.status(404).json({ error: 'Submission not found or expired. Please refresh and start the upload again.' });
   }
   pendingSubmissions.delete(submissionId);
 
