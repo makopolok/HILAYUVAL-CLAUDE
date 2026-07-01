@@ -166,6 +166,67 @@ function normalizeAuditionBody(body = {}) {
   };
 }
 
+function buildSubmissionProjectSnapshot(project) {
+  return {
+    id: project.id,
+    name: project.name,
+    upload_method: project.upload_method || project.uploadMethod || '',
+    roles: Array.isArray(project.roles)
+      ? project.roles.map((role) => ({
+        id: role.id,
+        name: role.name,
+        playlist_id: role.playlist_id || null,
+      }))
+      : [],
+  };
+}
+
+function findProjectRoleByName(project, roleName) {
+  if (!project || !Array.isArray(project.roles)) {
+    return null;
+  }
+  const target = trimToString(roleName);
+  if (!target) {
+    return null;
+  }
+  return project.roles.find((role) => trimToString(role.name) === target) || null;
+}
+
+function isTransientDbTimeoutError(error) {
+  if (!error) return false;
+  const message = (error.message || '').toLowerCase();
+  return (
+    message.includes('connection terminated') ||
+    message.includes('connection timeout') ||
+    message.includes('terminating connection') ||
+    error.code === 'ETIMEDOUT' ||
+    error.code === 'ECONNRESET' ||
+    error.code === '57P01'
+  );
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function insertAuditionWithRetry(auditionPayload, maxRetries = 3) {
+  let lastError;
+  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+    try {
+      return await auditionService.insertAudition(auditionPayload);
+    } catch (error) {
+      lastError = error;
+      if (!isTransientDbTimeoutError(error) || attempt >= maxRetries) {
+        throw error;
+      }
+      const waitMs = 250 * Math.pow(2, attempt);
+      console.warn(`AUDITION_INSERT_RETRY: retrying in ${waitMs}ms (attempt ${attempt + 1}/${maxRetries + 1})`);
+      await sleep(waitMs);
+    }
+  }
+  throw lastError;
+}
+
 function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
@@ -2231,6 +2292,7 @@ app.post('/audition/:projectId/fields', auditionUpload.fields([
 
     pendingSubmissions.set(submissionId, {
       projectId: req.params.projectId,
+      projectSnapshot: buildSubmissionProjectSnapshot(project),
       body: normalizedBody,
       profilePictures: profilePictureUploadResults,
       expiry: Date.now() + 3600000, // 1 hour
@@ -2325,7 +2387,11 @@ app.post('/upload-chunk/:uploadId/assemble', async (req, res) => {
         size: fs.statSync(assembledPath).size,
       };
 
-      const project = await projectService.getProjectById(submission.projectId);
+      const project = submission.projectSnapshot
+        || await projectService.getProjectById(submission.projectId);
+      if (!project) {
+        throw new Error(`Project not found for submission ${submissionId}`);
+      }
       const rules = getAuditionFormRules(project);
       const videoValidationErrors = validateAuditionFiles({
         rules,
@@ -2337,7 +2403,7 @@ app.post('/upload-chunk/:uploadId/assemble', async (req, res) => {
       if (videoValidationErrors.length > 0) {
         throw new Error(videoValidationErrors[0]);
       }
-      const selectedRole = project.roles.find(r => r.name === submission.body.role);
+      const selectedRole = findProjectRoleByName(project, submission.body.role);
       if (!selectedRole) throw new Error(`Role not found: ${submission.body.role}`);
 
       oauth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
@@ -2376,7 +2442,7 @@ app.post('/upload-chunk/:uploadId/assemble', async (req, res) => {
         showreel_url: body.showreel_url,
         video_url: ytUrl, video_type: 'youtube',
       };
-      await auditionService.insertAudition(auditionObj);
+      await insertAuditionWithRetry(auditionObj);
       console.log(`[chunk] AUDITION_SAVED: jobId=${jobId}`);
 
       uploadJobs.set(jobId, { status: 'done', videoId: youtubeVideoId, videoUrl: ytUrl });
@@ -2552,7 +2618,7 @@ app.post('/audition/:projectId', auditionUpload.fields([
               video_url: ytUrl,
               video_type: 'youtube',
             };
-            await auditionService.insertAudition(auditionObj);
+            await insertAuditionWithRetry(auditionObj);
             console.log(`BACKGROUND_AUDITION_SAVED: jobId=${jobId}`);
 
             uploadJobs.set(jobId, { status: 'done', videoId: youtubeVideoId, videoUrl: ytUrl });
@@ -2651,7 +2717,7 @@ app.post('/audition/:projectId', auditionUpload.fields([
       video_type: videoType 
     };
     // Corrected logging to use req.params.projectId as projectId is not defined in this scope
-    console.log(`[App.js POST /audition/:${req.params.projectId}] Prepared audition object: ${JSON.stringify(audition)}`);    await auditionService.insertAudition(audition);
+    console.log(`[App.js POST /audition/:${req.params.projectId}] Prepared audition object: ${JSON.stringify(audition)}`);    await insertAuditionWithRetry(audition);
     console.log(`[App.js POST /audition/:${req.params.projectId}] Audition saved successfully.`);
     
     // Render beautiful success page
