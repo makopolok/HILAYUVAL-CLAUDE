@@ -116,7 +116,13 @@
                   <tr>
                     <td>
                       {{#if profile_picture_url}}
-                        <img src="{{profile_picture_url}}" alt="Profile picture" class="audition-list-avatar">
+                        <img
+                          src="{{profile_picture_url}}"
+                          alt="Profile picture"
+                          class="audition-list-avatar"
+                          width="54"
+                          height="54"
+                          loading="lazy">
                       {{else}}
                         <div class="audition-list-avatar audition-list-avatar-placeholder">
                           <i class="fas fa-user"></i>
@@ -726,9 +732,21 @@ body {
 .audition-list-avatar {
   width: 54px;
   height: 54px;
+  min-width: 54px;
+  max-width: 54px;
+  display: block;
   border-radius: 50%;
   object-fit: cover;
   border: 1px solid #ddd;
+}
+
+.auditions-list-table img.audition-list-avatar {
+  width: 54px !important;
+  height: 54px !important;
+  min-width: 54px !important;
+  max-width: 54px !important;
+  max-height: 54px !important;
+  object-fit: cover !important;
 }
 
 .audition-list-avatar-placeholder {
