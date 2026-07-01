@@ -78,10 +78,6 @@
                           <a class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener" href="{{showreel_url}}">
                             <i class="fas fa-film me-2"></i>Showreel
                           </a>
-                        {{else}}
-                          <span class="btn btn-outline-secondary btn-sm audition-placeholder-link" aria-hidden="true">
-                            <i class="fas fa-film me-2"></i>Showreel
-                          </span>
                         {{/if}}
                         {{#if about_me}}
                           <button
@@ -94,10 +90,6 @@
                             data-bs-content="{{about_me}}">
                             <i class="fas fa-comment-dots me-2"></i>About
                           </button>
-                        {{else}}
-                          <span class="btn btn-outline-secondary btn-sm audition-placeholder-link" aria-hidden="true">
-                            <i class="fas fa-comment-dots me-2"></i>About
-                          </span>
                         {{/if}}
                       </div>
                        
@@ -561,11 +553,6 @@ body {
 .audition-tag-dot-none {
   border: 1px solid #adb5bd;
   background: #fff;
-}
-
-.audition-placeholder-link {
-  visibility: hidden;
-  pointer-events: none;
 }
 
 .audition-card-links-row {
