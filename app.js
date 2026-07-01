@@ -1716,11 +1716,17 @@ app.get('/audition/:projectId', async (req, res) => {
       return res.status(404).send('Project not found.');
     }
     const libId = process.env.BUNNY_STREAM_LIBRARY_ID || '';
+    const buildInfo = getBuildInfo();
+    const assetVersion = (buildInfo && buildInfo.commit)
+      || process.env.SOURCE_VERSION
+      || process.env.HEROKU_RELEASE_VERSION
+      || 'latest';
     const viewUploadMethod = project ? (project.uploadMethod || project.upload_method || 'bunny_stream') : 'bunny_stream';
     const showCurrentLocationField = String(project.id) === '265' || String(project.id) === '299';
     return res.render('audition', {
       project,
       bunny_stream_library_id: libId,
+      asset_version: assetVersion,
       upload_method: viewUploadMethod,
       show_current_location_field: showCurrentLocationField,
       auditionRules: getAuditionFormRules(project),
