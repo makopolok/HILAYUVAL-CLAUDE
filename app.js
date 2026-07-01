@@ -3257,6 +3257,11 @@ app.get('/projects/:projectId/auditions', requireAdmin, async (req, res) => {
     });
   } catch (error) {
     console.error(`[App.js GET /projects/:projectId/auditions] Error fetching auditions:`, error);
+    if (isTransientDbTimeoutError(error)) {
+      return res.status(503).render('error/500', {
+        message: 'Temporary server connection issue. Please wait a few seconds and try again.',
+      });
+    }
     res.status(500).render('error/500', { message: 'Error fetching auditions.' });
   }
 });

@@ -27,6 +27,40 @@ const NAME_SEARCH_SQL = `COALESCE(
 )`;
 const ALLOWED_TAG_COLORS = new Set(['gray', 'red', 'orange', 'yellow', 'green', 'blue', 'purple']);
 
+function isTransientDbError(error) {
+  if (!error) return false;
+  const message = (error.message || '').toLowerCase();
+  return (
+    message.includes('connection terminated') ||
+    message.includes('connection timeout') ||
+    message.includes('terminating connection') ||
+    error.code === 'ETIMEDOUT' ||
+    error.code === 'ECONNRESET' ||
+    error.code === '57P01'
+  );
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function queryWithRetry(sql, params, label, maxRetries = 4) {
+  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+    try {
+      return await pool.query(sql, params);
+    } catch (error) {
+      console.error(`${label}_DB_ERROR: attempt ${attempt + 1}/${maxRetries + 1}`, error);
+      if (!isTransientDbError(error) || attempt >= maxRetries) {
+        throw error;
+      }
+      const waitMs = 300 * Math.pow(2, attempt);
+      console.warn(`${label}_RETRY: retrying in ${waitMs}ms due to transient DB error.`);
+      await sleep(waitMs);
+    }
+  }
+  throw new Error(`${label}_UNEXPECTED_RETRY_EXIT`);
+}
+
 async function insertAudition(audition) {
   const profilePictures = Array.isArray(audition.profile_pictures)
     ? audition.profile_pictures
@@ -170,7 +204,7 @@ async function getAuditionsByProjectId(projectId, query = {}) {
     WHERE ${where.join(' AND ')}
     ORDER BY a.created_at DESC
   `;
-  const { rows } = await pool.query(sql, params);
+  const { rows } = await queryWithRetry(sql, params, 'AUDITION_SERVICE_GET_BY_PROJECT');
   return rows;
 }
 
@@ -203,7 +237,7 @@ async function getRoleAuditionCountsByProjectId(projectId, previousAdminLoginTim
   const params = hasPreviousLogin
     ? [projectId, previousAdminLoginTime.toISOString()]
     : [projectId];
-  const { rows } = await pool.query(sql, params);
+  const { rows } = await queryWithRetry(sql, params, 'AUDITION_SERVICE_GET_ROLE_COUNTS');
   return rows;
 }
 
