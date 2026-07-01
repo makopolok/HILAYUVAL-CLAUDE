@@ -28,6 +28,9 @@
   .auditions-page .audition-video-card .card-title.text-danger {
     color: var(--audition-red) !important;
   }
+  .auditions-page .auditions-total-count {
+    color: rgb(208, 49, 30) !important;
+  }
   .auditions-page .audition-role-card.border-danger,
   .auditions-page .audition-video-card.border-danger,
   .auditions-page #auditions-list-view .card.border-danger {
@@ -65,7 +68,7 @@
 <div class="container mt-5 auditions-page">
   <h1 class="display-4 mb-4">
     Auditions for {{project.name}}
-    <span class="fs-3 fw-semibold text-dark ms-2">({{project_auditions_count}})</span>
+    <span class="fs-3 fw-semibold ms-2 auditions-total-count">({{project_auditions_count}})</span>
     {{#if project_new_auditions_count}}
       <span class="fs-3 fw-semibold align-middle ms-2">+{{project_new_auditions_count}} new</span>
     {{/if}}
