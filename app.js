@@ -1636,22 +1636,30 @@ app.post('/projects/create', requireAdmin, async (req, res, next) => { // Added 
 
 // Route to render project-specific audition form
 app.get('/audition/:projectId', async (req, res) => {
-  const project = await projectService.getProjectById(req.params.projectId);
-  if (!project) {
-    return res.status(404).send('Project not found.');
+  try {
+    const project = await projectService.getProjectById(req.params.projectId);
+    if (!project) {
+      return res.status(404).send('Project not found.');
+    }
+    const libId = process.env.BUNNY_STREAM_LIBRARY_ID || '';
+    const viewUploadMethod = project ? (project.uploadMethod || project.upload_method || 'bunny_stream') : 'bunny_stream';
+    const showCurrentLocationField = String(project.id) === '265' || String(project.id) === '299';
+    return res.render('audition', {
+      project,
+      bunny_stream_library_id: libId,
+      upload_method: viewUploadMethod,
+      show_current_location_field: showCurrentLocationField,
+      auditionRules: getAuditionFormRules(project),
+      direct_upload_require_captcha: BUNNY_DIRECT_UPLOAD_REQUIRE_CAPTCHA,
+      turnstile_site_key: BUNNY_TURNSTILE_SITE_KEY
+    });
+  } catch (error) {
+    console.error(`AUDITION_FORM_LOAD_ERROR: projectId=${req.params.projectId} err=${error.message}`);
+    if (isTransientDbTimeoutError(error)) {
+      return res.status(503).send('Temporary database connectivity issue. Please refresh in a few seconds.');
+    }
+    return res.status(500).send('Could not load audition form right now.');
   }
-  const libId = process.env.BUNNY_STREAM_LIBRARY_ID || '';
-  const viewUploadMethod = project ? (project.uploadMethod || project.upload_method || 'bunny_stream') : 'bunny_stream';
-  const showCurrentLocationField = String(project.id) === '265' || String(project.id) === '299';
-  res.render('audition', {
-    project,
-    bunny_stream_library_id: libId,
-    upload_method: viewUploadMethod,
-    show_current_location_field: showCurrentLocationField,
-    auditionRules: getAuditionFormRules(project),
-    direct_upload_require_captcha: BUNNY_DIRECT_UPLOAD_REQUIRE_CAPTCHA,
-    turnstile_site_key: BUNNY_TURNSTILE_SITE_KEY
-  });
 });
 
 app.get('/audition/:projectId/success', async (req, res) => {
