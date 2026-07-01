@@ -515,7 +515,7 @@
                       .then(function(r) { return readJsonResponse(r, 'Could not prepare the uploaded video.'); })
                       .then(function(result) {
                         if (!result.jobId) throw new Error('No jobId from assemble');
-                        setYoutubeUploadUi(uploadUi, 99, 'Processing on YouTube...');
+                        setYoutubeUploadUi(uploadUi, 99, 'Processing on server...');
                         pollUploadJob(result.jobId, form.action, uploadUi, function() { youtubeSubmitInFlight = false; });
                       })
                       .catch(function(err) {
