@@ -2436,7 +2436,7 @@ app.post('/audition/:projectId', auditionUpload.fields([
         rules,
         videoFile,
         profilePictureFiles,
-        requireVideo: project.upload_method === 'youtube',
+        requireVideo: true,
       }),
     ];
 
@@ -2592,11 +2592,6 @@ app.post('/audition/:projectId', auditionUpload.fields([
         }
       }
     } else {
-      if (project.upload_method === 'youtube') {
-        console.warn('POST_AUDITION_YOUTUBE_VIDEO_REQUIRED: YouTube project submission without video file');
-        return res.status(400).send('Video file is required for YouTube projects. Please attach a self-tape and try again.');
-      }
-
       // Support direct-to-Bunny uploads: client submits a GUID in body.video_url
       const guidFromForm = (body.video_url || '').toString().trim();
       const uploadIntent = (body.video_upload_intent || '').toString().trim();
@@ -2630,9 +2625,8 @@ app.post('/audition/:projectId', auditionUpload.fields([
           })();
         }
       } else {
-        console.log('POST_AUDITION_NO_VIDEO_UPLOADED: User submitted audition without video');
-        finalVideoUrl = null;
-        videoType = null;
+        console.warn(`POST_AUDITION_VIDEO_REQUIRED_MISSING: project=${project.id} upload_method=${project.upload_method}`);
+        return res.status(400).send('Self-tape video is required. Please upload a video and try again.');
       }
     }
 
