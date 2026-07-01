@@ -20,8 +20,21 @@
   #auditions-list-view {
     isolation: isolate;
   }
+  .auditions-page .card.border-danger::before {
+    content: none !important;
+    display: none !important;
+  }
+  .auditions-page .card.border-danger,
+  .auditions-page .table,
+  .auditions-page .table-responsive {
+    background: #ffffff !important;
+    background-image: none !important;
+  }
+  .auditions-page #auditions-list-view .card.border-danger {
+    contain: paint;
+  }
 </style>
-<div class="container mt-5">
+<div class="container mt-5 auditions-page">
   <h1 class="display-4 mb-4">
     Auditions for {{project.name}}
     <span class="fs-3 fw-semibold text-dark ms-2">({{project_auditions_count}})</span>
