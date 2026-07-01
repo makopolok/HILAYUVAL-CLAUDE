@@ -196,17 +196,15 @@
                       </p>
                       {{/if}}
 
-                      {{#if profile_picture_url}}
-                      <div class="mb-3 text-center">
-                        <a class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener" href="{{profile_picture_url}}">
-                          <i class="fas fa-user-circle me-2"></i>Profile Picture
-                        </a>
-                      </div>
-                      {{/if}}
                       <div class="mb-3 d-flex justify-content-center gap-2 audition-card-links-row">
+                        {{#if profile_picture_url}}
+                          <a class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener" href="{{profile_picture_url}}">
+                            <i class="fas fa-user-circle me-1"></i>Profile
+                          </a>
+                        {{/if}}
                         {{#if showreel_url}}
                           <a class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener" href="{{showreel_url}}">
-                            <i class="fas fa-film me-2"></i>Showreel
+                            <i class="fas fa-film me-1"></i>Showreel
                           </a>
                         {{/if}}
                         {{#if about_me}}
@@ -218,7 +216,7 @@
                             data-bs-placement="top"
                             data-bs-title="About"
                             data-bs-content="{{about_me}}">
-                            <i class="fas fa-comment-dots me-2"></i>About
+                           <i class="fas fa-comment-dots me-1"></i>About
                           </button>
                         {{/if}}
                       </div>
@@ -747,6 +745,13 @@ body {
 
 .audition-card-links-row {
   min-height: 38px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.audition-card-links-row .btn {
+  white-space: nowrap;
 }
 
 .tag-gray { background: #6c757d; }
