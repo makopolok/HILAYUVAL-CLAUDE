@@ -20,6 +20,30 @@
   #auditions-list-view {
     isolation: isolate;
   }
+  .auditions-page {
+    --audition-red: rgb(190, 26, 26);
+  }
+  .auditions-page .display-4,
+  .auditions-page .text-danger {
+    color: var(--audition-red) !important;
+  }
+  .auditions-page .border-danger {
+    border-color: var(--audition-red) !important;
+  }
+  .auditions-page .bg-danger,
+  .auditions-page .text-bg-danger {
+    background-color: var(--audition-red) !important;
+    border-color: var(--audition-red) !important;
+  }
+  .auditions-page .btn-outline-danger {
+    color: var(--audition-red) !important;
+    border-color: var(--audition-red) !important;
+  }
+  .auditions-page .btn-outline-danger:hover,
+  .auditions-page .btn-outline-danger:focus {
+    background-color: var(--audition-red) !important;
+    color: #fff !important;
+  }
   .auditions-page .card.border-danger::before {
     content: none !important;
     display: none !important;
