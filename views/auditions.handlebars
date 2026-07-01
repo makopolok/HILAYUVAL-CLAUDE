@@ -20,6 +20,89 @@
       <button type="submit" class="visually-hidden" aria-hidden="true" tabindex="-1">Apply filters</button>
     </div>
   </form>
+  <div class="d-flex justify-content-end gap-2 mb-3">
+    <button type="button" class="btn btn-outline-primary btn-sm" id="view-list-btn">List View</button>
+    <button type="button" class="btn btn-outline-secondary btn-sm" id="view-cards-btn">Cards View</button>
+  </div>
+  <div id="auditions-list-view">
+    {{#if visible_roles.length}}
+      <div class="card border-danger mb-4">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0 auditions-list-table">
+            <thead>
+              <tr>
+                <th>Profile</th>
+                <th>Name</th>
+                <th>Role</th>
+                <th>Phone</th>
+                <th>Age</th>
+                <th>Location</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{#each visible_roles}}
+                {{#each this.auditions}}
+                  <tr>
+                    <td>
+                      {{#if profile_picture_url}}
+                        <img src="{{profile_picture_url}}" alt="Profile picture" class="audition-list-avatar">
+                      {{else}}
+                        <div class="audition-list-avatar audition-list-avatar-placeholder">
+                          <i class="fas fa-user"></i>
+                        </div>
+                      {{/if}}
+                    </td>
+                    <td>
+                      <div class="fw-semibold text-danger">
+                        {{#if first_name_he}}{{first_name_he}} {{last_name_he}}{{else}}{{first_name_en}} {{last_name_en}}{{/if}}
+                      </div>
+                      <small class="text-muted">{{email}}</small>
+                    </td>
+                    <td>
+                      <span class="badge text-bg-light border">{{../name}}</span>
+                    </td>
+                    <td>{{phone}}</td>
+                    <td>{{#if age}}{{age}}{{else}}—{{/if}}</td>
+                    <td>{{#if current_location}}{{current_location}}{{else}}—{{/if}}</td>
+                    <td>
+                      <div class="d-flex gap-2 flex-wrap">
+                        {{#if video_url}}
+                          <a class="btn btn-outline-danger btn-sm" target="_blank" rel="noopener" href="{{#if video_watch_url}}{{video_watch_url}}{{else if embed_url}}{{embed_url}}{{else}}{{video_url}}{{/if}}">
+                            <i class="fas fa-play"></i>
+                          </a>
+                        {{/if}}
+                        {{#if showreel_url}}
+                          <a class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener" href="{{showreel_url}}">
+                            <i class="fas fa-film"></i>
+                          </a>
+                        {{/if}}
+                        {{#if about_me}}
+                          <button
+                            type="button"
+                            class="btn btn-outline-secondary btn-sm about-me-popover-btn"
+                            data-bs-toggle="popover"
+                            data-bs-trigger="focus"
+                            data-bs-placement="top"
+                            data-bs-title="About"
+                            data-bs-content="{{about_me}}">
+                            <i class="fas fa-comment-dots"></i>
+                          </button>
+                        {{/if}}
+                      </div>
+                    </td>
+                  </tr>
+                {{/each}}
+              {{/each}}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {{else}}
+      <p>No matching roles found for the selected filter.</p>
+    {{/if}}
+  </div>
+  <div id="auditions-cards-view" class="d-none">
   {{#if visible_roles.length}}
     {{#each visible_roles}}
       <div class="card mb-4 border-danger audition-role-card">
@@ -217,6 +300,7 @@
   {{else}}
     <p>No matching roles found for the selected filter.</p>
   {{/if}}
+  </div>
 
   <a href="/projects" class="btn btn-outline-danger mt-4">Back to Projects</a>
 </div>
@@ -426,6 +510,59 @@ document.addEventListener('DOMContentLoaded', function() {
   const filterForm = document.getElementById('audition-filter-form');
   const nameFilterInput = document.getElementById('name-filter-input');
   const emailFilterInput = document.getElementById('email-filter-input');
+  const listView = document.getElementById('auditions-list-view');
+  const cardsView = document.getElementById('auditions-cards-view');
+  const listBtn = document.getElementById('view-list-btn');
+  const cardsBtn = document.getElementById('view-cards-btn');
+  let cardVideosInitialized = false;
+
+  const initCardVideos = () => {
+    if (cardVideosInitialized) return;
+    const videoContainers = cardsView ? cardsView.querySelectorAll('.video-container') : [];
+    videoContainers.forEach((container, index) => {
+      setTimeout(() => {
+        loadVideo(container);
+      }, index * 1000);
+    });
+    cardVideosInitialized = true;
+  };
+
+  const setViewMode = (mode) => {
+    const showCards = mode === 'cards';
+    if (listView) listView.classList.toggle('d-none', showCards);
+    if (cardsView) cardsView.classList.toggle('d-none', !showCards);
+    if (listBtn) {
+      listBtn.classList.toggle('btn-primary', !showCards);
+      listBtn.classList.toggle('btn-outline-primary', showCards);
+    }
+    if (cardsBtn) {
+      cardsBtn.classList.toggle('btn-primary', showCards);
+      cardsBtn.classList.toggle('btn-outline-secondary', !showCards);
+    }
+    if (showCards) {
+      initCardVideos();
+    }
+    try {
+      localStorage.setItem('auditionsViewMode', mode);
+    } catch (_) {}
+  };
+
+  if (listBtn) {
+    listBtn.addEventListener('click', () => setViewMode('list'));
+  }
+  if (cardsBtn) {
+    cardsBtn.addEventListener('click', () => setViewMode('cards'));
+  }
+
+  const savedMode = (() => {
+    try {
+      return localStorage.getItem('auditionsViewMode');
+    } catch (_) {
+      return null;
+    }
+  })();
+  setViewMode(savedMode === 'cards' ? 'cards' : 'list');
+
   if (roleSelect && filterForm) {
     roleSelect.addEventListener('change', function () {
       filterForm.submit();
@@ -438,15 +575,6 @@ document.addEventListener('DOMContentLoaded', function() {
   };
   if (nameFilterInput) nameFilterInput.addEventListener('keydown', submitOnEnter);
   if (emailFilterInput) emailFilterInput.addEventListener('keydown', submitOnEnter);
-
-  const videoContainers = document.querySelectorAll('.video-container');
-  
-  videoContainers.forEach((container, index) => {
-    // Stagger the loading to avoid overwhelming the browser
-    setTimeout(() => {
-      loadVideo(container);
-    }, index * 1000); // 1 second delay between each video
-  });
 
   if (window.bootstrap && window.bootstrap.Popover) {
     document.querySelectorAll('.about-me-popover-btn').forEach((button) => {
@@ -522,6 +650,26 @@ body {
 .audition-role-card .card-body,
 .audition-video-card .card-body {
   background: #ffffff !important;
+}
+
+.auditions-list-table th {
+  white-space: nowrap;
+}
+
+.audition-list-avatar {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid #ddd;
+}
+
+.audition-list-avatar-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #8a8a8a;
+  background: #f4f4f4;
 }
 
 .audition-tag-menu-item {
