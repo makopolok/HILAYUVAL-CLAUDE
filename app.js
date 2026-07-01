@@ -2626,7 +2626,7 @@ app.post('/audition/:projectId', auditionUpload.fields([
         }
       } else {
         console.warn(`POST_AUDITION_VIDEO_REQUIRED_MISSING: project=${project.id} upload_method=${project.upload_method}`);
-        return res.status(400).send('Self-tape video is required. Please upload a video and try again.');
+        return res.status(400).send('Please upload a self-tape video.');
       }
     }
 
