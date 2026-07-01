@@ -44,13 +44,15 @@ async function insertAudition(audition) {
           first_name_he, last_name_he,
           first_name_en, last_name_en,
           age, height,
+          current_location, about_me,
           profile_pictures, showreel_url, video_url, video_type
         ) VALUES (
           $1, $2, $3,
           $4, $5,
           $6, $7,
           $8, $9,
-          $10::jsonb, $11, $12, $13
+          $10, $11,
+          $12::jsonb, $13, $14, $15
         )
         RETURNING *;
       `;
@@ -65,6 +67,8 @@ async function insertAudition(audition) {
         audition.last_name_en,
         ageVal,
         heightVal,
+        audition.current_location,
+        audition.about_me,
         JSON.stringify(profilePictures),
         audition.showreel_url,
         audition.video_url,
@@ -170,6 +174,39 @@ async function getAuditionsByProjectId(projectId, query = {}) {
   return rows;
 }
 
+async function getRoleAuditionCountsByProjectId(projectId, previousAdminLoginTime = null) {
+  const hasPreviousLogin = previousAdminLoginTime instanceof Date
+    && !Number.isNaN(previousAdminLoginTime.getTime());
+
+  const sql = hasPreviousLogin
+    ? `
+      SELECT
+        a.role_id,
+        a.role,
+        COUNT(*)::int AS total_auditions,
+        COUNT(*) FILTER (WHERE a.created_at > $2)::int AS new_since_last_session
+      FROM auditions a
+      WHERE a.project_id = $1
+      GROUP BY a.role_id, a.role
+    `
+    : `
+      SELECT
+        a.role_id,
+        a.role,
+        COUNT(*)::int AS total_auditions,
+        0::int AS new_since_last_session
+      FROM auditions a
+      WHERE a.project_id = $1
+      GROUP BY a.role_id, a.role
+    `;
+
+  const params = hasPreviousLogin
+    ? [projectId, previousAdminLoginTime.toISOString()]
+    : [projectId];
+  const { rows } = await pool.query(sql, params);
+  return rows;
+}
+
 async function searchAuditions(filters = {}) {
   const name = (filters.name || '').toString().trim();
   const email = (filters.email || '').toString().trim();
@@ -256,6 +293,7 @@ module.exports = {
   pool,
   checkDbConnection,
   getAuditionsByProjectId,
+  getRoleAuditionCountsByProjectId,
   searchAuditions,
   getAuditionById,
   deleteAudition,

@@ -157,6 +157,8 @@ function normalizeAuditionBody(body = {}) {
     agency: trimToString(body.agency),
     age: trimToString(body.age),
     height: trimToString(body.height),
+    current_location: trimToString(body.current_location),
+    about_me: trimToString(body.about_me),
     role: trimToString(body.role),
     showreel_url: trimToString(body.showreel_url),
     video_url: trimToString(body.video_url),
@@ -214,6 +216,7 @@ function compareAuditionsByPreferredName(a, b) {
   if (!aName.name && !bName.name) {
     return (a.id || 0) - (b.id || 0);
   }
+
   if (!aName.name) return 1;
   if (!bName.name) return -1;
 
@@ -243,6 +246,15 @@ function compareAuditionsByPreferredName(a, b) {
   }
 
   return (a.id || 0) - (b.id || 0);
+}
+
+function compareAuditionsByNewest(a, b) {
+  const aTime = a && a.created_at ? new Date(a.created_at).getTime() : 0;
+  const bTime = b && b.created_at ? new Date(b.created_at).getTime() : 0;
+  if (aTime !== bTime) {
+    return bTime - aTime;
+  }
+  return (b && b.id ? b.id : 0) - (a && a.id ? a.id : 0);
 }
 
 function compareRolesByName(a, b) {
@@ -323,6 +335,12 @@ function validateAuditionBody({ body, project, rules }) {
   }
   if (body.agency.length > 120) {
     errors.push('Agency must be 120 characters or fewer.');
+  }
+  if (body.current_location.length > 160) {
+    errors.push('Current location must be 160 characters or fewer.');
+  }
+  if (body.about_me.length > 1200) {
+    errors.push('About me must be 1200 characters or fewer.');
   }
 
   const roles = project && Array.isArray(project.roles) ? project.roles : [];
@@ -1169,6 +1187,7 @@ app.get('/audition', (req, res) => {
   res.render('audition', {
     bunny_stream_library_id: libId,
     upload_method: 'bunny_stream',
+    show_current_location_field: false,
     auditionRules: getAuditionFormRules(),
     direct_upload_require_captcha: BUNNY_DIRECT_UPLOAD_REQUIRE_CAPTCHA,
     turnstile_site_key: BUNNY_TURNSTILE_SITE_KEY
@@ -1562,10 +1581,12 @@ app.get('/audition/:projectId', async (req, res) => {
   }
   const libId = process.env.BUNNY_STREAM_LIBRARY_ID || '';
   const viewUploadMethod = project ? (project.uploadMethod || project.upload_method || 'bunny_stream') : 'bunny_stream';
+  const showCurrentLocationField = String(project.id) === '265' || String(project.id) === '299';
   res.render('audition', {
     project,
     bunny_stream_library_id: libId,
     upload_method: viewUploadMethod,
+    show_current_location_field: showCurrentLocationField,
     auditionRules: getAuditionFormRules(project),
     direct_upload_require_captcha: BUNNY_DIRECT_UPLOAD_REQUIRE_CAPTCHA,
     turnstile_site_key: BUNNY_TURNSTILE_SITE_KEY
@@ -2349,6 +2370,8 @@ app.post('/upload-chunk/:uploadId/assemble', async (req, res) => {
         first_name_en: body.first_name_en, last_name_en: body.last_name_en,
         phone: body.phone, email: body.email, agency: body.agency,
         age: body.age, height: body.height,
+        current_location: body.current_location,
+        about_me: body.about_me,
         profile_pictures: submission.profilePictures,
         showreel_url: body.showreel_url,
         video_url: ytUrl, video_type: 'youtube',
@@ -2522,6 +2545,8 @@ app.post('/audition/:projectId', auditionUpload.fields([
               first_name_en: bgBody.first_name_en, last_name_en: bgBody.last_name_en,
               phone: bgBody.phone, email: bgBody.email, agency: bgBody.agency,
               age: bgBody.age, height: bgBody.height,
+              current_location: bgBody.current_location,
+              about_me: bgBody.about_me,
               profile_pictures: bgProfilePictures,
               showreel_url: bgBody.showreel_url,
               video_url: ytUrl,
@@ -2624,6 +2649,8 @@ app.post('/audition/:projectId', auditionUpload.fields([
       agency: body.agency,
       age: body.age,
       height: body.height,
+      current_location: body.current_location,
+      about_me: body.about_me,
       profile_pictures: profilePictureUploadResults, 
       showreel_url: body.showreel_url,
       video_url: finalVideoUrl, 
@@ -2940,6 +2967,24 @@ app.get('/projects/:projectId/auditions', requireAdmin, async (req, res) => {
     }
 
     const auditions = await auditionService.getAuditionsByProjectId(projectId, req.query);
+    const previousAdminLoginTime = req.session && req.session.admin && req.session.admin.previousLoggedInAt
+      ? new Date(req.session.admin.previousLoggedInAt)
+      : null;
+    const roleCountRows = await auditionService.getRoleAuditionCountsByProjectId(projectId, previousAdminLoginTime);
+    const roleCountsById = new Map();
+    const roleCountsByName = new Map();
+    roleCountRows.forEach((row) => {
+      const counts = {
+        total: Number(row.total_auditions) || 0,
+        newSinceLastSession: Number(row.new_since_last_session) || 0,
+      };
+      if (row.role_id) {
+        roleCountsById.set(Number(row.role_id), counts);
+      }
+      if (row.role) {
+        roleCountsByName.set(String(row.role), counts);
+      }
+    });
     // If Bunny Stream is used, pre-compute signed embed URLs for each audition video
     const libId = process.env.BUNNY_STREAM_LIBRARY_ID;
     const signingKey = process.env.BUNNY_STREAM_SIGNING_KEY;
@@ -3014,12 +3059,14 @@ app.get('/projects/:projectId/auditions', requireAdmin, async (req, res) => {
     const sortedRoles = (Array.isArray(project.roles) ? [...project.roles] : []).sort(compareRolesByName);
     const rolesWithAuditions = sortedRoles.map(role => ({
       ...role,
+      totalAuditions: (roleCountsById.get(Number(role.id)) || roleCountsByName.get(String(role.name)) || { total: 0 }).total || 0,
+      newAuditionsCount: (roleCountsById.get(Number(role.id)) || roleCountsByName.get(String(role.name)) || { newSinceLastSession: 0 }).newSinceLastSession || 0,
       auditions: auditions.filter(a => {
         if (a.role_id) {
           return a.role_id === role.id;
         }
         return a.role === role.name;
-      }).sort(compareAuditionsByPreferredName)
+      }).sort(compareAuditionsByNewest)
     }));
     const roleFilter = (req.query.role || '').toString().trim();
     const visibleRoles = roleFilter

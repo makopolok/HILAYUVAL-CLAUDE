@@ -1,0 +1,7 @@
+BEGIN;
+
+ALTER TABLE auditions
+  ADD COLUMN IF NOT EXISTS current_location TEXT,
+  ADD COLUMN IF NOT EXISTS about_me TEXT;
+
+COMMIT;

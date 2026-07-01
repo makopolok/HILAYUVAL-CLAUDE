@@ -25,7 +25,10 @@
     {{#each visible_roles}}
       <div class="card mb-4 border-danger audition-role-card">
         <div class="card-header bg-danger text-white fw-bold">
-          Role: {{this.name}}
+          Role: {{this.name}} ({{this.totalAuditions}})
+          {{#if this.newAuditionsCount}}
+            <span class="ms-2 badge bg-light text-danger">+{{this.newAuditionsCount}} new</span>
+          {{/if}}
         </div>
         <div class="card-body">
           {{#if this.auditions}}
@@ -67,6 +70,13 @@
                       <div class="mb-3 text-center">
                         <a class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener" href="{{profile_picture_url}}">
                           <i class="fas fa-image me-2"></i>Open Profile Picture
+                        </a>
+                      </div>
+                      {{/if}}
+                      {{#if showreel_url}}
+                      <div class="mb-3 text-center">
+                        <a class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener" href="{{showreel_url}}">
+                          <i class="fas fa-film me-2"></i>Open Showreel
                         </a>
                       </div>
                       {{/if}}
@@ -168,6 +178,16 @@
                       {{#if height}}
                       <p class="card-text small mb-1">
                         <strong>Height:</strong> {{height}}cm
+                      </p>
+                      {{/if}}
+                      {{#if current_location}}
+                      <p class="card-text small mb-1">
+                        <strong>Based in:</strong> {{current_location}}
+                      </p>
+                      {{/if}}
+                      {{#if about_me}}
+                      <p class="card-text small mb-1">
+                        <strong>About:</strong> {{about_me}}
                       </p>
                       {{/if}}
                       

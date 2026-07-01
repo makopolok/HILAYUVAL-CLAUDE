@@ -61,6 +61,17 @@
       <input type="number" class="form-control" id="height" name="height" min="50" max="250">
       <div class="invalid-feedback">Please enter a valid height between 50 and 250 cm.</div>
     </div>
+    {{#if show_current_location_field}}
+    <div class="mb-3">
+      <label for="current_location" class="form-label">Where are you currently based?</label>
+      <textarea class="form-control" id="current_location" name="current_location" rows="2" maxlength="160" placeholder="City / area"></textarea>
+      <div class="form-text text-muted">Optional, but helpful for scheduling and availability planning.</div>
+    </div>
+    {{/if}}
+    <div class="mb-3">
+      <label for="about_me" class="form-label">Would you like to share a few words about yourself? <span class="text-muted">(optional)</span></label>
+      <textarea class="form-control" id="about_me" name="about_me" rows="3" maxlength="1200" placeholder="Anything you'd like casting to know about you."></textarea>
+    </div>
     {{#if project}}
     <div class="mb-3">
       <label for="role" class="form-label">Role</label>
