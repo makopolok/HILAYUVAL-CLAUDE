@@ -22,7 +22,13 @@
   }
 </style>
 <div class="container mt-5">
-  <h1 class="display-4 mb-4">Auditions for {{project.name}}</h1>
+  <h1 class="display-4 mb-4">
+    Auditions for {{project.name}}
+    <span class="fs-3 fw-semibold text-dark ms-2">({{project_auditions_count}})</span>
+    {{#if project_new_auditions_count}}
+      <span class="badge text-bg-danger align-middle ms-2">+{{project_new_auditions_count}} new</span>
+    {{/if}}
+  </h1>
   <form class="row g-3 mb-4" method="GET" action="" id="audition-filter-form">
     <div class="col-md-4">
       <input type="text" class="form-control" id="name-filter-input" name="name" placeholder="Filter by actor name" value="{{query.name}}">
@@ -57,6 +63,7 @@
                 <th>Name</th>
                 <th>Role</th>
                 <th>Phone</th>
+                <th>Agency</th>
                 <th>Age</th>
                 <th>Location</th>
                 <th>Actions</th>
@@ -85,6 +92,7 @@
                       <span class="badge text-bg-light border">{{../name}}</span>
                     </td>
                     <td>{{phone}}</td>
+                    <td>{{#if agency}}{{agency}}{{else}}—{{/if}}</td>
                     <td>{{#if age}}{{age}}{{else}}—{{/if}}</td>
                     <td>{{#if current_location}}{{current_location}}{{else}}—{{/if}}</td>
                     <td>
@@ -167,6 +175,11 @@
                       {{#if phone}}
                       <p class="card-text small mb-2">
                         <i class="fas fa-phone me-1"></i>{{phone}}
+                      </p>
+                      {{/if}}
+                      {{#if agency}}
+                      <p class="card-text small mb-2">
+                        <i class="fas fa-building me-1"></i>{{agency}}
                       </p>
                       {{/if}}
 
@@ -281,11 +294,6 @@
                       {{/if}}
                       
                       <!-- Additional Info -->
-                      {{#if agency}}
-                      <p class="card-text small mb-1">
-                        <strong>Agency:</strong> {{agency}}
-                      </p>
-                      {{/if}}
                       {{#if age}}
                       <p class="card-text small mb-1">
                         <strong>Age:</strong> {{age}}

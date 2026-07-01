@@ -3139,6 +3139,8 @@ app.get('/projects/:projectId/auditions', requireAdmin, async (req, res) => {
       ? new Date(req.session.admin.previousLoggedInAt)
       : null;
     const roleCountRows = await auditionService.getRoleAuditionCountsByProjectId(projectId, previousAdminLoginTime);
+    let projectAuditionsCount = 0;
+    let projectNewAuditionsCount = 0;
     const roleCountsById = new Map();
     const roleCountsByName = new Map();
     roleCountRows.forEach((row) => {
@@ -3146,6 +3148,8 @@ app.get('/projects/:projectId/auditions', requireAdmin, async (req, res) => {
         total: Number(row.total_auditions) || 0,
         newSinceLastSession: Number(row.new_since_last_session) || 0,
       };
+      projectAuditionsCount += counts.total;
+      projectNewAuditionsCount += counts.newSinceLastSession;
       if (row.role_id) {
         roleCountsById.set(Number(row.role_id), counts);
       }
@@ -3254,6 +3258,8 @@ app.get('/projects/:projectId/auditions', requireAdmin, async (req, res) => {
       disable_inline_player: disableInlineEffective,
       youtube_ready: youtubeReady,
       redirect_to: req.originalUrl,
+      project_auditions_count: projectAuditionsCount,
+      project_new_auditions_count: projectNewAuditionsCount,
     });
   } catch (error) {
     console.error(`[App.js GET /projects/:projectId/auditions] Error fetching auditions:`, error);
