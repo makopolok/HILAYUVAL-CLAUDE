@@ -37,6 +37,7 @@ const uploadJobs = new Map();
 // Pending form submissions waiting for video upload (chunk protocol)
 // Keys are submissionId, values: { projectId, body, profilePictures, expiry }
 const pendingSubmissions = new Map();
+const projectSnapshotCache = new Map();
 
 const BUILD_INFO_PATH = path.join(__dirname, 'build-info.json');
 const TAG_COLOR_STYLES = {
@@ -71,6 +72,7 @@ const BUNNY_DIRECT_UPLOAD_REQUIRE_CAPTCHA = process.env.BUNNY_DIRECT_REQUIRE_CAP
 const BUNNY_DIRECT_UPLOAD_MAX_PER_IP = Number.parseInt(process.env.BUNNY_DIRECT_UPLOAD_MAX_PER_IP || '12', 10);
 const BUNNY_DIRECT_UPLOAD_MAX_PER_PROJECT_WINDOW = Number.parseInt(process.env.BUNNY_DIRECT_UPLOAD_MAX_PER_PROJECT_WINDOW || '80', 10);
 const BUNNY_DIRECT_UPLOAD_PROJECT_WINDOW_MS = Number.parseInt(process.env.BUNNY_DIRECT_UPLOAD_PROJECT_WINDOW_MS || String(60 * 60 * 1000), 10);
+const PROJECT_SNAPSHOT_CACHE_TTL_MS = Number.parseInt(process.env.PROJECT_SNAPSHOT_CACHE_TTL_MS || String(30 * 60 * 1000), 10);
 const directUploadIntentStore = new Map();
 const directUploadProjectQuotaStore = new Map();
 const STRICT_AUDITION_PROJECT_IDS = new Set([265, 299]);
@@ -181,6 +183,31 @@ function buildSubmissionProjectSnapshot(project) {
   };
 }
 
+function cloneProject(project) {
+  return JSON.parse(JSON.stringify(project));
+}
+
+function cacheProjectSnapshot(project) {
+  const projectId = project && project.id ? String(project.id) : null;
+  if (!projectId) return;
+  projectSnapshotCache.set(projectId, {
+    project: cloneProject(project),
+    expiresAt: Date.now() + PROJECT_SNAPSHOT_CACHE_TTL_MS,
+  });
+}
+
+function getCachedProjectSnapshot(projectId) {
+  const key = String(projectId || '').trim();
+  if (!key) return null;
+  const record = projectSnapshotCache.get(key);
+  if (!record) return null;
+  if (record.expiresAt <= Date.now()) {
+    projectSnapshotCache.delete(key);
+    return null;
+  }
+  return cloneProject(record.project);
+}
+
 function findProjectRoleByName(project, roleName) {
   if (!project || !Array.isArray(project.roles)) {
     return null;
@@ -225,6 +252,25 @@ async function insertAuditionWithRetry(auditionPayload, maxRetries = 3) {
     }
   }
   throw lastError;
+}
+
+async function getProjectByIdWithCache(projectId, contextLabel = 'unknown') {
+  try {
+    const project = await projectService.getProjectById(projectId);
+    if (project) {
+      cacheProjectSnapshot(project);
+    }
+    return project;
+  } catch (error) {
+    if (isTransientDbTimeoutError(error)) {
+      const cached = getCachedProjectSnapshot(projectId);
+      if (cached) {
+        console.warn(`PROJECT_CACHE_FALLBACK_USED: context=${contextLabel} projectId=${projectId}`);
+        return cached;
+      }
+    }
+    throw error;
+  }
 }
 
 function isValidEmail(value) {
@@ -1640,7 +1686,7 @@ app.post('/projects/create', requireAdmin, async (req, res, next) => { // Added 
 // Route to render project-specific audition form
 app.get('/audition/:projectId', async (req, res) => {
   try {
-    const project = await projectService.getProjectById(req.params.projectId);
+    const project = await getProjectByIdWithCache(req.params.projectId, 'audition_form');
     if (!project) {
       return res.status(404).send('Project not found.');
     }
@@ -2270,7 +2316,7 @@ app.post('/audition/:projectId/fields', auditionUpload.fields([
   { name: 'profile_pictures', maxCount: 10 }
 ]), async (req, res) => {
   try {
-    const project = await projectService.getProjectById(req.params.projectId);
+    const project = await getProjectByIdWithCache(req.params.projectId, 'audition_fields');
     if (!project) return res.status(404).json({ error: 'Project not found' });
 
     const rules = getAuditionFormRules(project);
@@ -2399,7 +2445,7 @@ app.post('/upload-chunk/:uploadId/assemble', async (req, res) => {
       };
 
       const project = submission.projectSnapshot
-        || await projectService.getProjectById(submission.projectId);
+        || await getProjectByIdWithCache(submission.projectId, 'chunk_assemble');
       if (!project) {
         throw new Error(`Project not found for submission ${submissionId}`);
       }
@@ -2479,7 +2525,7 @@ app.post('/audition/:projectId', auditionUpload.fields([
 
   try {
     console.log(`POST_AUDITION_TRY_BLOCK_START: projectId = ${req.params.projectId}`);
-    const project = await projectService.getProjectById(req.params.projectId);
+    const project = await getProjectByIdWithCache(req.params.projectId, 'audition_submit');
 
     if (project) {
       console.log(`POST_AUDITION_PROJECT_FETCHED: project ID = ${project.id}, project name = ${project.name}`);
@@ -2851,7 +2897,7 @@ app.post('/projects/:projectId/auditions/:auditionId/upload-to-youtube', require
 
   let tempDownloadPath = null;
   try {
-    const project = await projectService.getProjectById(projectId);
+    const project = await getProjectByIdWithCache(projectId, 'admin_promote_upload_to_youtube');
     if (!project) {
       req.flash('error', 'Project not found.');
       return res.redirect('/projects');
@@ -3032,7 +3078,7 @@ app.post('/projects/:projectId/auditions/:auditionId/tag-color', requireAdmin, a
 app.get('/projects/:projectId/auditions', requireAdmin, async (req, res) => {
   try {
     const projectId = req.params.projectId;
-    const project = await projectService.getProjectById(projectId);
+    const project = await getProjectByIdWithCache(projectId, 'project_auditions_admin');
     if (!project) {
       return res.status(404).render('error/404', { message: 'Project not found.' });
     }
