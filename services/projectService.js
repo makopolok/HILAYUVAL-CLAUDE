@@ -62,15 +62,29 @@ async function addProject(project) {
 }
 
 async function getAllProjects() {
-    const projectsRes = await pool.query('SELECT * FROM projects ORDER BY created_at DESC');
-    // Only non-deleted roles
-    const rolesRes = await pool.query('SELECT * FROM roles WHERE COALESCE(is_deleted, FALSE) = FALSE');
-    console.log('PROJECT_SERVICE_GET_ALL_PROJECTS:', { projects: projectsRes.rows, roles: rolesRes.rows });
-    return projectsRes.rows.map(project => ({
-      ...project,
-      uploadMethod: project.upload_method,
-      roles: rolesRes.rows.filter(role => role.project_id === project.id)
-    }));
+  const maxRetries = 4;
+  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+    try {
+      const projectsRes = await pool.query('SELECT * FROM projects ORDER BY created_at DESC');
+      // Only non-deleted roles
+      const rolesRes = await pool.query('SELECT * FROM roles WHERE COALESCE(is_deleted, FALSE) = FALSE');
+      console.log('PROJECT_SERVICE_GET_ALL_PROJECTS:', { projects: projectsRes.rows, roles: rolesRes.rows });
+      return projectsRes.rows.map(project => ({
+        ...project,
+        uploadMethod: project.upload_method,
+        roles: rolesRes.rows.filter(role => role.project_id === project.id)
+      }));
+    } catch (error) {
+      console.error(`PROJECT_SERVICE_GET_ALL_DB_ERROR: attempt ${attempt + 1}/${maxRetries + 1}`, error);
+      if (!isTransientDbError(error) || attempt >= maxRetries) {
+        throw error;
+      }
+      const waitMs = 300 * Math.pow(2, attempt);
+      console.warn(`PROJECT_SERVICE_GET_ALL_RETRY: retrying in ${waitMs}ms due to transient DB error.`);
+      await sleep(waitMs);
+    }
+  }
+  return [];
 }
 
 // Get a project by ID

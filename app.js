@@ -1457,6 +1457,9 @@ app.get('/projects', requireAdmin, async (req, res) => {
     });
   } catch (error) {
     console.error('[App.js GET /projects] Error fetching projects:', error);
+    if (isTransientDbTimeoutError(error)) {
+      return res.status(503).send('Temporary database connectivity issue. Please refresh in a few seconds.');
+    }
     res.status(500).render('error/500', { error });
   }
 });
