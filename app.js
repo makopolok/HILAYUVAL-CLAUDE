@@ -2603,7 +2603,7 @@ app.post('/audition/:projectId', auditionUpload.fields([
     console.log(`POST_AUDITION_BODY_CONTENT: ${JSON.stringify(body)}`);
     const videoFile = req.files && req.files.video ? req.files.video[0] : null;
     const profilePictureFiles = req.files && req.files.profile_pictures ? req.files.profile_pictures : [];
-    const directUploadGuid = (body.video_url || '').toString().trim();
+    const directUploadGuid = trimToString((req.body && req.body.video_url) || body.video_url);
     const hasDirectUploadedVideo = directUploadGuid.length > 10;
     const rules = getAuditionFormRules(project);
     const validationErrors = [
@@ -2616,7 +2616,15 @@ app.post('/audition/:projectId', auditionUpload.fields([
       }),
     ];
 
+    if (hasDirectUploadedVideo) {
+      const missingVideoIndex = validationErrors.indexOf('Please upload a self-tape video.');
+      if (missingVideoIndex !== -1) {
+        validationErrors.splice(missingVideoIndex, 1);
+      }
+    }
+
     if (validationErrors.length > 0) {
+      console.warn(`POST_AUDITION_VALIDATION_FAILED: projectId=${req.params.projectId} directGuidPresent=${hasDirectUploadedVideo} errors=${JSON.stringify(validationErrors)}`);
       await cleanupUploadedFiles([videoFile, ...profilePictureFiles].filter(Boolean));
       return res.status(400).send(validationErrors[0]);
     }
@@ -2769,7 +2777,7 @@ app.post('/audition/:projectId', auditionUpload.fields([
       }
     } else {
       // Support direct-to-Bunny uploads: client submits a GUID in body.video_url
-      const guidFromForm = (body.video_url || '').toString().trim();
+      const guidFromForm = directUploadGuid;
       const uploadIntent = (body.video_upload_intent || '').toString().trim();
       if (guidFromForm && guidFromForm.length > 10) {
         const intentCheck = consumeDirectUploadIntent({
