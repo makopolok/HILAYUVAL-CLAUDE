@@ -2603,6 +2603,8 @@ app.post('/audition/:projectId', auditionUpload.fields([
     console.log(`POST_AUDITION_BODY_CONTENT: ${JSON.stringify(body)}`);
     const videoFile = req.files && req.files.video ? req.files.video[0] : null;
     const profilePictureFiles = req.files && req.files.profile_pictures ? req.files.profile_pictures : [];
+    const directUploadGuid = (body.video_url || '').toString().trim();
+    const hasDirectUploadedVideo = directUploadGuid.length > 10;
     const rules = getAuditionFormRules(project);
     const validationErrors = [
       ...validateAuditionBody({ body, project, rules }),
@@ -2610,7 +2612,7 @@ app.post('/audition/:projectId', auditionUpload.fields([
         rules,
         videoFile,
         profilePictureFiles,
-        requireVideo: true,
+        requireVideo: !hasDirectUploadedVideo,
       }),
     ];
 
