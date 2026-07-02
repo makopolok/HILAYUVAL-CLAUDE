@@ -3135,7 +3135,107 @@ app.post('/projects/:projectId/auditions/:auditionId/tag-color', requireAdmin, a
 });
 
 
-// Route to view all auditions for a specific project
+// Route to get current audition data for inline editing
+app.get('/projects/:projectId/auditions/:auditionId/edit-data', requireAdmin, async (req, res) => {
+  try {
+    const projectId = Number(req.params.projectId);
+    const auditionId = Number(req.params.auditionId);
+    if (!Number.isInteger(projectId) || !Number.isInteger(auditionId)) {
+      return res.status(400).json({ ok: false, error: 'Invalid project or audition id.' });
+    }
+
+    const audition = await auditionService.getAuditionById(auditionId);
+    if (!audition) {
+      return res.status(404).json({ ok: false, error: 'Audition not found.' });
+    }
+
+    // Verify the audition belongs to the project
+    if (audition.project_id !== projectId) {
+      return res.status(403).json({ ok: false, error: 'Unauthorized.' });
+    }
+
+    // Return editable fields
+    return res.json({
+      ok: true,
+      first_name_en: audition.first_name_en || '',
+      last_name_en: audition.last_name_en || '',
+      first_name_he: audition.first_name_he || '',
+      last_name_he: audition.last_name_he || '',
+      email: audition.email || '',
+      phone: audition.phone || '',
+      agency: audition.agency || '',
+      age: audition.age || '',
+      height: audition.height || '',
+      current_location: audition.current_location || ''
+    });
+  } catch (error) {
+    console.error('[App.js GET /projects/:projectId/auditions/:auditionId/edit-data]', error);
+    return res.status(500).json({ ok: false, error: 'Failed to load audition data.' });
+  }
+});
+
+// Route to update audition data from inline editing
+app.post('/projects/:projectId/auditions/:auditionId/update', requireAdmin, async (req, res) => {
+  try {
+    const projectId = Number(req.params.projectId);
+    const auditionId = Number(req.params.auditionId);
+    if (!Number.isInteger(projectId) || !Number.isInteger(auditionId)) {
+      return res.status(400).json({ ok: false, error: 'Invalid project or audition id.' });
+    }
+
+    const audition = await auditionService.getAuditionById(auditionId);
+    if (!audition) {
+      return res.status(404).json({ ok: false, error: 'Audition not found.' });
+    }
+
+    // Verify the audition belongs to the project
+    if (audition.project_id !== projectId) {
+      return res.status(403).json({ ok: false, error: 'Unauthorized.' });
+    }
+
+    // Extract and validate data from request body
+    const updates = {};
+    const editableFields = ['first_name_en', 'last_name_en', 'first_name_he', 'last_name_he', 'email', 'phone', 'agency', 'age', 'height', 'current_location'];
+    
+    for (const field of editableFields) {
+      if (req.body && field in req.body) {
+        updates[field] = req.body[field] || null;
+      }
+    }
+
+    // Validate required fields
+    if (!updates.email) {
+      return res.status(400).json({ ok: false, error: 'Email is required.' });
+    }
+
+    // Convert age and height to numbers if provided
+    if (updates.age) {
+      updates.age = Number(updates.age);
+      if (isNaN(updates.age)) {
+        return res.status(400).json({ ok: false, error: 'Age must be a valid number.' });
+      }
+    }
+    if (updates.height) {
+      updates.height = Number(updates.height);
+      if (isNaN(updates.height)) {
+        return res.status(400).json({ ok: false, error: 'Height must be a valid number.' });
+      }
+    }
+
+    // Update the audition
+    const result = await auditionService.updateAudition(auditionId, updates);
+    if (!result.ok) {
+      return res.status(400).json({ ok: false, error: result.error || 'Failed to update audition.' });
+    }
+
+    return res.json({ ok: true, audition: result.row });
+  } catch (error) {
+    console.error('[App.js POST /projects/:projectId/auditions/:auditionId/update]', error);
+    return res.status(500).json({ ok: false, error: 'Failed to update audition.' });
+  }
+});
+
+
 app.get('/projects/:projectId/auditions', requireAdmin, async (req, res) => {
   try {
     const projectId = req.params.projectId;

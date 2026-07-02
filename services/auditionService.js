@@ -322,6 +322,98 @@ async function deleteAudition(projectId, auditionId) {
   return rows.length > 0;
 }
 
+async function updateAudition(auditionId, updates) {
+  // Build dynamic UPDATE query
+  const setClauses = [];
+  const params = [auditionId];
+  let paramCount = 2;
+
+  // Map of field names to column names (handle both auditions table and audition_contacts table)
+  const fieldMapping = {
+    first_name_en: { table: 'auditions', column: 'first_name_en' },
+    last_name_en: { table: 'auditions', column: 'last_name_en' },
+    first_name_he: { table: 'auditions', column: 'first_name_he' },
+    last_name_he: { table: 'auditions', column: 'last_name_he' },
+    age: { table: 'auditions', column: 'age' },
+    height: { table: 'auditions', column: 'height' },
+    current_location: { table: 'auditions', column: 'current_location' },
+    email: { table: 'audition_contacts', column: 'email' },
+    phone: { table: 'audition_contacts', column: 'phone' },
+    agency: { table: 'audition_contacts', column: 'agency' }
+  };
+
+  // Separate updates by table
+  const auditionUpdates = {};
+  const contactUpdates = {};
+
+  for (const [field, value] of Object.entries(updates)) {
+    if (fieldMapping[field]) {
+      if (fieldMapping[field].table === 'auditions') {
+        auditionUpdates[fieldMapping[field].column] = value;
+      } else {
+        contactUpdates[fieldMapping[field].column] = value;
+      }
+    }
+  }
+
+  // Update auditions table if there are updates
+  if (Object.keys(auditionUpdates).length > 0) {
+    const setClauses = Object.entries(auditionUpdates).map(([column, value]) => {
+      params.push(value);
+      return `${column} = $${paramCount++}`;
+    });
+    
+    const sql = `
+      UPDATE auditions
+      SET ${setClauses.join(', ')},
+          updated_at = NOW()
+      WHERE id = $1
+      RETURNING *
+    `;
+    
+    try {
+      const { rows } = await pool.query(sql, params);
+      if (!rows[0]) {
+        return { ok: false, error: 'Audition not found.' };
+      }
+    } catch (error) {
+      console.error('Error updating audition:', error);
+      return { ok: false, error: 'Failed to update audition data.' };
+    }
+  }
+
+  // Update or insert audition_contacts if there are contact updates
+  if (Object.keys(contactUpdates).length > 0) {
+    const setContactClauses = Object.entries(contactUpdates).map(([column, value]) => {
+      params.push(value);
+      return `${column} = $${paramCount++}`;
+    });
+    
+    const sql = `
+      INSERT INTO audition_contacts (audition_id, ${Object.keys(contactUpdates).join(', ')})
+      VALUES ($1, ${Object.keys(contactUpdates).map((_, i) => `$${i + 2}`).join(', ')})
+      ON CONFLICT (audition_id) DO UPDATE SET
+        ${setContactClauses.join(', ')}
+      RETURNING *
+    `;
+    
+    try {
+      const contactParams = [auditionId, ...Object.values(contactUpdates)];
+      const { rows } = await pool.query(sql, contactParams);
+      if (!rows[0]) {
+        return { ok: false, error: 'Failed to update contact data.' };
+      }
+    } catch (error) {
+      console.error('Error updating audition contacts:', error);
+      return { ok: false, error: 'Failed to update contact data.' };
+    }
+  }
+
+  // Fetch and return the updated audition
+  const audition = await getAuditionById(auditionId);
+  return { ok: true, row: audition };
+}
+
 module.exports = {
   insertAudition,
   pool,
@@ -333,4 +425,5 @@ module.exports = {
   deleteAudition,
   updateAuditionYoutubeData,
   updateAuditionTagColor,
+  updateAudition,
 };
