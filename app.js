@@ -3193,7 +3193,7 @@ app.post('/projects/:projectId/auditions/:auditionId/update', requireAdmin, asyn
       return res.status(403).json({ ok: false, error: 'Unauthorized.' });
     }
 
-    // Extract and validate data from request body
+    // Extract fields from request body (no strict validation for admin edits)
     const updates = {};
     const editableFields = ['first_name_en', 'last_name_en', 'first_name_he', 'last_name_he', 'email', 'phone', 'agency', 'age', 'height', 'current_location'];
     
@@ -3203,22 +3203,17 @@ app.post('/projects/:projectId/auditions/:auditionId/update', requireAdmin, asyn
       }
     }
 
-    // Validate required fields
-    if (!updates.email) {
-      return res.status(400).json({ ok: false, error: 'Email is required.' });
-    }
-
     // Convert age and height to numbers if provided
     if (updates.age) {
       updates.age = Number(updates.age);
       if (isNaN(updates.age)) {
-        return res.status(400).json({ ok: false, error: 'Age must be a valid number.' });
+        updates.age = null;
       }
     }
     if (updates.height) {
       updates.height = Number(updates.height);
       if (isNaN(updates.height)) {
-        return res.status(400).json({ ok: false, error: 'Height must be a valid number.' });
+        updates.height = null;
       }
     }
 
