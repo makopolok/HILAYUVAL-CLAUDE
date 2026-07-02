@@ -384,9 +384,9 @@ async function updateAudition(auditionId, updates) {
 
   // Update or insert audition_contacts if there are contact updates
   if (Object.keys(contactUpdates).length > 0) {
-    const setContactClauses = Object.entries(contactUpdates).map(([column, value]) => {
-      params.push(value);
-      return `${column} = $${paramCount++}`;
+    const contactParams = [auditionId, ...Object.values(contactUpdates)];
+    const setContactClauses = Object.entries(contactUpdates).map(([column], i) => {
+      return `${column} = $${i + 2}`;
     });
     
     const sql = `
@@ -398,7 +398,6 @@ async function updateAudition(auditionId, updates) {
     `;
     
     try {
-      const contactParams = [auditionId, ...Object.values(contactUpdates)];
       const { rows } = await pool.query(sql, contactParams);
       if (!rows[0]) {
         return { ok: false, error: 'Failed to update contact data.' };
