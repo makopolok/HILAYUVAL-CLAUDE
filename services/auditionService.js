@@ -323,7 +323,6 @@ async function deleteAudition(projectId, auditionId) {
 }
 
 async function updateAudition(auditionId, updates) {
-  console.error('[Service updateAudition] Called with auditionId:', auditionId, 'updates:', updates);
   // Build dynamic UPDATE query
   const setClauses = [];
   const params = [auditionId];
@@ -356,8 +355,6 @@ async function updateAudition(auditionId, updates) {
       }
     }
   }
-
-  console.error('[Service updateAudition] auditionUpdates:', auditionUpdates, 'contactUpdates:', contactUpdates);
 
   // Update auditions table if there are updates
   if (Object.keys(auditionUpdates).length > 0) {

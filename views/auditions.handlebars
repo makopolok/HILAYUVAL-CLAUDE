@@ -676,11 +676,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const data = await res.json();
         
         // Update input fields with loaded data
-        row.querySelectorAll('.edit-input input').forEach(input => {
+        row.querySelectorAll('[data-field]').forEach(input => {
           const fieldName = input.dataset.field;
-          if (data[fieldName]) {
-            input.value = data[fieldName];
-          }
+          input.value = data[fieldName] ?? '';
         });
       } catch (err) {
         console.error('Error loading edit data:', err);
@@ -709,7 +707,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       // Collect values from all edit inputs
       const formData = {};
-      row.querySelectorAll('.edit-input input').forEach(input => {
+      row.querySelectorAll('[data-field]').forEach(input => {
         const fieldName = input.dataset.field;
         formData[fieldName] = input.value;
       });

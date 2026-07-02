@@ -3203,8 +3203,6 @@ app.post('/projects/:projectId/auditions/:auditionId/update', requireAdmin, asyn
       }
     }
 
-    console.error('[App.js POST /update] Audition ID:', auditionId, 'Updates:', updates);
-
     // Convert age and height to numbers if provided
     if (updates.age) {
       updates.age = Number(updates.age);
@@ -3221,7 +3219,6 @@ app.post('/projects/:projectId/auditions/:auditionId/update', requireAdmin, asyn
 
     // Update the audition
     const result = await auditionService.updateAudition(auditionId, updates);
-    console.error('[App.js POST /update] Result:', result);
     if (!result.ok) {
       return res.status(400).json({ ok: false, error: result.error || 'Failed to update audition.' });
     }
