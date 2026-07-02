@@ -27,12 +27,39 @@
   .auditions-page .display-4 {
     color: var(--audition-header-red) !important;
   }
+  .auditions-page .auditions-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .auditions-page .auditions-header-title {
+    margin: 0;
+  }
+  .auditions-page .auditions-header-counters {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 1.9rem;
+    font-weight: 600;
+    line-height: 1;
+  }
   .auditions-page .auditions-list-table .fw-semibold.text-danger,
   .auditions-page .audition-video-card .card-title.text-danger {
     color: var(--audition-red) !important;
   }
   .auditions-page .auditions-total-count {
     color: rgb(208, 49, 30) !important;
+  }
+  .auditions-page .auditions-new-count-badge {
+    background-color: var(--audition-red);
+    color: #fff;
+    border-radius: 0.35rem;
+    padding: 0.2rem 0.6rem;
+    font-size: 1.15rem;
+    font-weight: 700;
+    line-height: 1.1;
   }
   .auditions-page .audition-role-card.border-danger,
   .auditions-page .audition-video-card.border-danger,
@@ -69,12 +96,14 @@
   }
 </style>
 <div class="container mt-5 auditions-page">
-  <h1 class="display-4 mb-4">
-    Auditions for {{project.name}}
-    <span class="fs-3 fw-semibold ms-2 auditions-total-count">({{project_auditions_count}})</span>
-    {{#if project_new_auditions_count}}
-      <span class="fs-3 fw-semibold align-middle ms-2">+{{project_new_auditions_count}} new</span>
-    {{/if}}
+  <h1 class="display-4 mb-4 auditions-header">
+    <span class="auditions-header-title">Auditions for {{project.name}}</span>
+    <span class="auditions-header-counters">
+      <span class="auditions-total-count">({{project_auditions_count}})</span>
+      {{#if project_new_auditions_count}}
+        <span class="auditions-new-count-badge">+{{project_new_auditions_count}} new</span>
+      {{/if}}
+    </span>
   </h1>
   <form class="row g-3 mb-4" method="GET" action="" id="audition-filter-form">
     <div class="col-md-4">
