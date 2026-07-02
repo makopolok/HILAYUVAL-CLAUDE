@@ -3,7 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const { getPool, closePool, registerPoolShutdown } = require('./utils/database');
 
-const pool = getPool();
+// Use a small pool and explicitly enable SSL for migrations to avoid non-SSL connection attempts
+const pool = getPool({ ssl: { rejectUnauthorized: false }, max: 2, connectionTimeoutMillis: 10000 });
 registerPoolShutdown({ exitOnFinish: true });
 
 async function runMigrations() {
