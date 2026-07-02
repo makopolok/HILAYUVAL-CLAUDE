@@ -729,55 +729,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const data = await res.json();
         
         if (data.ok) {
-          // Update display values with the new data
-          row.querySelectorAll('.edit-field').forEach(field => {
-            const inputs = field.querySelectorAll('.edit-input input');
-            const displays = field.querySelectorAll('.edit-display');
-            
-            if (displays.length === 1 && inputs.length === 1) {
-              // Single display/input pair
-              const fieldName = inputs[0].dataset.field;
-              const value = formData[fieldName];
-              
-              if (fieldName === 'first_name_he' || fieldName === 'last_name_he' || 
-                  fieldName === 'first_name_en' || fieldName === 'last_name_en') {
-                // Special handling for name fields - update the combined display
-                const firstNameEn = row.querySelector('input[data-field="first_name_en"]')?.value || '';
-                const lastNameEn = row.querySelector('input[data-field="last_name_en"]')?.value || '';
-                const firstNameHe = row.querySelector('input[data-field="first_name_he"]')?.value || '';
-                const lastNameHe = row.querySelector('input[data-field="last_name_he"]')?.value || '';
-                
-                const headingDisplay = field.querySelector('.edit-display');
-                if (headingDisplay) {
-                  let displayText = '';
-                  if (firstNameHe && lastNameHe) {
-                    displayText = `${firstNameHe} ${lastNameHe}`;
-                    if (firstNameEn && lastNameEn) {
-                      displayText += `<br><small class="text-muted">${firstNameEn} ${lastNameEn}</small>`;
-                    }
-                  } else if (firstNameEn && lastNameEn) {
-                    displayText = `${firstNameEn} ${lastNameEn}`;
-                  }
-                  headingDisplay.innerHTML = displayText;
-                }
-              } else if (fieldName === 'height') {
-                displays[0].textContent = value;
-              } else {
-                displays[0].textContent = value || '—';
-              }
-            }
-          });
-          
-          // Exit edit mode
-          toggleEditMode(row, false);
-          
-          // Show success message
-          const originalBtn = this;
-          this.innerHTML = '<i class="fas fa-check"></i> Saved!';
+          // Reload page to show updated data from server
           setTimeout(() => {
-            originalBtn.innerHTML = originalHtml;
-            originalBtn.disabled = false;
-          }, 2000);
+            window.location.reload();
+          }, 500);
         } else {
           alert('Error saving audition: ' + (data.error || 'Unknown error'));
           this.innerHTML = originalHtml;
