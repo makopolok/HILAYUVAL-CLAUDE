@@ -244,6 +244,32 @@ function findProjectRoleByName(project, roleName) {
   return project.roles.find((role) => trimToString(role.name) === target) || null;
 }
 
+function normalizeSiblingProjectName(projectName) {
+  return trimToString(projectName)
+    .replace(/\s*-\s*bunny\s*$/i, '')
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+}
+
+async function findSiblingProjectByUploadMethod(sourceProject, targetUploadMethod) {
+  if (!sourceProject) {
+    return null;
+  }
+
+  const siblingKey = normalizeSiblingProjectName(sourceProject.name);
+  const normalizedTargetUploadMethod = trimToString(targetUploadMethod).toLowerCase();
+  if (!siblingKey || !normalizedTargetUploadMethod) {
+    return null;
+  }
+
+  const projects = await projectService.getAllProjects();
+  return projects.find((project) => (
+    Number(project.id) !== Number(sourceProject.id)
+    && normalizeSiblingProjectName(project.name) === siblingKey
+    && trimToString(project.upload_method || project.uploadMethod).toLowerCase() === normalizedTargetUploadMethod
+  )) || null;
+}
+
 function isTransientDbTimeoutError(error) {
   if (!error) return false;
   const message = (error.message || '').toLowerCase();
@@ -3023,15 +3049,27 @@ app.post('/projects/:projectId/auditions/:auditionId/upload-to-youtube', require
     }
     const youtubeUrl = `https://www.youtube.com/watch?v=${youtubeVideoId}`;
 
-    // Add to the role's playlist (creating it if it doesn't exist yet)
-    const role = audition.role_id
-      ? project.roles.find(r => r.id === audition.role_id)
-      : null;
-    if (role) {
-      const playlistId = await ensureRolePlaylist(youtube, project, role);
+    let mirroredProject = null;
+    let mirroredRole = null;
+    const sourceUploadMethod = trimToString(project.upload_method || project.uploadMethod).toLowerCase();
+    if (sourceUploadMethod === 'bunny_stream') {
+      mirroredProject = await findSiblingProjectByUploadMethod(project, 'youtube');
+      mirroredRole = findProjectRoleByName(mirroredProject, audition.role_name || audition.role);
+    }
+
+    // Add to the target YouTube role playlist when we know the sibling role;
+    // otherwise fall back to the source project role.
+    const sourceRole = audition.role_id
+      ? project.roles.find((r) => r.id === audition.role_id)
+      : findProjectRoleByName(project, audition.role_name || audition.role);
+    const playlistProject = mirroredProject && mirroredRole ? mirroredProject : project;
+    const playlistRole = mirroredProject && mirroredRole ? mirroredRole : sourceRole;
+
+    if (playlistRole) {
+      const playlistId = await ensureRolePlaylist(youtube, playlistProject, playlistRole);
       await addVideoToYouTubePlaylist(youtube, youtubeVideoId, playlistId);
     } else {
-      console.warn(`PROMOTE_TO_YOUTUBE_NO_ROLE: audition ${auditionId} has no role_id — skipping playlist assignment.`);
+      console.warn(`PROMOTE_TO_YOUTUBE_NO_ROLE: audition ${auditionId} has no mappable role — skipping playlist assignment.`);
     }
 
     await auditionService.updateAuditionYoutubeData(audition.id, {
@@ -3039,7 +3077,50 @@ app.post('/projects/:projectId/auditions/:auditionId/upload-to-youtube', require
       youtubeVideoUrl: youtubeUrl,
     });
 
-    req.flash('success', 'Audition uploaded to YouTube successfully.');
+    if (mirroredProject) {
+      try {
+        const mirroredAuditionPayload = {
+          project_id: mirroredProject.id,
+          role_id: mirroredRole ? mirroredRole.id : null,
+          role: mirroredRole ? mirroredRole.name : (audition.role_name || audition.role),
+          first_name_he: audition.first_name_he,
+          last_name_he: audition.last_name_he,
+          first_name_en: audition.first_name_en,
+          last_name_en: audition.last_name_en,
+          phone: audition.phone,
+          email: audition.email,
+          agency: audition.agency,
+          age: audition.age,
+          height: audition.height,
+          current_location: audition.current_location,
+          about_me: audition.about_me,
+          profile_pictures: Array.isArray(audition.profile_pictures) ? audition.profile_pictures : [],
+          showreel_url: audition.showreel_url,
+          video_url: youtubeUrl,
+          video_type: 'youtube',
+        };
+
+        const mirroredAudition = await insertAuditionWithRetry(mirroredAuditionPayload);
+        await auditionService.updateAuditionYoutubeData(mirroredAudition.id, {
+          youtubeVideoId,
+          youtubeVideoUrl: youtubeUrl,
+        });
+
+        if (!mirroredRole) {
+          req.flash('info', `Uploaded to YouTube and copied to project "${mirroredProject.name}", but no matching role was found there.`);
+        }
+      } catch (mirrorError) {
+        console.error(`PROMOTE_TO_YOUTUBE_MIRROR_INSERT_ERROR: sourceAudition=${audition.id} targetProject=${mirroredProject.id}`, mirrorError);
+        req.flash('info', `Uploaded to YouTube, but failed to copy the audition into "${mirroredProject.name}": ${mirrorError.message}`);
+      }
+    } else if (sourceUploadMethod === 'bunny_stream') {
+      console.warn(`PROMOTE_TO_YOUTUBE_NO_SIBLING_PROJECT: sourceProject=${project.id} name="${project.name}"`);
+      req.flash('info', 'Uploaded to YouTube, but no matching YouTube sister project was found for copying the audition record.');
+    }
+
+    req.flash('success', mirroredProject
+      ? 'Audition uploaded to YouTube and copied to the YouTube project successfully.'
+      : 'Audition uploaded to YouTube successfully.');
   } catch (error) {
     console.error(`[App.js POST /projects/${projectId}/auditions/${auditionId}/upload-to-youtube]`, error);
     req.flash('error', `Failed to upload to YouTube: ${error.message}`);
