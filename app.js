@@ -3435,6 +3435,9 @@ app.get('/projects/:projectId/auditions', requireAdmin, async (req, res) => {
     const disableInlineEffective = process.env.DISABLE_INLINE_PLAYER === '1';
     const youtubeReady = !!process.env.GOOGLE_REFRESH_TOKEN;
 
+    // Add browser caching for auditions list (5 min)
+    res.set('Cache-Control', 'private, max-age=300');
+
     res.render('auditions', {
       project: { ...project, roles: rolesWithAuditions },
       role_options: sortedRoles,
