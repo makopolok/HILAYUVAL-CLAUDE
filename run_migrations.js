@@ -3,7 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const { getPool, closePool, registerPoolShutdown } = require('./utils/database');
 
-const pool = getPool();
+// Step 1: Enable SSL for migrations to avoid non-SSL connection timeouts during Heroku release
+const pool = getPool({ ssl: { rejectUnauthorized: false }, max: 2, connectionTimeoutMillis: 10000 });
 registerPoolShutdown({ exitOnFinish: true });
 
 async function runMigrations() {
