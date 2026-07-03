@@ -58,7 +58,8 @@ function buildPoolConfig(options = {}) {
     ssl: resolveSsl(connectionString, options.ssl),
     max: parseNumber(process.env.PG_POOL_MAX, options.max),
     idleTimeoutMillis: parseNumber(process.env.PG_IDLE_TIMEOUT_MS, options.idleTimeoutMillis || 30000),
-    connectionTimeoutMillis: parseNumber(process.env.PG_CONNECTION_TIMEOUT_MS, options.connectionTimeoutMillis || 2000),
+    // Increased connection timeout to allow SSL negotiation time (default 2s may be too short)
+    connectionTimeoutMillis: parseNumber(process.env.PG_CONNECTION_TIMEOUT_MS, options.connectionTimeoutMillis || 10000),
     ...options.poolConfig
   };
 
