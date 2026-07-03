@@ -359,10 +359,11 @@
                         <div class="mb-3 youtube-video">
                           <div class="ratio ratio-16x9">
                             <iframe
-                              src="{{#if embed_url}}{{embed_url}}{{else}}https://www.youtube.com/embed/{{video_url}}{{/if}}"
+                              data-src="{{#if embed_url}}{{embed_url}}{{else}}https://www.youtube.com/embed/{{video_url}}{{/if}}"
                               title="YouTube audition video"
                               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                               allowfullscreen
+                              loading="lazy"
                               class="rounded">
                             </iframe>
                           </div>
@@ -392,11 +393,12 @@
                           </div>
                           <div class="video-player" style="display: none;">
                             <div class="ratio ratio-16x9">
-                              <iframe 
-                                src="{{#if embed_url}}{{embed_url}}{{else}}https://iframe.mediadelivery.net/embed/{{../../bunny_stream_library_id}}/{{video_url}}?autoplay=false{{/if}}" 
+                              <iframe
+                                data-src="{{#if embed_url}}{{embed_url}}{{else}}https://iframe.mediadelivery.net/embed/{{../../bunny_stream_library_id}}/{{video_url}}?autoplay=false{{/if}}"
                                 frameborder="0" 
                                 allowfullscreen
                                 allow="accelerometer; gyroscope; encrypted-media; picture-in-picture;"
+                                loading="lazy"
                                 class="rounded">
                               </iframe>
                             </div>
@@ -840,6 +842,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
   const initCardVideos = () => {
     if (cardVideosInitialized) return;
+    const deferredIframes = cardsView ? cardsView.querySelectorAll('iframe[data-src]') : [];
+    deferredIframes.forEach((iframe) => {
+      if (!iframe.getAttribute('src')) {
+        iframe.setAttribute('src', iframe.dataset.src);
+      }
+    });
     const videoContainers = cardsView ? cardsView.querySelectorAll('.video-container') : [];
     videoContainers.forEach((container, index) => {
       setTimeout(() => {
