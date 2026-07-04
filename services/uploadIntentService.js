@@ -16,6 +16,17 @@ const pool = getPool();
 
 const CONSUMABLE_STATES = ['intent_created', 'token_issued', 'upload_started'];
 
+// Coerce to a positive integer or null. Critically, Number(null) === 0 and
+// Number('') === 0, so a naive Number() guard would insert 0 and violate the
+// project_id foreign key. Treat null/undefined/'' as SQL NULL.
+function toNullableInt(value) {
+  if (value === null || typeof value === 'undefined' || value === '') {
+    return null;
+  }
+  const n = Number(value);
+  return Number.isInteger(n) ? n : null;
+}
+
 // Create a durable intent when direct-upload credentials are issued.
 async function createIntent({ intentToken, guid, projectId, roleName, ipAddress, expiresAt }) {
   const query = `
@@ -34,7 +45,7 @@ async function createIntent({ intentToken, guid, projectId, roleName, ipAddress,
   const values = [
     intentToken,
     guid,
-    Number.isFinite(Number(projectId)) ? Number(projectId) : null,
+    toNullableInt(projectId),
     roleName ? String(roleName) : null,
     ipAddress || null,
     expiresAt instanceof Date ? expiresAt.toISOString() : expiresAt,
@@ -110,7 +121,7 @@ async function markCompleted({ guid, auditionId }) {
      SET state = 'completed', audition_id = $2, updated_at = NOW()
      WHERE guid = $1
      RETURNING *;`,
-    [guid, Number.isFinite(Number(auditionId)) ? Number(auditionId) : null]
+    [guid, toNullableInt(auditionId)]
   );
   return rows[0] || null;
 }
