@@ -132,10 +132,65 @@ async function findByGuid(guid) {
   return rows[0] || null;
 }
 
+// Non-terminal states the reconciliation worker considers "in flight".
+const NON_TERMINAL_STATES = [
+  'intent_created',
+  'token_issued',
+  'upload_started',
+  'uploaded',
+  'processing',
+];
+
+// Find stale, non-terminal intents whose upload window has closed
+// (expires_at in the past). Ordered oldest-first so the backlog drains fairly.
+async function findStaleIntents(limit = 25) {
+  const { rows } = await pool.query(
+    `SELECT * FROM upload_intents
+     WHERE state = ANY($1)
+       AND expires_at < NOW()
+     ORDER BY expires_at ASC
+     LIMIT $2`,
+    [NON_TERMINAL_STATES, Math.max(1, Math.min(500, Number(limit) || 25))]
+  );
+  return rows;
+}
+
+// Generic terminal-state transition used by the reconciliation worker.
+// Only advances rows still in a non-terminal state so we never clobber a
+// completed/expired/orphaned record set by a concurrent path.
+async function markState({ id, state, auditionId }) {
+  const { rows } = await pool.query(
+    `UPDATE upload_intents
+     SET state = $2,
+         audition_id = COALESCE($3, audition_id),
+         updated_at = NOW()
+     WHERE id = $1
+       AND state = ANY($4)
+     RETURNING *;`,
+    [id, state, toNullableInt(auditionId), NON_TERMINAL_STATES]
+  );
+  return rows[0] || null;
+}
+
+// Snapshot counts by state (observability for the admin endpoint).
+async function countByState() {
+  const { rows } = await pool.query(
+    `SELECT state, COUNT(*)::int AS count
+     FROM upload_intents
+     GROUP BY state
+     ORDER BY state`
+  );
+  return rows;
+}
+
 module.exports = {
   createIntent,
   consumeIntent,
   markCompleted,
   findByGuid,
+  findStaleIntents,
+  markState,
+  countByState,
   CONSUMABLE_STATES,
+  NON_TERMINAL_STATES,
 };

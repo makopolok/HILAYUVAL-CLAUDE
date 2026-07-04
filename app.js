@@ -26,6 +26,7 @@ const session = require('express-session');
 const flash = require('connect-flash');
 const adminRoutes = require('./routes/adminRoutes');
 const uploadIntentService = require('./services/uploadIntentService');
+const reconciliationWorker = require('./services/reconciliationWorker');
 const { attachAdminToLocals, requireAdmin } = require('./middleware/auth');
 const { closePool } = require('./utils/database');
 // Add a version log at the top for deployment verification
@@ -3690,6 +3691,29 @@ app.use((error, req, res, next) => {
     next(error);
 });
 
+// --- Bunny upload-intent reconciliation (Step 3) admin endpoints ---
+// Observability + on-demand trigger for the reconciliation worker.
+app.get('/admin/upload-intents', requireAdmin, async (req, res) => {
+  try {
+    const counts = await uploadIntentService.countByState();
+    res.json({ ok: true, counts });
+  } catch (err) {
+    console.error('ADMIN_UPLOAD_INTENTS_ERROR:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/admin/reconcile-intents', requireAdmin, async (req, res) => {
+  try {
+    const limit = req.query.limit ? Number(req.query.limit) : undefined;
+    const summary = await reconciliationWorker.reconcileOnce({ limit });
+    res.json({ ok: true, summary });
+  } catch (err) {
+    console.error('ADMIN_RECONCILE_ERROR:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // Add at the end of middleware chain, before app.listen
 app.use(errorHandler);
 
@@ -3702,6 +3726,14 @@ const server = app.listen(PORT, () => {
             .catch(err => console.error("ERROR: DB connection check failed after server start:", err));
     } else {
         console.warn("WARN: auditionService.checkDbConnection function not found. Skipping post-start DB check.");
+    }
+    // Start the Bunny upload-intent reconciliation worker (Step 3).
+    // Drives stale, non-terminal intents to a terminal state so orphaned
+    // uploads and crashed finalizations are recovered or flagged.
+    try {
+        reconciliationWorker.start();
+    } catch (reconErr) {
+        console.error('RECONCILE_START_ERROR:', reconErr.message);
     }
 });
 
@@ -3744,6 +3776,9 @@ gracefulSignals.forEach((signal) => {
       if (err) {
         console.error(`ERROR: HTTP server close failed during ${signal}.`, err);
       }
+      try {
+        reconciliationWorker.stop();
+      } catch (_) { /* ignore */ }
       try {
         await closePool(`app:${signal}`);
       } catch (dbErr) {
