@@ -1414,7 +1414,11 @@ app.get('/audition', (req, res) => {
     show_current_location_field: false,
     auditionRules: getAuditionFormRules(),
     direct_upload_require_captcha: BUNNY_DIRECT_UPLOAD_REQUIRE_CAPTCHA,
-    turnstile_site_key: BUNNY_TURNSTILE_SITE_KEY
+    turnstile_site_key: BUNNY_TURNSTILE_SITE_KEY,
+    breadcrumbTrail: [
+      { label: 'Home', url: '/' },
+      { label: 'Audition', url: '/audition' },
+    ]
   });
 });
 
@@ -1616,7 +1620,11 @@ app.get('/projects', requireAdmin, async (req, res) => {
       title: 'Projects',
       projects,
       query: req.query,
-      deploymentInfo
+      deploymentInfo,
+      breadcrumbTrail: [
+        { label: 'Home', url: '/' },
+        { label: 'Projects', url: '/projects' },
+      ]
     });
   } catch (error) {
     console.error('[App.js GET /projects] Error fetching projects:', error);
@@ -1629,7 +1637,13 @@ app.get('/projects', requireAdmin, async (req, res) => {
 
 // Route to render the create project form
 app.get('/projects/create', requireAdmin, (req, res) => {
-  res.render('createProject');
+  res.render('createProject', {
+    breadcrumbTrail: [
+      { label: 'Home', url: '/' },
+      { label: 'Projects', url: '/projects' },
+      { label: 'Create Project', url: '/projects/create' },
+    ],
+  });
 });
 
 // Route to handle project creation
@@ -1823,7 +1837,12 @@ app.get('/audition/:projectId', async (req, res) => {
       show_current_location_field: showCurrentLocationField,
       auditionRules: getAuditionFormRules(project),
       direct_upload_require_captcha: BUNNY_DIRECT_UPLOAD_REQUIRE_CAPTCHA,
-      turnstile_site_key: BUNNY_TURNSTILE_SITE_KEY
+      turnstile_site_key: BUNNY_TURNSTILE_SITE_KEY,
+      breadcrumbTrail: [
+        { label: 'Home', url: '/' },
+        { label: 'Projects', url: '/projects' },
+        { label: project.name || `Project ${project.id}`, url: `/audition/${project.id}` },
+      ]
     });
   } catch (error) {
     console.error(`AUDITION_FORM_LOAD_ERROR: projectId=${req.params.projectId} err=${error.message}`);
@@ -3672,7 +3691,22 @@ app.get('/admin/upload-intents', requireAdmin, async (req, res) => {
     if (req.query.format === 'json') {
       return res.json({ ok: true, counts });
     }
-    const recentRaw = await uploadIntentService.listRecent(50);
+
+    // Pagination + filter params
+    const PER_PAGE_OPTIONS = [25, 50, 100];
+    const perPage = PER_PAGE_OPTIONS.includes(Number(req.query.perPage))
+      ? Number(req.query.perPage) : 50;
+    const filterProjectId = req.query.projectId || '';
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const offset = (page - 1) * perPage;
+
+    const [recentRaw, total, projectOptions] = await Promise.all([
+      uploadIntentService.listRecent(perPage, offset, filterProjectId || null),
+      uploadIntentService.countIntents(filterProjectId || null),
+      uploadIntentService.listIntentProjects()
+    ]);
+
+    const totalPages = Math.max(1, Math.ceil(total / perPage));
     const decorated = counts.map((c) => ({ ...c, badgeClass: intentBadgeClass(c.state) }));
     const recent = recentRaw.map((r) => ({
       ...r,
@@ -3680,13 +3714,44 @@ app.get('/admin/upload-intents', requireAdmin, async (req, res) => {
       created_fmt: formatIntentTime(r.created_at),
       updated_fmt: formatIntentTime(r.updated_at)
     }));
+
+    const makeUrl = (p, proj, pp) => {
+      const params = new URLSearchParams();
+      if (p > 1) params.set('page', p);
+      if (proj) params.set('projectId', proj);
+      if (pp !== 50) params.set('perPage', pp);
+      const qs = params.toString();
+      return '/admin/upload-intents' + (qs ? '?' + qs : '');
+    };
+
     const lastReconcile = req.session.lastReconcile || null;
     if (req.session.lastReconcile) delete req.session.lastReconcile;
+
     res.render('admin/upload-intents', {
       title: 'Upload Intents - Hila Yuval Casting',
       counts: decorated,
       recent,
-      lastReconcile
+      lastReconcile,
+      // Pagination
+      page, totalPages, perPage, total,
+      hasPrev: page > 1,
+      hasNext: page < totalPages,
+      prevUrl: makeUrl(page - 1, filterProjectId, perPage),
+      nextUrl: makeUrl(page + 1, filterProjectId, perPage),
+      perPageOptions: PER_PAGE_OPTIONS.map((n) => ({
+        value: n, label: `${n} / page`, selected: n === perPage
+      })),
+      // Filter
+      filterProjectId,
+      projectOptions: projectOptions.map((p) => ({
+        ...p, selected: String(p.id) === String(filterProjectId)
+      })),
+      breadcrumbTrail: [
+        { label: 'Home', url: '/' },
+        { label: 'Projects', url: '/projects' },
+        { label: 'Admin', url: '/admin/login' },
+        { label: 'Upload Intents', url: '/admin/upload-intents' },
+      ]
     });
   } catch (err) {
     console.error('ADMIN_UPLOAD_INTENTS_ERROR:', err.message);
@@ -3705,7 +3770,12 @@ app.post('/admin/reconcile-intents', requireAdmin, async (req, res) => {
       return res.json({ ok: true, summary });
     }
     req.session.lastReconcile = summary;
-    res.redirect('/admin/upload-intents');
+    // Preserve filter/pagination params from the form's hidden inputs
+    const qs = new URLSearchParams();
+    if (req.body.projectId) qs.set('projectId', req.body.projectId);
+    if (req.body.perPage && req.body.perPage !== '50') qs.set('perPage', req.body.perPage);
+    const dest = '/admin/upload-intents' + (qs.toString() ? '?' + qs.toString() : '');
+    res.redirect(dest);
   } catch (err) {
     console.error('ADMIN_RECONCILE_ERROR:', err.message);
     if (req.query.format === 'json') {

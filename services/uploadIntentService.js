@@ -194,17 +194,51 @@ async function countByState() {
 }
 
 // Recent intents with their linked audition context (admin dashboard).
-async function listRecent(limit = 50) {
+async function listRecent(limit = 50, offset = 0, projectId = null) {
   const capped = Math.max(1, Math.min(200, Number(limit) || 50));
+  const safeOffset = Math.max(0, Number(offset) || 0);
+  const params = [capped, safeOffset];
+  let where = '';
+  if (projectId != null && projectId !== '') {
+    params.push(Number(projectId));
+    where = `WHERE ui.project_id = $${params.length}`;
+  }
   const { rows } = await pool.query(
     `SELECT ui.id, ui.guid, ui.state, ui.project_id, ui.role_name,
             ui.audition_id, ui.ip_address, ui.created_at, ui.updated_at, ui.expires_at,
             p.name AS project_name
      FROM upload_intents ui
      LEFT JOIN projects p ON p.id = ui.project_id
+     ${where}
      ORDER BY ui.created_at DESC
-     LIMIT $1`,
-    [capped]
+     LIMIT $1 OFFSET $2`,
+    params
+  );
+  return rows;
+}
+
+// Count intents optionally filtered by project (for pagination).
+async function countIntents(projectId = null) {
+  const params = [];
+  let where = '';
+  if (projectId != null && projectId !== '') {
+    params.push(Number(projectId));
+    where = `WHERE project_id = $1`;
+  }
+  const { rows } = await pool.query(
+    `SELECT COUNT(*)::int AS total FROM upload_intents ${where}`,
+    params
+  );
+  return rows[0].total;
+}
+
+// All projects that have at least one upload intent (for filter dropdown).
+async function listIntentProjects() {
+  const { rows } = await pool.query(
+    `SELECT DISTINCT p.id, p.name
+     FROM upload_intents ui
+     JOIN projects p ON p.id = ui.project_id
+     ORDER BY p.name`
   );
   return rows;
 }
@@ -218,6 +252,8 @@ module.exports = {
   markState,
   countByState,
   listRecent,
+  countIntents,
+  listIntentProjects,
   CONSUMABLE_STATES,
   NON_TERMINAL_STATES,
 };

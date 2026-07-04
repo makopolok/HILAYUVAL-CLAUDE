@@ -9,6 +9,8 @@
         <i class="fa-solid fa-rotate-right me-1"></i>Refresh
       </a>
       <form method="POST" action="/admin/reconcile-intents" class="d-inline">
+        <input type="hidden" name="projectId" value="{{filterProjectId}}">
+        <input type="hidden" name="perPage" value="{{perPage}}">
         <button type="submit" class="btn btn-primary btn-sm">
           <i class="fa-solid fa-broom me-1"></i>Run reconciliation now
         </button>
@@ -48,10 +50,39 @@
     {{/each}}
   </div>
 
+  {{!-- Filter bar --}}
+  <form method="GET" action="/admin/upload-intents" class="row g-2 align-items-center mb-3">
+    <div class="col-auto">
+      <label class="col-form-label col-form-label-sm fw-semibold">Project</label>
+    </div>
+    <div class="col-auto">
+      <select name="projectId" class="form-select form-select-sm" onchange="this.form.submit()">
+        <option value="">All projects</option>
+        {{#each projectOptions}}
+        <option value="{{this.id}}" {{#if this.selected}}selected{{/if}}>{{this.name}}</option>
+        {{/each}}
+      </select>
+    </div>
+    <div class="col-auto ms-auto">
+      <select name="perPage" class="form-select form-select-sm" onchange="this.form.submit()">
+        {{#each perPageOptions}}
+        <option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+        {{/each}}
+      </select>
+    </div>
+    <input type="hidden" name="page" value="1">
+    <noscript><div class="col-auto"><button class="btn btn-outline-secondary btn-sm">Apply</button></div></noscript>
+  </form>
+
   <div class="card border-0 shadow-sm">
-    <div class="card-header bg-white d-flex align-items-center justify-content-between">
-      <span class="fw-semibold">Recent intents</span>
-      <span class="text-muted small">Showing latest {{recent.length}}</span>
+    <div class="card-header bg-white d-flex align-items-center justify-content-between flex-wrap gap-2">
+      <span class="fw-semibold">
+        Intents
+        {{#if filterProjectId}}
+          &mdash; filtered by project
+        {{/if}}
+      </span>
+      <span class="text-muted small">{{recent.length}} of {{total}} shown (page {{page}} / {{totalPages}})</span>
     </div>
     <div class="table-responsive">
       <table class="table table-sm table-hover align-middle mb-0">
@@ -86,10 +117,37 @@
             <td class="text-muted small">{{this.created_fmt}}</td>
             <td class="text-muted small">{{this.updated_fmt}}</td>
           </tr>
+          {{else}}
+          <tr><td colspan="7" class="text-center text-muted py-4">No intents found.</td></tr>
           {{/each}}
         </tbody>
       </table>
     </div>
+
+    {{!-- Pagination --}}
+    {{#if hasNext}}
+    <div class="card-footer bg-white d-flex align-items-center justify-content-between">
+      <a href="{{prevUrl}}" class="btn btn-outline-secondary btn-sm {{#unless hasPrev}}disabled{{/unless}}">
+        <i class="fa-solid fa-chevron-left me-1"></i>Previous
+      </a>
+      <span class="text-muted small">Page {{page}} of {{totalPages}}</span>
+      <a href="{{nextUrl}}" class="btn btn-outline-secondary btn-sm">
+        Next<i class="fa-solid fa-chevron-right ms-1"></i>
+      </a>
+    </div>
+    {{else}}
+    {{#if hasPrev}}
+    <div class="card-footer bg-white d-flex align-items-center justify-content-between">
+      <a href="{{prevUrl}}" class="btn btn-outline-secondary btn-sm">
+        <i class="fa-solid fa-chevron-left me-1"></i>Previous
+      </a>
+      <span class="text-muted small">Page {{page}} of {{totalPages}}</span>
+      <a href="{{nextUrl}}" class="btn btn-outline-secondary btn-sm disabled">
+        Next<i class="fa-solid fa-chevron-right ms-1"></i>
+      </a>
+    </div>
+    {{/if}}
+    {{/if}}
   </div>
 
   <p class="text-muted small mt-3 mb-0">
@@ -99,3 +157,4 @@
     <strong>expired</strong> = upload never landed.
   </p>
 </div>
+
