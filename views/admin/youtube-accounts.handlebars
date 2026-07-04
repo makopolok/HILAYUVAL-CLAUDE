@@ -1,0 +1,107 @@
+<div class="container my-4">
+  <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-2">
+    <div>
+      <h1 class="h3 mb-1">YouTube Accounts</h1>
+      <p class="text-muted mb-0 small">Connect Google/YouTube accounts to use for different projects.</p>
+    </div>
+  </div>
+
+  {{#unless hasTokenSecret}}
+  <div class="alert alert-danger">
+    <i class="fa-solid fa-triangle-exclamation me-2"></i>
+    <strong>YOUTUBE_TOKEN_SECRET</strong> is not set on the server. Tokens cannot be encrypted or decrypted — connect will fail.
+    Set this env var on Heroku and restart the dyno before connecting accounts.
+  </div>
+  {{/unless}}
+
+  {{#each flash.success}}
+  <div class="alert alert-success alert-dismissible fade show" role="alert">
+    {{this}}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {{/each}}
+  {{#each flash.error}}
+  <div class="alert alert-danger alert-dismissible fade show" role="alert">
+    {{this}}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {{/each}}
+
+  {{!-- Connect a new account --}}
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white fw-semibold">
+      <i class="fa-brands fa-youtube me-2 text-danger"></i>Connect a new YouTube account
+    </div>
+    <div class="card-body">
+      <form method="GET" action="/admin/youtube-accounts/connect" class="row g-3 align-items-end">
+        <div class="col-md-6">
+          <label class="form-label form-label-sm">Display name <span class="text-muted">(e.g. "Hila's Channel")</span></label>
+          <input type="text" name="name" class="form-control form-control-sm" placeholder="My YouTube Channel" required>
+        </div>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-danger btn-sm" {{#unless hasTokenSecret}}disabled{{/unless}}>
+            <i class="fa-brands fa-google me-1"></i>Authorize with Google
+          </button>
+        </div>
+      </form>
+      <p class="text-muted small mt-2 mb-0">
+        You'll be redirected to Google's consent screen. Make sure to allow access to YouTube.
+      </p>
+    </div>
+  </div>
+
+  {{!-- Connected accounts list --}}
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white fw-semibold">Connected accounts</div>
+    {{#if accounts.length}}
+    <div class="table-responsive">
+      <table class="table table-sm table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Display name</th>
+            <th>Channel</th>
+            <th>Email</th>
+            <th>Connected</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each accounts}}
+          <tr>
+            <td class="fw-semibold">{{this.display_name}}</td>
+            <td>
+              {{#if this.channel_title}}
+                {{this.channel_title}}
+                {{#if this.channel_id}}
+                  <a href="https://www.youtube.com/channel/{{this.channel_id}}" target="_blank" rel="noopener" class="text-muted small ms-1">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                  </a>
+                {{/if}}
+              {{else}}
+                <span class="text-muted">&mdash;</span>
+              {{/if}}
+            </td>
+            <td class="text-muted small">{{#if this.email}}{{this.email}}{{else}}&mdash;{{/if}}</td>
+            <td class="text-muted small">{{this.created_at}}</td>
+            <td class="text-end">
+              <form method="POST" action="/admin/youtube-accounts/{{this.id}}/delete" class="d-inline"
+                    onsubmit="return confirm('Disconnect this YouTube account? Projects using it will fall back to the default token.')">
+                <button type="submit" class="btn btn-outline-danger btn-sm">
+                  <i class="fa-solid fa-link-slash me-1"></i>Disconnect
+                </button>
+              </form>
+            </td>
+          </tr>
+          {{/each}}
+        </tbody>
+      </table>
+    </div>
+    {{else}}
+    <div class="card-body text-muted">No YouTube accounts connected yet.</div>
+    {{/if}}
+  </div>
+
+  <p class="text-muted small mt-3 mb-0">
+    <i class="fa-solid fa-circle-info me-1"></i>
+    Each project can be linked to one account via the project's edit page.
+    Projects without a linked account fall back to the legacy <code>GOOGLE_REFRESH_TOKEN</code> env var.
+  </p>
+</div>

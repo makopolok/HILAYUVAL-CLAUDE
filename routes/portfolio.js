@@ -3,6 +3,7 @@ const router = express.Router();
 const portfolioService = require('../services/portfolioService');
 const projectService = require('../services/projectService');
 const auditionService = require('../services/auditionService');
+const youtubeAccountService = require('../services/youtubeAccountService');
 const { pool } = auditionService;
 const { requireAdmin } = require('../middleware/auth');
 
@@ -304,12 +305,17 @@ router.get('/projects/:projectId/edit', async (req, res) => {
         if (!project) {
             return res.status(404).render('error/404', { message: 'Project not found.' });
         }
-        // Also fetch deleted roles for Undo/Purge section
+        // Also fetch deleted roles and YouTube accounts for edit page
         const deletedRolesResult = await pool.query('SELECT * FROM roles WHERE project_id=$1 AND COALESCE(is_deleted, FALSE)=TRUE ORDER BY deleted_at DESC NULLS LAST, id DESC', [projectId]);
         const deletedRoles = deletedRolesResult.rows;
+        const youtubeAccounts = await youtubeAccountService.listAccounts();
     res.render('editProject', { 
         project, 
         deletedRoles,
+        youtubeAccounts: youtubeAccounts.map(a => ({
+            ...a,
+            selected: project.youtube_account_id === a.id
+        })),
         breadcrumbTrail: [
             { label: 'Home', url: '/' },
             { label: 'Projects', url: '/projects' },

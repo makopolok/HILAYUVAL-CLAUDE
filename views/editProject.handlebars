@@ -121,7 +121,38 @@
     </div>
   </div>
 </div>
+
+{{!-- YouTube account picker (only shown for YouTube projects or when accounts exist) --}}
+{{#if youtubeAccounts.length}}
+<div class="container mt-4">
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white fw-semibold">
+      <i class="fa-brands fa-youtube me-2 text-danger"></i>YouTube Account
+    </div>
+    <div class="card-body">
+      <form method="POST" action="/projects/{{project.id}}/set-youtube-account" class="row g-3 align-items-end">
+        <div class="col-md-6">
+          <label class="form-label form-label-sm">Upload auditions to this YouTube account</label>
+          <select name="youtube_account_id" class="form-select form-select-sm">
+            <option value="">Default (GOOGLE_REFRESH_TOKEN env var)</option>
+            {{#each youtubeAccounts}}
+            <option value="{{this.id}}" {{#if this.selected}}selected{{/if}}>
+              {{this.display_name}}{{#if this.channel_title}} — {{this.channel_title}}{{/if}}
+            </option>
+            {{/each}}
+          </select>
+        </div>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-primary btn-sm">Save</button>
+        </div>
+      </form>
+      <p class="text-muted small mt-2 mb-0">
+        <a href="/admin/youtube-accounts">Manage connected accounts</a>
+      </p>
+    </div>
+  </div>
 </div>
+{{/if}}
 
 <script>
   document.addEventListener('DOMContentLoaded', () => {

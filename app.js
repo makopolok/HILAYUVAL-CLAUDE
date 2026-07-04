@@ -27,6 +27,7 @@ const flash = require('connect-flash');
 const adminRoutes = require('./routes/adminRoutes');
 const uploadIntentService = require('./services/uploadIntentService');
 const reconciliationWorker = require('./services/reconciliationWorker');
+const youtubeAccountService = require('./services/youtubeAccountService');
 const { attachAdminToLocals, requireAdmin } = require('./middleware/auth');
 const { closePool } = require('./utils/database');
 // Add a version log at the top for deployment verification
@@ -1432,9 +1433,9 @@ app.post('/audition', generalAuditionUpload.single('video'), async (req, res) =>
   }
 
   try {
-    // Set up OAuth2 client with refresh token
-    oauth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
-    const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
+    // Set up YouTube client (falls back to global GOOGLE_REFRESH_TOKEN)
+    const ytClient = await youtubeAccountService.getClientForProject(null);
+    const youtube = google.youtube({ version: 'v3', auth: ytClient });
 
     // Upload video to YouTube with resumable upload support
     const videoMetadata = {
@@ -1483,48 +1484,86 @@ app.post('/audition', generalAuditionUpload.single('video'), async (req, res) =>
 });
 
 // --- YouTube OAuth Routes ---
-// Route to initiate OAuth2 flow
-app.get('/auth/google', (req, res) => {
-  if (!REFRESH_TOKEN) { // Only redirect if we don't have a refresh token yet
-    const authUrl = oauth2Client.generateAuthUrl({
-      access_type: 'offline', // Important to get a refresh token
-      scope: YOUTUBE_SCOPES,
-      prompt: 'consent' // Ensures you are prompted for consent, good for the first time
-    });
-    res.redirect(authUrl);
-  } else {
-    res.send('Application is already authorized. Refresh token is present.');
-  }
+// Legacy single-account flow (kept for backward compat, used when no account DB row exists)
+app.get('/auth/google', requireAdmin, (req, res) => {
+  // Use youtubeAccountService.makeOAuthClient for consistency
+  const client = youtubeAccountService.makeOAuthClient();
+  const authUrl = client.generateAuthUrl({
+    access_type: 'offline',
+    scope: YOUTUBE_SCOPES,
+    prompt: 'consent',
+    state: JSON.stringify({ mode: 'legacy' })
+  });
+  res.redirect(authUrl);
 });
 
-// Callback route for OAuth2
+// New: initiate OAuth for a named account (admin UI)
+app.get('/admin/youtube-accounts/connect', requireAdmin, (req, res) => {
+  const displayName = (req.query.name || '').trim();
+  if (!displayName) {
+    req.flash('error', 'Please provide a display name for the account.');
+    return res.redirect('/admin/youtube-accounts');
+  }
+  const client = youtubeAccountService.makeOAuthClient();
+  const authUrl = client.generateAuthUrl({
+    access_type: 'offline',
+    scope: YOUTUBE_SCOPES,
+    prompt: 'consent',
+    state: JSON.stringify({ mode: 'save', displayName })
+  });
+  res.redirect(authUrl);
+});
+
+// Callback route for OAuth2 (handles both legacy and new save modes)
 app.get('/oauth2callback', async (req, res) => {
   const code = req.query.code;
-  if (code) {
-    try {
-      const { tokens } = await oauth2Client.getToken(code);
-      oauth2Client.setCredentials(tokens);
-      authenticatedClient = oauth2Client; // Store the authorized client
+  if (!code) return res.status(400).send('Authentication failed: No code provided.');
 
-      console.log('Access Token:', tokens.access_token);
-      if (tokens.refresh_token) {
-        console.log('***************************************************************************');
-        console.log('IMPORTANT: Received Refresh Token. ADD THIS TO YOUR .env FILE as GOOGLE_REFRESH_TOKEN:');
-        console.log(tokens.refresh_token);
-        console.log('***************************************************************************');
-        REFRESH_TOKEN = tokens.refresh_token; // Store it for current session
-        // In a real app, you'd securely store this refresh_token (e.g., in .env or a secure database)
-        // For now, we will log it, and you should manually add it to your .env file.
-        res.send('Authentication successful! Refresh token obtained and logged to console. Please add it to your .env file as GOOGLE_REFRESH_TOKEN and restart the server.');
-      } else {
-        res.send('Authentication successful, but no new refresh token was provided (this is normal if you have authorized before). Ensure GOOGLE_REFRESH_TOKEN is in your .env file.');
-      }
-    } catch (error) {
-      console.error('Error authenticating with Google:', error);
-      res.status(500).send('Error during authentication.');
+  let stateData = {};
+  try { stateData = JSON.parse(req.query.state || '{}'); } catch (_) {}
+
+  try {
+    const client = youtubeAccountService.makeOAuthClient();
+    const { tokens } = await client.getToken(code);
+    client.setCredentials(tokens);
+    authenticatedClient = client;
+
+    const refreshToken = tokens.refresh_token;
+
+    if (stateData.mode === 'save' && refreshToken) {
+      // Save to DB as a named account
+      const { channelId, channelTitle } = await youtubeAccountService.fetchChannelInfo(client);
+      const account = await youtubeAccountService.saveAccount({
+        displayName: stateData.displayName,
+        email: tokens.email || null,
+        channelId,
+        channelTitle,
+        refreshToken
+      });
+      console.log(`YOUTUBE_ACCOUNT_SAVED: id=${account.id} channel=${channelId}`);
+      req.flash('success', `YouTube account "${account.display_name}" connected successfully.`);
+      return res.redirect('/admin/youtube-accounts');
     }
-  } else {
-    res.status(400).send('Authentication failed: No code provided.');
+
+    // Legacy mode: log for manual .env update
+    if (refreshToken) {
+      console.log('***************************************************************************');
+      console.log('IMPORTANT: Received Refresh Token. ADD THIS TO YOUR .env FILE as GOOGLE_REFRESH_TOKEN:');
+      console.log(refreshToken);
+      console.log('***************************************************************************');
+      REFRESH_TOKEN = refreshToken;
+      oauth2Client.setCredentials({ refresh_token: refreshToken });
+      return res.send('Authentication successful! Refresh token logged to console. Add it to .env as GOOGLE_REFRESH_TOKEN and restart.');
+    }
+
+    res.send('Authentication successful, but no new refresh token was provided. Ensure GOOGLE_REFRESH_TOKEN is in your .env file.');
+  } catch (error) {
+    console.error('OAUTH2CALLBACK_ERROR:', error);
+    if (stateData.mode === 'save') {
+      req.flash('error', `Failed to connect YouTube account: ${error.message}`);
+      return res.redirect('/admin/youtube-accounts');
+    }
+    res.status(500).send('Error during authentication.');
   }
 });
 // --- End YouTube OAuth Routes ---
@@ -1678,15 +1717,14 @@ app.post('/projects/create', requireAdmin, async (req, res, next) => { // Added 
 
     // Initialize YouTube client only if the project is 'youtube' AND some roles might need playlist creation
     if (effectiveUploadMethod === 'youtube' && rolesToCreate.some(r => !(r.playlist && r.playlist.trim()))) {
-      if (!process.env.GOOGLE_REFRESH_TOKEN) {
-        console.error('PROJECT_CREATE_ERROR: GOOGLE_REFRESH_TOKEN is not set. Cannot create YouTube playlists for a YouTube-designated project if roles are missing playlist URLs.');
-        // Pass error to error handler
-        const err = new Error('Server configuration error: YouTube integration is not properly set up. Cannot create new YouTube playlists.');
+      try {
+        const ytClient = await youtubeAccountService.getClientForProject(null);
+        youtube = google.youtube({ version: 'v3', auth: ytClient });
+      } catch (err) {
+        console.error('PROJECT_CREATE_ERROR: No YouTube account available:', err.message);
         err.status = 500;
         return next(err);
       }
-      oauth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
-      youtube = google.youtube({ version: 'v3', auth: oauth2Client });
     }
 
     for (const role of rolesToCreate) {
@@ -1696,10 +1734,8 @@ app.post('/projects/create', requireAdmin, async (req, res, next) => { // Added 
         const match = role.playlist.match(/[?&]list=([a-zA-Z0-9_-]+)/);
         currentRolePlaylistId = match ? match[1] : role.playlist.trim();
       } else if (effectiveUploadMethod === 'youtube') { // No playlist provided, AND project is YouTube type
-        if (!youtube) { // Should have been initialized if GOOGLE_REFRESH_TOKEN was present
-          console.error('PROJECT_CREATE_ERROR: YouTube client not available for YouTube project requiring playlist creation. This might indicate a missing refresh token that wasn\'t caught earlier.');
-          // Pass error to error handler
-          const err = new Error('Internal server error: YouTube client setup failed for playlist creation. Check server logs and GOOGLE_REFRESH_TOKEN.');
+        if (!youtube) {
+          const err = new Error('Internal server error: YouTube client not available for playlist creation.');
           err.status = 500;
           return next(err);
         }
@@ -2625,11 +2661,9 @@ app.post('/upload-chunk/:uploadId/assemble', async (req, res) => {
       const selectedRole = findProjectRoleByName(project, submission.body.role);
       if (!selectedRole) throw new Error(`Role not found: ${submission.body.role}`);
 
-      oauth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
-      const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
+      const ytClient3 = await youtubeAccountService.getClientForProject(project.id);
+      const youtube = google.youtube({ version: 'v3', auth: ytClient3 });
       const playlistId = await ensureRolePlaylist(youtube, project, selectedRole);
-
-      const body = submission.body;
       const videoTitle = `Audition: ${body.first_name_en || body.first_name_he} ${body.last_name_en || body.last_name_he} for ${selectedRole.name} in ${project.name}`;
       const videoDescription = `Audition by ${body.first_name_en || body.first_name_he} ${body.last_name_en || body.last_name_he} for ${selectedRole.name} in ${project.name}. Project ID: ${project.id}. Submitted: ${new Date().toISOString()}`;
       const videoMetadata = {
@@ -2808,8 +2842,8 @@ app.post('/audition/:projectId', auditionUpload.fields([
         // Fire and forget — do NOT await this
         (async () => {
           try {
-            oauth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
-            const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
+            const ytClient4 = await youtubeAccountService.getClientForProject(bgProject.id);
+            const youtube = google.youtube({ version: 'v3', auth: ytClient4 });
 
             const playlistId = await ensureRolePlaylist(youtube, bgProject, bgSelectedRole);
 
@@ -3148,8 +3182,8 @@ app.post('/projects/:projectId/auditions/:auditionId/upload-to-youtube', require
     const download = await bunnyUploadService.downloadVideoToTemp(audition.video_url);
     tempDownloadPath = download.path;
 
-    oauth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
-    const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
+    const ytClient5 = await youtubeAccountService.getClientForProject(projectId);
+    const youtube = google.youtube({ version: 'v3', auth: ytClient5 });
 
     const performerName = [audition.first_name_en, audition.last_name_en, audition.first_name_he, audition.last_name_he]
       .filter(Boolean)
@@ -3294,10 +3328,11 @@ app.post('/projects/:projectId/auditions/:auditionId/delete', requireAdmin, asyn
 
     // Try to delete from YouTube
     const ytVideoId = audition.youtube_video_id || (audition.video_type === 'youtube' ? audition.video_url : null);
-    if (ytVideoId && REFRESH_TOKEN) {
+    if (ytVideoId) {
       try {
-        oauth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
-        const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
+        const ytClient6 = await youtubeAccountService.getClientForProject(projectId).catch(() => null);
+        if (ytClient6) {
+        const youtube = google.youtube({ version: 'v3', auth: ytClient6 });
         // The youtube_video_id might just be the ID, but video_url might be "https://www.youtube.com/watch?v=..."
         let videoIdToDelete = ytVideoId;
         if (ytVideoId.includes('v=')) {
@@ -3309,6 +3344,7 @@ app.post('/projects/:projectId/auditions/:auditionId/delete', requireAdmin, asyn
         }
         
         await youtube.videos.delete({ id: videoIdToDelete });
+        } // end if (ytClient6)
       } catch (e) {
         console.warn(`Could not delete YouTube video for audition ${auditionId}:`, e.message);
       }
@@ -3665,6 +3701,56 @@ app.get('/api/video-status/:videoGuid', async (req, res, next) => {
   }
 });
 
+
+// --- YouTube Accounts admin endpoints ---
+// Manage connected Google/YouTube accounts and per-project assignment.
+// NOTE: must be registered BEFORE the catch-all 404 handler below.
+app.get('/admin/youtube-accounts', requireAdmin, async (req, res) => {
+  try {
+    const accounts = await youtubeAccountService.listAccounts();
+    res.render('admin/youtube-accounts', {
+      title: 'YouTube Accounts - Hila Yuval Casting',
+      accounts,
+      hasTokenSecret: !!process.env.YOUTUBE_TOKEN_SECRET,
+      breadcrumbTrail: [
+        { label: 'Home', url: '/' },
+        { label: 'Admin', url: '/admin/login' },
+        { label: 'YouTube Accounts', url: '/admin/youtube-accounts' }
+      ]
+    });
+  } catch (err) {
+    console.error('ADMIN_YOUTUBE_ACCOUNTS_ERROR:', err.message);
+    res.status(500).render('error/500', { message: 'Failed to load YouTube accounts.' });
+  }
+});
+
+app.post('/admin/youtube-accounts/:id/delete', requireAdmin, async (req, res) => {
+  try {
+    await youtubeAccountService.deleteAccount(req.params.id);
+    req.flash('success', 'YouTube account disconnected.');
+  } catch (err) {
+    console.error('ADMIN_YOUTUBE_ACCOUNT_DELETE_ERROR:', err.message);
+    req.flash('error', `Failed to disconnect account: ${err.message}`);
+  }
+  res.redirect('/admin/youtube-accounts');
+});
+
+// Assign a YouTube account to a project
+app.post('/projects/:projectId/set-youtube-account', requireAdmin, async (req, res) => {
+  const projectId = Number(req.params.projectId);
+  const accountId = req.body.youtube_account_id ? Number(req.body.youtube_account_id) : null;
+  try {
+    await pool.query(
+      `UPDATE projects SET youtube_account_id = $1 WHERE id = $2`,
+      [accountId, projectId]
+    );
+    req.flash('success', accountId ? 'YouTube account linked to project.' : 'YouTube account unlinked from project.');
+  } catch (err) {
+    console.error('SET_YOUTUBE_ACCOUNT_ERROR:', err.message);
+    req.flash('error', `Failed to update YouTube account: ${err.message}`);
+  }
+  res.redirect(`/projects/${projectId}/edit`);
+});
 
 // --- Bunny upload-intent reconciliation (Step 3) admin endpoints ---
 // Observability + on-demand trigger for the reconciliation worker.
