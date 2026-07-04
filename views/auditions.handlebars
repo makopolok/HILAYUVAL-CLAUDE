@@ -105,6 +105,29 @@
   .auditions-page #auditions-list-view .card.border-danger {
     contain: paint;
   }
+  .auditions-page .auditions-role-accordion {
+    --bs-accordion-border-color: var(--audition-red);
+    --bs-accordion-btn-focus-border-color: var(--audition-red);
+    --bs-accordion-btn-focus-box-shadow: 0 0 0 0.2rem rgba(190, 26, 26, 0.15);
+  }
+  .auditions-page .auditions-role-accordion .accordion-item {
+    border-color: var(--audition-red);
+  }
+  .auditions-page .auditions-role-accordion .accordion-button {
+    color: var(--audition-red);
+    font-weight: 600;
+  }
+  .auditions-page .auditions-role-accordion .accordion-button:not(.collapsed) {
+    color: #fff;
+    background-color: var(--audition-red);
+    box-shadow: none;
+  }
+  .auditions-page .auditions-role-accordion .accordion-button::after {
+    filter: grayscale(1) brightness(0.6);
+  }
+  .auditions-page .auditions-role-accordion .accordion-button:not(.collapsed)::after {
+    filter: brightness(0) invert(1);
+  }
 </style>
 <div class="container mt-5 auditions-page">
   <h1 class="display-4 mb-4 auditions-header">
@@ -141,24 +164,43 @@
   </div>
   <div id="auditions-list-view">
     {{#if visible_roles.length}}
-      <div class="card border-danger mb-4">
-        <div class="table-responsive">
-          <table class="table table-hover align-middle mb-0 auditions-list-table">
-            <thead>
-              <tr>
-                <th>Profile</th>
-                <th>Name</th>
-                <th>Role</th>
-                <th>Phone</th>
-                <th>Agency</th>
-                <th>Age</th>
-                <th>Location</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {{#each visible_roles}}
-                {{#each this.auditions}}
+      <div class="accordion auditions-role-accordion mb-4" id="auditions-role-accordion">
+        {{#each visible_roles}}
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="role-heading-{{this.id}}">
+              <button
+                class="accordion-button {{#unless @first}}collapsed{{/unless}}"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#role-collapse-{{this.id}}"
+                aria-expanded="{{#if @first}}true{{else}}false{{/if}}"
+                aria-controls="role-collapse-{{this.id}}">
+                <span class="me-2">{{this.name}}</span>
+                <span class="badge text-bg-light border ms-auto">{{this.auditions.length}}</span>
+              </button>
+            </h2>
+            <div
+              id="role-collapse-{{this.id}}"
+              class="accordion-collapse collapse {{#if @first}}show{{/if}}"
+              aria-labelledby="role-heading-{{this.id}}"
+              data-bs-parent="#auditions-role-accordion">
+              <div class="accordion-body p-0">
+                <div class="table-responsive">
+                  <table class="table table-hover align-middle mb-0 auditions-list-table">
+                    <thead>
+                      <tr>
+                        <th>Profile</th>
+                        <th>Name</th>
+                        <th>Role</th>
+                        <th>Phone</th>
+                        <th>Agency</th>
+                        <th>Age</th>
+                        <th>Location</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {{#each this.auditions}}
                   <tr class="audition-row" data-audition-id="{{id}}" data-project-id="{{../../project.id}}">
                     <td>
                       {{#if profile_picture_url}}
@@ -251,11 +293,14 @@
                       </div>
                     </td>
                   </tr>
-                {{/each}}
-              {{/each}}
-            </tbody>
-          </table>
-        </div>
+                      {{/each}}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        {{/each}}
       </div>
     {{else}}
       <p>No matching roles found for the selected filter.</p>

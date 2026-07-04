@@ -3587,6 +3587,12 @@ app.get('/projects/:projectId/auditions', requireAdmin, async (req, res) => {
       redirect_to: req.originalUrl,
       project_auditions_count: projectAuditionsCount,
       project_new_auditions_count: projectNewAuditionsCount,
+      breadcrumbTrail: [
+        { label: 'Home', url: '/' },
+        { label: 'Projects', url: '/projects' },
+        { label: project.name || `Project ${project.id}`, url: `/projects/${project.id}/auditions` },
+        { label: 'Auditions', url: `/projects/${project.id}/auditions` },
+      ],
     });
   } catch (error) {
     console.error(`[App.js GET /projects/:projectId/auditions] Error fetching auditions:`, error);
