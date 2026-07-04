@@ -25,6 +25,7 @@ const bunnyService = require('./services/bunnyUploadService');
 const session = require('express-session');
 const flash = require('connect-flash');
 const adminRoutes = require('./routes/adminRoutes');
+const uploadIntentService = require('./services/uploadIntentService');
 const { attachAdminToLocals, requireAdmin } = require('./middleware/auth');
 const { closePool } = require('./utils/database');
 // Add a version log at the top for deployment verification
@@ -1130,7 +1131,7 @@ function cleanupExpiredDirectUploadIntents() {
   }
 }
 
-function registerDirectUploadIntent({ guid, projectId, roleName, ipAddress }) {
+async function registerDirectUploadIntent({ guid, projectId, roleName, ipAddress }) {
   cleanupExpiredDirectUploadIntents();
   const intentToken = crypto.randomUUID();
   const expiresAtMs = Date.now() + (BUNNY_DIRECT_UPLOAD_TTL_SECONDS * 1000);
@@ -1142,14 +1143,53 @@ function registerDirectUploadIntent({ guid, projectId, roleName, ipAddress }) {
     expiresAtMs,
     used: false,
   });
+
+  // Durable, cross-dyno store (survives restarts/deploys). Best-effort: if the DB
+  // write fails we still return the token so upload sessions are not blocked by
+  // transient DB slowness — the in-memory copy covers the single-dyno hot path.
+  try {
+    await uploadIntentService.createIntent({
+      intentToken,
+      guid,
+      projectId: projectId || null,
+      roleName: roleName || null,
+      ipAddress: ipAddress || null,
+      expiresAt: new Date(expiresAtMs),
+    });
+  } catch (error) {
+    console.warn(`UPLOAD_INTENT_DB_WRITE_WARN: guid=${guid} err=${error.message}`);
+  }
+
   return intentToken;
 }
 
-function consumeDirectUploadIntent({ intentToken, guid, projectId, roleName, ipAddress }) {
+async function consumeDirectUploadIntent({ intentToken, guid, projectId, roleName, ipAddress }) {
   cleanupExpiredDirectUploadIntents();
   if (!intentToken) {
     return { ok: false, reason: 'missing_intent' };
   }
+
+  // DB is the source of truth. Fall back to the in-memory Map only when the DB
+  // has no record of the token (rollout window / intent created on another dyno
+  // before this deploy) or when the DB itself is unreachable.
+  try {
+    const dbResult = await uploadIntentService.consumeIntent({ intentToken, guid, projectId, roleName, ipAddress });
+    if (dbResult.ok) {
+      directUploadIntentStore.delete(intentToken);
+      return { ok: true };
+    }
+    if (dbResult.reason !== 'intent_not_found') {
+      return dbResult;
+    }
+    // intent_not_found in DB → try legacy in-memory path below.
+  } catch (error) {
+    console.warn(`UPLOAD_INTENT_DB_CONSUME_WARN: falling back to memory guid=${guid} err=${error.message}`);
+  }
+
+  return consumeDirectUploadIntentFromMemory({ intentToken, guid, projectId, roleName, ipAddress });
+}
+
+function consumeDirectUploadIntentFromMemory({ intentToken, guid, projectId, roleName, ipAddress }) {
   const record = directUploadIntentStore.get(intentToken);
   if (!record) {
     return { ok: false, reason: 'intent_not_found' };
@@ -1286,7 +1326,7 @@ app.post('/api/videos', directUploadCreateLimiter, async (req, res) => {
       .createHash('sha256')
       .update(`${libId}${accessKey}${expires}${created.guid}`)
       .digest('hex');
-    const uploadIntent = registerDirectUploadIntent({
+    const uploadIntent = await registerDirectUploadIntent({
       guid: created.guid,
       projectId: projectId || null,
       roleName: null,
@@ -2831,7 +2871,7 @@ app.post('/audition/:projectId', auditionUpload.fields([
       const guidFromForm = directUploadGuid;
       const uploadIntent = (body.video_upload_intent || '').toString().trim();
       if (guidFromForm && guidFromForm.length > 10) {
-        const intentCheck = consumeDirectUploadIntent({
+        const intentCheck = await consumeDirectUploadIntent({
           intentToken: uploadIntent,
           guid: guidFromForm,
           projectId: project.id,
@@ -2886,8 +2926,19 @@ app.post('/audition/:projectId', auditionUpload.fields([
       video_type: videoType 
     };
     // Corrected logging to use req.params.projectId as projectId is not defined in this scope
-    console.log(`[App.js POST /audition/:${req.params.projectId}] Prepared audition object: ${JSON.stringify(audition)}`);    await insertAuditionWithRetry(audition);
+    console.log(`[App.js POST /audition/:${req.params.projectId}] Prepared audition object: ${JSON.stringify(audition)}`);
+    const savedAudition = await insertAuditionWithRetry(audition);
     console.log(`[App.js POST /audition/:${req.params.projectId}] Audition saved successfully.`);
+
+    // Mark the durable upload intent completed and link it to the saved audition.
+    // Best-effort: never fail the submission because of intent bookkeeping.
+    if (videoType === 'bunny_stream' && finalVideoUrl) {
+      try {
+        await uploadIntentService.markCompleted({ guid: finalVideoUrl, auditionId: savedAudition && savedAudition.id });
+      } catch (intentErr) {
+        console.warn(`UPLOAD_INTENT_COMPLETE_WARN: guid=${finalVideoUrl} err=${intentErr.message}`);
+      }
+    }
     
     // Render beautiful success page
     const actorName = [body.first_name_he, body.last_name_he, body.first_name_en, body.last_name_en]
