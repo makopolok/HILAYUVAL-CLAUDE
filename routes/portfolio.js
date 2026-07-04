@@ -12,6 +12,9 @@ router.get('/', async (req, res) => {
         title: 'Hila Yuval Casting',
         projects,
         featuredProjects,
+        breadcrumbTrail: [
+            { label: 'Home', url: '/' },
+        ],
     });
 });
 
@@ -238,6 +241,10 @@ router.get('/projects', async (req, res) => {
         res.render('projects', {
             title: 'Projects - Hila Yuval Casting',
             projects,
+            breadcrumbTrail: [
+                { label: 'Home', url: '/' },
+                { label: 'Projects', url: '/projects' },
+            ],
             query: {
                 term: searchTerm,
                 name: trimmedName,
@@ -300,7 +307,15 @@ router.get('/projects/:projectId/edit', async (req, res) => {
         // Also fetch deleted roles for Undo/Purge section
         const deletedRolesResult = await pool.query('SELECT * FROM roles WHERE project_id=$1 AND COALESCE(is_deleted, FALSE)=TRUE ORDER BY deleted_at DESC NULLS LAST, id DESC', [projectId]);
         const deletedRoles = deletedRolesResult.rows;
-    res.render('editProject', { project, deletedRoles });
+    res.render('editProject', { 
+        project, 
+        deletedRoles,
+        breadcrumbTrail: [
+            { label: 'Home', url: '/' },
+            { label: 'Projects', url: '/projects' },
+            { label: project.name || 'Edit Project', url: `/projects/${project.id}/edit` },
+        ],
+    });
     } catch (err) {
         console.error('PROJECT_EDIT_ROUTE_ERROR:', err);
         res.status(500).render('error/500', { message: 'Failed to load project editor.' });

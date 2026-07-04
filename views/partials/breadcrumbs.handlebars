@@ -1,0 +1,17 @@
+{{#if breadcrumbTrail}}
+<div class="container mt-3">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0 small">
+      {{#each breadcrumbTrail}}
+        {{#if @last}}
+          <li class="breadcrumb-item active text-truncate" aria-current="page">{{this.label}}</li>
+        {{else}}
+          <li class="breadcrumb-item">
+            <a href="{{this.url}}">{{this.label}}</a>
+          </li>
+        {{/if}}
+      {{/each}}
+    </ol>
+  </nav>
+</div>
+{{/if}}
