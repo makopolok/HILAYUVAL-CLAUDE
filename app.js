@@ -88,6 +88,31 @@ function parseSignedSubmissionToken(token) {
 }
 
 const app = express();
+
+// Diagnostic middleware: log non-numeric or prefixed projectId values for investigation
+app.use((req, res, next) => {
+  try {
+    const extractRawProjectId = () => {
+      // prefer route params, then query, then body
+      if (req.params && req.params.projectId) return req.params.projectId;
+      if (req.query && req.query.projectId) return req.query.projectId;
+      if (req.body && req.body.projectId) return req.body.projectId;
+      return null;
+    };
+    const raw = extractRawProjectId();
+    if (raw && typeof raw === 'string') {
+      if (!/^\d+$/.test(raw) || /^proj_\d+$/.test(raw)) {
+        const numeric = raw.match(/^proj_(\d+)$/);
+        const normalized = numeric ? numeric[1] : null;
+        console.info(`DIAG_PROJECTID: raw=${raw} normalized=${normalized} method=${req.method} path=${req.path} referrer=${req.get('referer') || req.get('referrer') || ''} ua=${req.get('user-agent') || ''} ip=${req.ip}`);
+      }
+    }
+  } catch (e) {
+    // never block requests for diagnostics
+    console.warn('DIAG_PROJECTID_MIDDLEWARE_ERROR', e && e.message);
+  }
+  return next();
+});
 const PORT = process.env.PORT || 3000;
 const BUNNY_DIRECT_UPLOAD_TTL_SECONDS = Math.max(3600, clampTtl(process.env.BUNNY_DIRECT_UPLOAD_TTL_SECONDS || process.env.BUNNY_STREAM_TOKEN_TTL || '7200'));
 const BUNNY_TURNSTILE_SECRET_KEY = process.env.TURNSTILE_SECRET_KEY || process.env.BUNNY_TURNSTILE_SECRET_KEY || '';

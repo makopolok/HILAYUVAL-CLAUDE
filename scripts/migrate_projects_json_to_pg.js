@@ -22,7 +22,8 @@ async function migrate() {
             `INSERT INTO projects (id, name, description, upload_method, created_at, director, production_company)
              VALUES ($1, $2, $3, $4, $5, $6, $7)
              ON CONFLICT (id) DO NOTHING`,
-            [project.id, project.name, project.description, project.uploadMethod, project.createdAt, project.director, project.production_company]
+            // Ensure numeric id is used for integer PKs: strip leading "proj_" if present
+            [ (typeof project.id === 'string' && /^proj_(\d+)$/.test(project.id)) ? Number(project.id.replace(/^proj_/, '')) : project.id, project.name, project.description, project.uploadMethod, project.createdAt, project.director, project.production_company ]
           );
           for (const role of project.roles || []) {
             await client.query(
