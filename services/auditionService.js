@@ -167,6 +167,23 @@ async function updateAuditionYoutubeData(auditionId, { youtubeVideoId, youtubeVi
   await pool.query(sql, [auditionId, youtubeVideoId || null, youtubeVideoUrl || null]);
 }
 
+// Idempotent-finalize helper: find an existing audition by its Bunny video GUID.
+// Used to detect duplicate/retried submissions so we return the already-saved
+// audition instead of creating a duplicate row or erroring out.
+async function findAuditionByBunnyGuid(guid) {
+  if (!guid) return null;
+  const { rows } = await pool.query(
+    `SELECT a.*, ac.email, ac.phone, ac.agency
+     FROM auditions a
+     LEFT JOIN audition_contacts ac ON ac.audition_id = a.id
+     WHERE a.video_url = $1 AND a.video_type = 'bunny_stream'
+     ORDER BY a.id DESC
+     LIMIT 1`,
+    [guid]
+  );
+  return rows[0] || null;
+}
+
 // Fetch auditions for a given project with optional filters
 async function getAuditionsByProjectId(projectId, query = {}) {
   const where = ['a.project_id = $1'];
@@ -423,6 +440,7 @@ module.exports = {
   getAuditionById,
   deleteAudition,
   updateAuditionYoutubeData,
+  findAuditionByBunnyGuid,
   updateAuditionTagColor,
   updateAudition,
 };

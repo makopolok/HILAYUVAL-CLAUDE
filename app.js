@@ -2760,6 +2760,7 @@ app.post('/audition/:projectId', auditionUpload.fields([
     let videoUploadResult = null;
     let videoType = null;
     let finalVideoUrl = null; // Using a more descriptive name
+    let alreadyFinalized = false; // idempotent-finalize: audition already saved for this Bunny GUID
 
   if (videoFile) {
       console.log(`POST_AUDITION_UPLOADING_VIDEO: ${videoFile.originalname} for project ${project.id}. Project's uploadMethod: ${project.upload_method}`);
@@ -2879,8 +2880,23 @@ app.post('/audition/:projectId', auditionUpload.fields([
           ipAddress: req.ip || null,
         });
         if (!intentCheck.ok) {
-          console.warn(`POST_AUDITION_DIRECT_UPLOAD_INTENT_REJECTED: guid=${guidFromForm} reason=${intentCheck.reason}`);
-          return res.status(400).send('Invalid or expired direct upload session. Please upload the video again.');
+          if (intentCheck.reason === 'intent_already_used') {
+            // Idempotent finalize: a retried/duplicate submit (e.g. the first
+            // response was lost). If the audition was already saved, return it
+            // as success instead of erroring or creating a duplicate.
+            const existing = await auditionService.findAuditionByBunnyGuid(guidFromForm);
+            if (existing) {
+              console.log(`POST_AUDITION_IDEMPOTENT_HIT: guid=${guidFromForm} auditionId=${existing.id}`);
+              alreadyFinalized = true;
+            } else {
+              // Intent was consumed but no audition persisted (previous attempt
+              // crashed mid-insert). Safe to proceed and create the record now.
+              console.warn(`POST_AUDITION_INTENT_USED_NO_RECORD: proceeding to insert guid=${guidFromForm}`);
+            }
+          } else {
+            console.warn(`POST_AUDITION_DIRECT_UPLOAD_INTENT_REJECTED: guid=${guidFromForm} reason=${intentCheck.reason}`);
+            return res.status(400).send('Invalid or expired direct upload session. Please upload the video again.');
+          }
         }
 
         console.log(`POST_AUDITION_DIRECT_BUNNY_GUID_DETECTED: ${guidFromForm}`);
@@ -2888,7 +2904,7 @@ app.post('/audition/:projectId', auditionUpload.fields([
         videoType = 'bunny_stream';
 
         // Assign to the role's Bunny collection in the background so user redirect is immediate.
-        if (project.upload_method !== 'youtube' && selectedRole) {
+        if (!alreadyFinalized && project.upload_method !== 'youtube' && selectedRole) {
           (async () => {
             try {
               const collectionGuid = await ensureBunnyCollection(project, selectedRole);
@@ -2927,8 +2943,30 @@ app.post('/audition/:projectId', auditionUpload.fields([
     };
     // Corrected logging to use req.params.projectId as projectId is not defined in this scope
     console.log(`[App.js POST /audition/:${req.params.projectId}] Prepared audition object: ${JSON.stringify(audition)}`);
-    const savedAudition = await insertAuditionWithRetry(audition);
-    console.log(`[App.js POST /audition/:${req.params.projectId}] Audition saved successfully.`);
+    let savedAudition = null;
+    if (alreadyFinalized) {
+      console.log(`[App.js POST /audition/:${req.params.projectId}] Skipping insert; audition already saved for this upload.`);
+    } else {
+      try {
+        savedAudition = await insertAuditionWithRetry(audition);
+        console.log(`[App.js POST /audition/:${req.params.projectId}] Audition saved successfully.`);
+      } catch (insertErr) {
+        // Unique-violation backstop (uq_auditions_bunny_guid): a concurrent
+        // duplicate submit slipped past the intent check. Treat as success.
+        if (insertErr && insertErr.code === '23505' && videoType === 'bunny_stream' && finalVideoUrl) {
+          const existing = await auditionService.findAuditionByBunnyGuid(finalVideoUrl);
+          if (existing) {
+            console.warn(`POST_AUDITION_DUPLICATE_INSERT_RECOVERED: guid=${finalVideoUrl} auditionId=${existing.id}`);
+            savedAudition = existing;
+            alreadyFinalized = true;
+          } else {
+            throw insertErr;
+          }
+        } else {
+          throw insertErr;
+        }
+      }
+    }
 
     // Mark the durable upload intent completed and link it to the saved audition.
     // Best-effort: never fail the submission because of intent bookkeeping.
