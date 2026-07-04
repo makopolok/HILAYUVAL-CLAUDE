@@ -193,6 +193,22 @@ async function countByState() {
   return rows;
 }
 
+// Recent intents with their linked audition context (admin dashboard).
+async function listRecent(limit = 50) {
+  const capped = Math.max(1, Math.min(200, Number(limit) || 50));
+  const { rows } = await pool.query(
+    `SELECT ui.id, ui.guid, ui.state, ui.project_id, ui.role_name,
+            ui.audition_id, ui.ip_address, ui.created_at, ui.updated_at, ui.expires_at,
+            p.name AS project_name
+     FROM upload_intents ui
+     LEFT JOIN projects p ON p.id = ui.project_id
+     ORDER BY ui.created_at DESC
+     LIMIT $1`,
+    [capped]
+  );
+  return rows;
+}
+
 module.exports = {
   createIntent,
   consumeIntent,
@@ -201,6 +217,7 @@ module.exports = {
   findStaleIntents,
   markState,
   countByState,
+  listRecent,
   CONSUMABLE_STATES,
   NON_TERMINAL_STATES,
 };

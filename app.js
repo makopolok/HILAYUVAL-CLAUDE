@@ -3644,13 +3644,56 @@ app.get('/api/video-status/:videoGuid', async (req, res, next) => {
 // --- Bunny upload-intent reconciliation (Step 3) admin endpoints ---
 // Observability + on-demand trigger for the reconciliation worker.
 // NOTE: must be registered BEFORE the catch-all 404 handler below.
+const INTENT_STATE_BADGE = {
+  intent_created: 'bg-secondary',
+  token_issued: 'bg-info text-dark',
+  upload_started: 'bg-info text-dark',
+  uploaded: 'bg-primary',
+  processing: 'bg-primary',
+  completed: 'bg-success',
+  expired: 'bg-secondary',
+  failed: 'bg-danger',
+  orphaned: 'bg-warning text-dark'
+};
+const intentBadgeClass = (state) => INTENT_STATE_BADGE[state] || 'bg-secondary';
+const formatIntentTime = (value) => {
+  if (!value) return '—';
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleString('en-IL', {
+    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+    hour12: false, timeZone: 'Asia/Jerusalem'
+  });
+};
+
 app.get('/admin/upload-intents', requireAdmin, async (req, res) => {
   try {
     const counts = await uploadIntentService.countByState();
-    res.json({ ok: true, counts });
+    if (req.query.format === 'json') {
+      return res.json({ ok: true, counts });
+    }
+    const recentRaw = await uploadIntentService.listRecent(50);
+    const decorated = counts.map((c) => ({ ...c, badgeClass: intentBadgeClass(c.state) }));
+    const recent = recentRaw.map((r) => ({
+      ...r,
+      badgeClass: intentBadgeClass(r.state),
+      created_fmt: formatIntentTime(r.created_at),
+      updated_fmt: formatIntentTime(r.updated_at)
+    }));
+    const lastReconcile = req.session.lastReconcile || null;
+    if (req.session.lastReconcile) delete req.session.lastReconcile;
+    res.render('admin/upload-intents', {
+      title: 'Upload Intents - Hila Yuval Casting',
+      counts: decorated,
+      recent,
+      lastReconcile
+    });
   } catch (err) {
     console.error('ADMIN_UPLOAD_INTENTS_ERROR:', err.message);
-    res.status(500).json({ ok: false, error: err.message });
+    if (req.query.format === 'json') {
+      return res.status(500).json({ ok: false, error: err.message });
+    }
+    res.status(500).render('error/500', { message: 'Failed to load upload intents.' });
   }
 });
 
@@ -3658,10 +3701,18 @@ app.post('/admin/reconcile-intents', requireAdmin, async (req, res) => {
   try {
     const limit = req.query.limit ? Number(req.query.limit) : undefined;
     const summary = await reconciliationWorker.reconcileOnce({ limit });
-    res.json({ ok: true, summary });
+    if (req.query.format === 'json') {
+      return res.json({ ok: true, summary });
+    }
+    req.session.lastReconcile = summary;
+    res.redirect('/admin/upload-intents');
   } catch (err) {
     console.error('ADMIN_RECONCILE_ERROR:', err.message);
-    res.status(500).json({ ok: false, error: err.message });
+    if (req.query.format === 'json') {
+      return res.status(500).json({ ok: false, error: err.message });
+    }
+    req.flash('error', `Reconciliation failed: ${err.message}`);
+    res.redirect('/admin/upload-intents');
   }
 });
 

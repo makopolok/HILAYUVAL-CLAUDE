@@ -1,0 +1,101 @@
+<div class="container my-4">
+  <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-2">
+    <div>
+      <h1 class="h3 mb-1">Upload Intents</h1>
+      <p class="text-muted mb-0 small">Durability &amp; reconciliation status for Bunny direct uploads.</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="/admin/upload-intents" class="btn btn-outline-secondary btn-sm">
+        <i class="fa-solid fa-rotate-right me-1"></i>Refresh
+      </a>
+      <form method="POST" action="/admin/reconcile-intents" class="d-inline">
+        <button type="submit" class="btn btn-primary btn-sm">
+          <i class="fa-solid fa-broom me-1"></i>Run reconciliation now
+        </button>
+      </form>
+    </div>
+  </div>
+
+  {{#if lastReconcile}}
+  <div class="alert alert-info d-flex align-items-center" role="alert">
+    <i class="fa-solid fa-circle-info me-2"></i>
+    <div>
+      Last reconciliation pass: scanned <strong>{{lastReconcile.scanned}}</strong>,
+      completed <strong>{{lastReconcile.completed}}</strong>,
+      orphaned <strong>{{lastReconcile.orphaned}}</strong>,
+      expired <strong>{{lastReconcile.expired}}</strong>,
+      skipped <strong>{{lastReconcile.skipped}}</strong>.
+    </div>
+  </div>
+  {{/if}}
+
+  <div class="row g-3 mb-4">
+    {{#each counts}}
+    <div class="col-6 col-md-4 col-lg-3">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body py-3">
+          <div class="d-flex align-items-center justify-content-between">
+            <span class="badge {{this.badgeClass}} text-uppercase">{{this.state}}</span>
+            <span class="h4 mb-0">{{this.count}}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    {{else}}
+    <div class="col-12">
+      <div class="alert alert-secondary mb-0">No upload intents yet.</div>
+    </div>
+    {{/each}}
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white d-flex align-items-center justify-content-between">
+      <span class="fw-semibold">Recent intents</span>
+      <span class="text-muted small">Showing latest {{recent.length}}</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>State</th>
+            <th>Project</th>
+            <th>Role</th>
+            <th>Bunny GUID</th>
+            <th>Audition</th>
+            <th>Created</th>
+            <th>Updated</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each recent}}
+          <tr>
+            <td><span class="badge {{this.badgeClass}} text-uppercase">{{this.state}}</span></td>
+            <td>
+              {{#if this.project_name}}{{this.project_name}}{{else}}<span class="text-muted">&mdash;</span>{{/if}}
+              {{#if this.project_id}}<span class="text-muted small">#{{this.project_id}}</span>{{/if}}
+            </td>
+            <td>{{#if this.role_name}}{{this.role_name}}{{else}}<span class="text-muted">&mdash;</span>{{/if}}</td>
+            <td><code class="small">{{this.guid}}</code></td>
+            <td>
+              {{#if this.audition_id}}
+                <a href="/projects/{{this.project_id}}/auditions" class="small">#{{this.audition_id}}</a>
+              {{else}}
+                <span class="text-muted">&mdash;</span>
+              {{/if}}
+            </td>
+            <td class="text-muted small">{{this.created_fmt}}</td>
+            <td class="text-muted small">{{this.updated_fmt}}</td>
+          </tr>
+          {{/each}}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="text-muted small mt-3 mb-0">
+    <i class="fa-solid fa-shield-halved me-1"></i>
+    The reconciliation worker also runs automatically every 15 minutes.
+    States: <strong>completed</strong> = saved audition, <strong>orphaned</strong> = file in Bunny but no audition (needs review),
+    <strong>expired</strong> = upload never landed.
+  </p>
+</div>
