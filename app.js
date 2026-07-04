@@ -3641,6 +3641,30 @@ app.get('/api/video-status/:videoGuid', async (req, res, next) => {
 });
 
 
+// --- Bunny upload-intent reconciliation (Step 3) admin endpoints ---
+// Observability + on-demand trigger for the reconciliation worker.
+// NOTE: must be registered BEFORE the catch-all 404 handler below.
+app.get('/admin/upload-intents', requireAdmin, async (req, res) => {
+  try {
+    const counts = await uploadIntentService.countByState();
+    res.json({ ok: true, counts });
+  } catch (err) {
+    console.error('ADMIN_UPLOAD_INTENTS_ERROR:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/admin/reconcile-intents', requireAdmin, async (req, res) => {
+  try {
+    const limit = req.query.limit ? Number(req.query.limit) : undefined;
+    const summary = await reconciliationWorker.reconcileOnce({ limit });
+    res.json({ ok: true, summary });
+  } catch (err) {
+    console.error('ADMIN_RECONCILE_ERROR:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // Error handling
 app.use((req, res) => {
     res.status(404).render('error/404');
@@ -3693,29 +3717,6 @@ app.use((error, req, res, next) => {
     
     // Pass other errors to the general error handler
     next(error);
-});
-
-// --- Bunny upload-intent reconciliation (Step 3) admin endpoints ---
-// Observability + on-demand trigger for the reconciliation worker.
-app.get('/admin/upload-intents', requireAdmin, async (req, res) => {
-  try {
-    const counts = await uploadIntentService.countByState();
-    res.json({ ok: true, counts });
-  } catch (err) {
-    console.error('ADMIN_UPLOAD_INTENTS_ERROR:', err.message);
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-app.post('/admin/reconcile-intents', requireAdmin, async (req, res) => {
-  try {
-    const limit = req.query.limit ? Number(req.query.limit) : undefined;
-    const summary = await reconciliationWorker.reconcileOnce({ limit });
-    res.json({ ok: true, summary });
-  } catch (err) {
-    console.error('ADMIN_RECONCILE_ERROR:', err.message);
-    res.status(500).json({ ok: false, error: err.message });
-  }
 });
 
 // Add at the end of middleware chain, before app.listen
