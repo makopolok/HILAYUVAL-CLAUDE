@@ -95,10 +95,15 @@ async function consumeIntent({ intentToken, guid, projectId, roleName, ipAddress
 
   // Validate binding fields; if any mismatch, roll the state back so a correct
   // retry can still succeed (the transition was speculative).
+  //
+  // Note: role is intentionally NOT a hard gate. Unlike guid/token/project/ip
+  // (which identify the upload), the role is a user choice that can legitimately
+  // change after the video finished uploading (e.g. the actor switches the
+  // dropdown before submitting). The authoritative role is stamped later in
+  // markCompleted from the actually-submitted audition.
   const mismatch = (
     (record.guid && record.guid !== guid) ? 'intent_guid_mismatch' :
     (record.project_id != null && String(projectId) !== String(record.project_id)) ? 'intent_project_mismatch' :
-    (record.role_name && String(roleName) !== String(record.role_name)) ? 'intent_role_mismatch' :
     (record.ip_address && ipAddress && record.ip_address !== ipAddress) ? 'intent_ip_mismatch' :
     null
   );
@@ -115,13 +120,18 @@ async function consumeIntent({ intentToken, guid, projectId, roleName, ipAddress
 }
 
 // Mark an intent fully completed and link it to the persisted audition row.
-async function markCompleted({ guid, auditionId }) {
+// Also stamps the authoritative submitted role (COALESCE keeps an existing
+// value if none is passed, so we never blank out a previously recorded role).
+async function markCompleted({ guid, auditionId, roleName }) {
   const { rows } = await pool.query(
     `UPDATE upload_intents
-     SET state = 'completed', audition_id = $2, updated_at = NOW()
+     SET state = 'completed',
+         audition_id = $2,
+         role_name = COALESCE($3, role_name),
+         updated_at = NOW()
      WHERE guid = $1
      RETURNING *;`,
-    [guid, toNullableInt(auditionId)]
+    [guid, toNullableInt(auditionId), roleName ? String(roleName) : null]
   );
   return rows[0] || null;
 }

@@ -1330,7 +1330,7 @@ app.post('/api/videos', directUploadCreateLimiter, async (req, res) => {
     const uploadIntent = await registerDirectUploadIntent({
       guid: created.guid,
       projectId: projectId || null,
-      roleName: null,
+      roleName: (req.body?.role || '').toString().trim() || null,
       ipAddress: req.ip || null,
     });
 
@@ -2973,7 +2973,11 @@ app.post('/audition/:projectId', auditionUpload.fields([
     // Best-effort: never fail the submission because of intent bookkeeping.
     if (videoType === 'bunny_stream' && finalVideoUrl) {
       try {
-        await uploadIntentService.markCompleted({ guid: finalVideoUrl, auditionId: savedAudition && savedAudition.id });
+        await uploadIntentService.markCompleted({
+          guid: finalVideoUrl,
+          auditionId: savedAudition && savedAudition.id,
+          roleName: selectedRole ? selectedRole.name : (body.role || null),
+        });
       } catch (intentErr) {
         console.warn(`UPLOAD_INTENT_COMPLETE_WARN: guid=${finalVideoUrl} err=${intentErr.message}`);
       }
