@@ -1815,6 +1815,13 @@ app.post('/projects/create', requireAdmin, async (req, res, next) => { // Added 
 });
 
 // Route to render project-specific audition form
+// Emergency redirect: keep legacy intake URL alive while project 265 issues are triaged.
+app.get(['/audition/265', '/audition/265/'], (req, res) => {
+  const queryIndex = req.originalUrl.indexOf('?');
+  const query = queryIndex >= 0 ? req.originalUrl.slice(queryIndex) : '';
+  return res.redirect(302, `/audition/299${query}`);
+});
+
 app.get('/audition/:projectId', async (req, res) => {
   try {
     const project = await getProjectByIdWithCache(req.params.projectId, 'audition_form');
@@ -2522,6 +2529,8 @@ app.post('/audition/:projectId/fields', auditionUpload.fields([
 // so Heroku H28 idle timeout (90s) can never trigger regardless of file size.
 const CHUNK_UPLOAD_DIR = path.join('/tmp', 'chunk-uploads');
 if (!fs.existsSync(CHUNK_UPLOAD_DIR)) fs.mkdirSync(CHUNK_UPLOAD_DIR, { recursive: true });
+const CHUNK_MISSING_RETRY_ATTEMPTS = 6; // ~3s total wait (6 * 500ms)
+const CHUNK_MISSING_RETRY_MS = 500;
 
 app.put('/upload-chunk/:uploadId/:chunkIndex',
   express.raw({ type: '*/*', limit: '10mb' }),
@@ -2586,7 +2595,16 @@ app.post('/upload-chunk/:uploadId/assemble', async (req, res) => {
       const writeStream = fs.createWriteStream(assembledPath);
       for (let i = 0; i < parseInt(totalChunks, 10); i++) {
         const chunkPath = path.join(uploadDir, `chunk-${String(i).padStart(5, '0')}`);
-        if (!fs.existsSync(chunkPath)) throw new Error(`Missing chunk ${i}`);
+        let found = fs.existsSync(chunkPath);
+        let attempt = 0;
+        while (!found && attempt < CHUNK_MISSING_RETRY_ATTEMPTS) {
+          attempt += 1;
+          await new Promise((resolve) => setTimeout(resolve, CHUNK_MISSING_RETRY_MS));
+          found = fs.existsSync(chunkPath);
+        }
+        if (!found) {
+          throw new Error(`Missing chunk ${i}`);
+        }
         const chunkData = fs.readFileSync(chunkPath);
         writeStream.write(chunkData);
         fs.unlinkSync(chunkPath);
