@@ -10,6 +10,7 @@
       </a>
       <form method="POST" action="/admin/reconcile-intents" class="d-inline">
         <input type="hidden" name="projectId" value="{{filterProjectId}}">
+        <input type="hidden" name="mirrorFailuresOnly" value="{{#if mirrorFailuresOnly}}1{{else}}0{{/if}}">
         <input type="hidden" name="perPage" value="{{perPage}}">
         <button type="submit" class="btn btn-primary btn-sm">
           <i class="fa-solid fa-broom me-1"></i>Run reconciliation now
@@ -63,6 +64,20 @@
         {{/each}}
       </select>
     </div>
+    <div class="col-auto">
+      <div class="form-check form-switch mt-1">
+        <input
+          class="form-check-input"
+          type="checkbox"
+          id="mirrorFailuresOnly"
+          name="mirrorFailuresOnly"
+          value="1"
+          {{#if mirrorFailuresOnly}}checked{{/if}}
+          onchange="this.form.submit()"
+        >
+        <label class="form-check-label small fw-semibold" for="mirrorFailuresOnly">Mirror failures only</label>
+      </div>
+    </div>
     <div class="col-auto ms-auto">
       <select name="perPage" class="form-select form-select-sm" onchange="this.form.submit()">
         {{#each perPageOptions}}
@@ -93,8 +108,11 @@
             <th>Role</th>
             <th>Bunny GUID</th>
             <th>Audition</th>
+            <th>Mirror</th>
+            <th>YouTube</th>
             <th>Created</th>
             <th>Updated</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -114,11 +132,31 @@
                 <span class="text-muted">&mdash;</span>
               {{/if}}
             </td>
+            <td>
+              <span class="badge {{this.mirrorStatus.className}}">{{this.mirrorStatus.label}}</span>
+            </td>
+            <td>
+              {{#if this.youtube_link}}
+                <a href="{{this.youtube_link}}" target="_blank" rel="noopener" class="small">{{#if this.youtube_video_id}}{{this.youtube_video_id}}{{else}}Open video{{/if}}</a>
+              {{else}}
+                <span class="text-muted">&mdash;</span>
+              {{/if}}
+            </td>
             <td class="text-muted small">{{this.created_fmt}}</td>
             <td class="text-muted small">{{this.updated_fmt}}</td>
+            <td class="text-end">
+              {{#if this.needsMirrorRetry}}
+              <form method="POST" action="/admin/upload-intents/{{this.id}}/retry-youtube-mirror" class="d-inline">
+                <input type="hidden" name="returnTo" value="{{../currentUrl}}">
+                <button type="submit" class="btn btn-outline-danger btn-sm">
+                  <i class="fa-solid fa-rotate me-1"></i>Retry mirror
+                </button>
+              </form>
+              {{/if}}
+            </td>
           </tr>
           {{else}}
-          <tr><td colspan="7" class="text-center text-muted py-4">No intents found.</td></tr>
+          <tr><td colspan="10" class="text-center text-muted py-4">No intents found.</td></tr>
           {{/each}}
         </tbody>
       </table>
@@ -157,4 +195,3 @@
     <strong>expired</strong> = upload never landed.
   </p>
 </div>
-

@@ -4142,12 +4142,13 @@ app.get('/admin/upload-intents', requireAdmin, async (req, res) => {
     const perPage = PER_PAGE_OPTIONS.includes(Number(req.query.perPage))
       ? Number(req.query.perPage) : 50;
     const filterProjectId = req.query.projectId || '';
+    const mirrorFailuresOnly = req.query.mirrorFailuresOnly === '1';
     const page = Math.max(1, Number(req.query.page) || 1);
     const offset = (page - 1) * perPage;
 
     const [recentRaw, total, projectOptions] = await Promise.all([
-      uploadIntentService.listRecent(perPage, offset, filterProjectId || null),
-      uploadIntentService.countIntents(filterProjectId || null),
+      uploadIntentService.listRecent(perPage, offset, filterProjectId || null, mirrorFailuresOnly),
+      uploadIntentService.countIntents(filterProjectId || null, mirrorFailuresOnly),
       uploadIntentService.listIntentProjects()
     ]);
 
@@ -4157,17 +4158,45 @@ app.get('/admin/upload-intents', requireAdmin, async (req, res) => {
       ...r,
       badgeClass: intentBadgeClass(r.state),
       created_fmt: formatIntentTime(r.created_at),
-      updated_fmt: formatIntentTime(r.updated_at)
+      updated_fmt: formatIntentTime(r.updated_at),
+      youtube_link: trimToString(r.youtube_video_url)
+        || (trimToString(r.youtube_video_id) ? `https://www.youtube.com/watch?v=${trimToString(r.youtube_video_id)}` : ''),
+      mirrorStatus: (() => {
+        const hasYoutube = Boolean(trimToString(r.youtube_video_id) || trimToString(r.youtube_video_url));
+        const isBunnyPrimary = trimToString(r.audition_video_type).toLowerCase() === 'bunny_stream';
+        if (!r.audition_id) {
+          return { label: 'No Audition Yet', className: 'bg-secondary' };
+        }
+        if (hasYoutube) {
+          return { label: 'Mirrored', className: 'bg-success' };
+        }
+        if (r.state === 'completed' && isBunnyPrimary) {
+          return { label: 'Mirror Failed', className: 'bg-danger' };
+        }
+        if (r.state === 'failed' || r.state === 'orphaned' || r.state === 'expired') {
+          return { label: 'Blocked', className: 'bg-warning text-dark' };
+        }
+        return { label: 'Pending', className: 'bg-primary' };
+      })(),
+      needsMirrorRetry: Boolean(
+        r.audition_id
+        && r.state === 'completed'
+        && trimToString(r.audition_video_type).toLowerCase() === 'bunny_stream'
+        && !trimToString(r.youtube_video_id)
+        && !trimToString(r.youtube_video_url)
+      ),
     }));
 
-    const makeUrl = (p, proj, pp) => {
+    const makeUrl = (p, proj, pp, failedOnly) => {
       const params = new URLSearchParams();
       if (p > 1) params.set('page', p);
       if (proj) params.set('projectId', proj);
+      if (failedOnly) params.set('mirrorFailuresOnly', '1');
       if (pp !== 50) params.set('perPage', pp);
       const qs = params.toString();
       return '/admin/upload-intents' + (qs ? '?' + qs : '');
     };
+    const currentUrl = makeUrl(page, filterProjectId, perPage, mirrorFailuresOnly);
 
     const lastReconcile = req.session.lastReconcile || null;
     if (req.session.lastReconcile) delete req.session.lastReconcile;
@@ -4181,13 +4210,15 @@ app.get('/admin/upload-intents', requireAdmin, async (req, res) => {
       page, totalPages, perPage, total,
       hasPrev: page > 1,
       hasNext: page < totalPages,
-      prevUrl: makeUrl(page - 1, filterProjectId, perPage),
-      nextUrl: makeUrl(page + 1, filterProjectId, perPage),
+      prevUrl: makeUrl(page - 1, filterProjectId, perPage, mirrorFailuresOnly),
+      nextUrl: makeUrl(page + 1, filterProjectId, perPage, mirrorFailuresOnly),
       perPageOptions: PER_PAGE_OPTIONS.map((n) => ({
         value: n, label: `${n} / page`, selected: n === perPage
       })),
       // Filter
       filterProjectId,
+      mirrorFailuresOnly,
+      currentUrl,
       projectOptions: projectOptions.map((p) => ({
         ...p, selected: String(p.id) === String(filterProjectId)
       })),
@@ -4218,6 +4249,7 @@ app.post('/admin/reconcile-intents', requireAdmin, async (req, res) => {
     // Preserve filter/pagination params from the form's hidden inputs
     const qs = new URLSearchParams();
     if (req.body.projectId) qs.set('projectId', req.body.projectId);
+    if (req.body.mirrorFailuresOnly === '1') qs.set('mirrorFailuresOnly', '1');
     if (req.body.perPage && req.body.perPage !== '50') qs.set('perPage', req.body.perPage);
     const dest = '/admin/upload-intents' + (qs.toString() ? '?' + qs.toString() : '');
     res.redirect(dest);
@@ -4228,6 +4260,52 @@ app.post('/admin/reconcile-intents', requireAdmin, async (req, res) => {
     }
     req.flash('error', `Reconciliation failed: ${err.message}`);
     res.redirect('/admin/upload-intents');
+  }
+});
+
+app.post('/admin/upload-intents/:intentId/retry-youtube-mirror', requireAdmin, async (req, res) => {
+  const rawReturnTo = trimToString(req.body.returnTo);
+  const returnTo = rawReturnTo.startsWith('/admin/upload-intents') ? rawReturnTo : '/admin/upload-intents';
+  try {
+    const intentId = Number(req.params.intentId);
+    if (!Number.isInteger(intentId) || intentId <= 0) {
+      req.flash('error', 'Invalid upload intent id.');
+      return res.redirect(returnTo);
+    }
+
+    const intent = await uploadIntentService.findById(intentId);
+    if (!intent) {
+      req.flash('error', 'Upload intent not found.');
+      return res.redirect(returnTo);
+    }
+    if (!intent.audition_id) {
+      req.flash('error', 'Cannot retry mirror before an audition is linked.');
+      return res.redirect(returnTo);
+    }
+
+    const audition = await auditionService.getAuditionById(intent.audition_id);
+    if (!audition) {
+      req.flash('error', `Linked audition #${intent.audition_id} was not found.`);
+      return res.redirect(returnTo);
+    }
+
+    const project = await getProjectByIdWithCache(audition.project_id, 'admin_retry_intent_mirror');
+    if (!project) {
+      req.flash('error', `Project #${audition.project_id} was not found.`);
+      return res.redirect(returnTo);
+    }
+
+    const result = await mirrorAuditionFromBunnyToYoutube({ project, audition });
+    if (result && result.skipped) {
+      req.flash('info', `Mirror retry skipped for intent #${intentId}: ${result.reason}.`);
+    } else {
+      req.flash('success', `Mirror retry finished for intent #${intentId}.`);
+    }
+    return res.redirect(returnTo);
+  } catch (error) {
+    console.error(`ADMIN_RETRY_MIRROR_ERROR: intentId=${req.params.intentId} err=${error.message}`, error);
+    req.flash('error', `Mirror retry failed: ${error.message}`);
+    return res.redirect(returnTo);
   }
 });
 

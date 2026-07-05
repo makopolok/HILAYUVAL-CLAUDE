@@ -142,6 +142,11 @@ async function findByGuid(guid) {
   return rows[0] || null;
 }
 
+async function findById(id) {
+  const { rows } = await pool.query('SELECT * FROM upload_intents WHERE id = $1', [toNullableInt(id)]);
+  return rows[0] || null;
+}
+
 // Non-terminal states the reconciliation worker considers "in flight".
 const NON_TERMINAL_STATES = [
   'intent_created',
@@ -194,21 +199,35 @@ async function countByState() {
 }
 
 // Recent intents with their linked audition context (admin dashboard).
-async function listRecent(limit = 50, offset = 0, projectId = null) {
+async function listRecent(limit = 50, offset = 0, projectId = null, mirrorFailuresOnly = false) {
   const capped = Math.max(1, Math.min(200, Number(limit) || 50));
   const safeOffset = Math.max(0, Number(offset) || 0);
   const params = [capped, safeOffset];
-  let where = '';
+  const whereParts = [];
   if (projectId != null && projectId !== '') {
     params.push(Number(projectId));
-    where = `WHERE ui.project_id = $${params.length}`;
+    whereParts.push(`ui.project_id = $${params.length}`);
   }
+  if (mirrorFailuresOnly) {
+    whereParts.push(`ui.state = 'completed'`);
+    whereParts.push(`a.id IS NOT NULL`);
+    whereParts.push(`a.video_type = 'bunny_stream'`);
+    whereParts.push(`COALESCE(a.youtube_video_id, '') = ''`);
+    whereParts.push(`COALESCE(a.youtube_video_url, '') = ''`);
+  }
+  const where = whereParts.length ? `WHERE ${whereParts.join(' AND ')}` : '';
   const { rows } = await pool.query(
     `SELECT ui.id, ui.guid, ui.state, ui.project_id, ui.role_name,
-            ui.audition_id, ui.ip_address, ui.created_at, ui.updated_at, ui.expires_at,
-            p.name AS project_name
+           ui.audition_id, ui.ip_address, ui.created_at, ui.updated_at, ui.expires_at,
+           p.name AS project_name,
+           a.video_type AS audition_video_type,
+           a.video_url AS audition_video_url,
+           a.youtube_video_id,
+           a.youtube_video_url,
+           a.youtube_synced_at
      FROM upload_intents ui
      LEFT JOIN projects p ON p.id = ui.project_id
+     LEFT JOIN auditions a ON a.id = ui.audition_id
      ${where}
      ORDER BY ui.created_at DESC
      LIMIT $1 OFFSET $2`,
@@ -218,15 +237,26 @@ async function listRecent(limit = 50, offset = 0, projectId = null) {
 }
 
 // Count intents optionally filtered by project (for pagination).
-async function countIntents(projectId = null) {
+async function countIntents(projectId = null, mirrorFailuresOnly = false) {
   const params = [];
-  let where = '';
+  const whereParts = [];
   if (projectId != null && projectId !== '') {
     params.push(Number(projectId));
-    where = `WHERE project_id = $1`;
+    whereParts.push(`ui.project_id = $${params.length}`);
   }
+  if (mirrorFailuresOnly) {
+    whereParts.push(`ui.state = 'completed'`);
+    whereParts.push(`a.id IS NOT NULL`);
+    whereParts.push(`a.video_type = 'bunny_stream'`);
+    whereParts.push(`COALESCE(a.youtube_video_id, '') = ''`);
+    whereParts.push(`COALESCE(a.youtube_video_url, '') = ''`);
+  }
+  const where = whereParts.length ? `WHERE ${whereParts.join(' AND ')}` : '';
   const { rows } = await pool.query(
-    `SELECT COUNT(*)::int AS total FROM upload_intents ${where}`,
+    `SELECT COUNT(*)::int AS total
+     FROM upload_intents ui
+     LEFT JOIN auditions a ON a.id = ui.audition_id
+     ${where}`,
     params
   );
   return rows[0].total;
@@ -248,6 +278,7 @@ module.exports = {
   consumeIntent,
   markCompleted,
   findByGuid,
+  findById,
   findStaleIntents,
   markState,
   countByState,

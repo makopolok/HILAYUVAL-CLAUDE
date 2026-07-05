@@ -1,7 +1,12 @@
 {{!-- views/projects.handlebars --}}
 <div class="container mt-5">
   <h1 class="display-4 mb-4">Projects</h1>
-  <a href="/projects/create" class="btn btn-outline-success mb-3">Create New Project</a>
+  <div class="d-flex flex-wrap gap-2 mb-3">
+    <a href="/projects/create" class="btn btn-outline-success">Create New Project</a>
+    <a href="/admin/upload-intents" class="btn btn-outline-primary">
+      <i class="fa-solid fa-cloud-arrow-up me-1"></i>Upload Intents Monitor
+    </a>
+  </div>
   <form class="row g-3 mb-4" method="GET" action="">
     <div class="col-md-8 col-lg-6">
       <input type="text" class="form-control" name="term" placeholder="Search by performer or email" value="{{query.term}}">
