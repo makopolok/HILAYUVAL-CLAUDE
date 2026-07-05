@@ -522,14 +522,14 @@
                       <p class="card-text small mb-1 edit-field">
                         <strong>Video URL:</strong> 
                         <span class="edit-display">{{#if video_url}}<code class="small">{{video_url}}</code>{{else}}<span class="text-muted">—</span>{{/if}}</span>
-                        <input type="url" class="form-control form-control-sm d-none edit-input" placeholder="Video URL (YouTube, Bunny, or other)" data-field="video_url" value="{{{video_url}}}" style="margin-top: 0.5rem;">
+                        <input type="url" class="form-control form-control-sm d-none edit-input" placeholder="Video URL" data-field="video_url" value="{{video_url}}" style="margin-top: 0.5rem;" />
                       </p>
                        
-                      <p class="card-text small edit-field">
+                      <p class="card-text small mb-1 edit-field">
                         <strong>Video Type:</strong> 
                         <span class="edit-display">{{#if video_type}}{{video_type}}{{else}}<span class="text-muted">—</span>{{/if}}</span>
                         <select class="form-select form-select-sm d-none edit-input" data-field="video_type" style="margin-top: 0.5rem;">
-                          <option value="">Select type...</option>
+                          <option value="">Select type</option>
                           <option value="youtube" {{#if (eq video_type "youtube")}}selected{{/if}}>YouTube</option>
                           <option value="bunny_stream" {{#if (eq video_type "bunny_stream")}}selected{{/if}}>Bunny Stream</option>
                           <option value="vimeo" {{#if (eq video_type "vimeo")}}selected{{/if}}>Vimeo</option>
