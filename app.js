@@ -449,7 +449,15 @@ async function mirrorAuditionFromBunnyToYoutube({ project, audition }) {
       : findProjectRoleByName(project, audition.role_name || audition.role);
     if (sourceRole) {
       const playlistId = await ensureRolePlaylist(youtube, project, sourceRole);
-      await addVideoToYouTubePlaylist(youtube, youtubeVideoId, playlistId);
+      try {
+        await addVideoToYouTubePlaylist(youtube, youtubeVideoId, playlistId);
+      } catch (playlistError) {
+        // Playlist assignment is best-effort for auto mirror; do not block
+        // YouTube verification + Bunny cleanup on transient playlist API issues.
+        console.warn(
+          `AUTO_MIRROR_PLAYLIST_WARN: project=${project.id} audition=${audition.id} videoId=${youtubeVideoId} err=${playlistError.message}`
+        );
+      }
     }
 
     await auditionService.updateAuditionYoutubeData(audition.id, {
@@ -1191,16 +1199,44 @@ async function addVideoToYouTubePlaylist(youtube, videoId, playlistId, maxRetrie
       return;
     } catch (err) {
       lastError = err;
-      const isRateLimitError = err && err.response && err.response.status === 429;
+      const status = err && err.response ? err.response.status : null;
+      const apiErrors = err && err.response && err.response.data && err.response.data.error && Array.isArray(err.response.data.error.errors)
+        ? err.response.data.error.errors
+        : [];
+      const reasons = apiErrors
+        .map((entry) => trimToString(entry && entry.reason))
+        .filter(Boolean);
+      const isRateLimitError = status === 429;
+      const isServiceUnavailableConflict = status === 409 && reasons.includes('SERVICE_UNAVAILABLE');
+      const isServerError = status >= 500 && status < 600;
+      const isNetworkTransient = err && (
+        err.code === 'ETIMEDOUT'
+        || err.code === 'ECONNRESET'
+        || err.code === 'ENOTFOUND'
+        || err.code === 'ECONNREFUSED'
+      );
+      const isRetryable = isRateLimitError || isServiceUnavailableConflict || isServerError || isNetworkTransient;
+      const isAlreadyInPlaylist = status === 409 && (
+        reasons.includes('videoAlreadyInPlaylist')
+        || reasons.includes('playlistItemAlreadyExists')
+        || reasons.includes('duplicate')
+      );
+
+      if (isAlreadyInPlaylist) {
+        console.warn(`YOUTUBE_PLAYLIST_ITEM_ALREADY_EXISTS: videoId=${videoId} playlistId=${playlistId} reasons=${reasons.join(',') || 'unknown'}`);
+        return;
+      }
       
-      if (isRateLimitError && retries < maxRetries) {
-        console.warn(`YOUTUBE_PLAYLIST_ITEM_RATE_LIMITED: videoId=${videoId} playlistId=${playlistId}. Retrying in ${delay}ms (attempt ${retries + 1}/${maxRetries + 1})...`);
+      if (isRetryable && retries < maxRetries) {
+        console.warn(
+          `YOUTUBE_PLAYLIST_ITEM_RETRYABLE_ERROR: videoId=${videoId} playlistId=${playlistId} status=${status || 'n/a'} reasons=${reasons.join(',') || 'unknown'}. Retrying in ${delay}ms (attempt ${retries + 1}/${maxRetries + 1})...`
+        );
         await new Promise(resolve => setTimeout(resolve, delay));
         delay *= 2;
         continue;
       }
       
-      // For non-rate-limit errors or final retry exhausted, throw
+      // For non-retryable errors or final retry exhausted, throw
       console.error(`YOUTUBE_PLAYLIST_ITEM_ADD_ERROR: videoId=${videoId} playlistId=${playlistId} attempt ${retries + 1}/${maxRetries + 1}. Error: ${err.message}`);
       throw err;
     }
