@@ -4019,9 +4019,18 @@ app.get('/projects/:projectId/auditions', requireAdmin, async (req, res) => {
       }).sort(compareAuditionsByNewest)
     }));
     const roleFilter = (req.query.role || '').toString().trim();
-    const visibleRoles = roleFilter
+    const prioritizeRolesWithNewAuditions = (left, right) => {
+      const leftHasNew = (left?.newAuditionsCount || 0) > 0 ? 1 : 0;
+      const rightHasNew = (right?.newAuditionsCount || 0) > 0 ? 1 : 0;
+      if (leftHasNew !== rightHasNew) {
+        return rightHasNew - leftHasNew;
+      }
+      return compareRolesByName(left, right);
+    };
+    const visibleRoles = (roleFilter
       ? rolesWithAuditions.filter((role) => role.name === roleFilter)
-      : rolesWithAuditions;
+      : rolesWithAuditions
+    ).sort(prioritizeRolesWithNewAuditions);
 
     // Casting director page: simplify to global flag only (no per-viewer toggle)
     const disableInlineEffective = process.env.DISABLE_INLINE_PLAYER === '1';

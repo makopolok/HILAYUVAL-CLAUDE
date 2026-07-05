@@ -181,11 +181,11 @@
           <div class="accordion-item">
             <h2 class="accordion-header" id="role-heading-{{this.id}}">
               <button
-                class="accordion-button {{#unless @first}}collapsed{{/unless}}"
+                class="accordion-button collapsed"
                 type="button"
                 data-bs-toggle="collapse"
                 data-bs-target="#role-collapse-{{this.id}}"
-                aria-expanded="{{#if @first}}true{{else}}false{{/if}}"
+                aria-expanded="false"
                 aria-controls="role-collapse-{{this.id}}">
                 <span class="auditions-role-label">{{this.name}}</span>
                 <span class="badge text-bg-light border auditions-role-count">{{this.auditions.length}}</span>
@@ -196,7 +196,7 @@
             </h2>
             <div
               id="role-collapse-{{this.id}}"
-              class="accordion-collapse collapse {{#if @first}}show{{/if}}"
+              class="accordion-collapse collapse"
               aria-labelledby="role-heading-{{this.id}}"
               data-bs-parent="#auditions-role-accordion">
               <div class="accordion-body p-0">
