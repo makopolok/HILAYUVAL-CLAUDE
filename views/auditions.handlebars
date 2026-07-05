@@ -1017,6 +1017,54 @@ document.addEventListener('DOMContentLoaded', function() {
   })();
   setViewMode(savedMode === 'cards' ? 'cards' : 'list');
 
+  const getTargetAuditionRow = () => {
+    const hash = (window.location.hash || '').trim();
+    if (!hash || !hash.startsWith('#audition-row-')) return null;
+    return document.querySelector(hash);
+  };
+
+  const revealRowAccordion = (row) => {
+    if (!row) return;
+    const collapse = row.closest('.accordion-collapse');
+    if (!collapse || collapse.classList.contains('show')) return;
+
+    const headerButton = document.querySelector(
+      `[data-bs-target="#${collapse.id}"], [aria-controls="${collapse.id}"]`
+    );
+
+    if (window.bootstrap && window.bootstrap.Collapse) {
+      const instance = window.bootstrap.Collapse.getOrCreateInstance(collapse, { toggle: false });
+      instance.show();
+    } else {
+      collapse.classList.add('show');
+    }
+
+    if (headerButton) {
+      headerButton.classList.remove('collapsed');
+      headerButton.setAttribute('aria-expanded', 'true');
+    }
+  };
+
+  const highlightHashTargetRow = () => {
+    const targetRow = getTargetAuditionRow();
+    if (!targetRow) return;
+
+    setViewMode('list');
+    revealRowAccordion(targetRow);
+
+    targetRow.classList.remove('audition-row-highlight');
+    void targetRow.offsetWidth;
+    targetRow.classList.add('audition-row-highlight');
+    targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    window.setTimeout(() => {
+      targetRow.classList.remove('audition-row-highlight');
+    }, 4200);
+  };
+
+  highlightHashTargetRow();
+  window.addEventListener('hashchange', highlightHashTargetRow);
+
   if (roleSelect && filterForm) {
     roleSelect.addEventListener('change', function () {
       filterForm.submit();
@@ -1108,6 +1156,24 @@ body {
 
 .auditions-list-table th {
   white-space: nowrap;
+}
+
+.audition-row-highlight td {
+  background-color: #fff6d9 !important;
+  transition: background-color 0.35s ease;
+  animation: audition-row-highlight-fade 4s ease forwards;
+}
+
+@keyframes audition-row-highlight-fade {
+  0% {
+    background-color: #ffeaa5;
+  }
+  55% {
+    background-color: #fff3cd;
+  }
+  100% {
+    background-color: transparent;
+  }
 }
 
 .audition-list-avatar {
