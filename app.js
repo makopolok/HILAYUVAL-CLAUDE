@@ -629,6 +629,175 @@ if (REFRESH_TOKEN) {
   oauth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
 }
 
+const YOUTUBE_TOKEN_MONITOR_ENABLED = process.env.YOUTUBE_TOKEN_MONITOR_ENABLED !== '0';
+const YOUTUBE_TOKEN_MONITOR_INTERVAL_MS = Math.max(
+  60 * 60 * 1000,
+  Number(process.env.YOUTUBE_TOKEN_MONITOR_INTERVAL_MS) || 24 * 60 * 60 * 1000
+);
+const YOUTUBE_TOKEN_MONITOR_INITIAL_DELAY_MS = Math.max(
+  30 * 1000,
+  Number(process.env.YOUTUBE_TOKEN_MONITOR_INITIAL_DELAY_MS) || 5 * 60 * 1000
+);
+const YOUTUBE_TOKEN_MONITOR_ALERT_COOLDOWN_MS = Math.max(
+  60 * 60 * 1000,
+  Number(process.env.YOUTUBE_TOKEN_MONITOR_ALERT_COOLDOWN_MS) || 6 * 60 * 60 * 1000
+);
+
+let youtubeTokenMonitorInterval = null;
+let youtubeTokenMonitorInitialTimeout = null;
+let youtubeTokenMonitorInFlight = false;
+let youtubeTokenLastAlertAt = 0;
+
+function getYoutubeTokenAlertRecipient() {
+  const adminEmails = (process.env.ADMIN_EMAILS || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+  if (adminEmails.length > 0) return adminEmails[0];
+  if (process.env.ADMIN_EMAIL) return process.env.ADMIN_EMAIL.trim();
+  if (process.env.SMTP_USER) return process.env.SMTP_USER.trim();
+  return null;
+}
+
+async function sendYoutubeTokenAlert(subject, text) {
+  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    console.warn('YOUTUBE_TOKEN_MONITOR_ALERT_SKIPPED: SMTP not configured.');
+    return;
+  }
+  const recipient = getYoutubeTokenAlertRecipient();
+  if (!recipient) {
+    console.warn('YOUTUBE_TOKEN_MONITOR_ALERT_SKIPPED: no recipient configured.');
+    return;
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT || 587),
+    secure: Number(process.env.SMTP_PORT || 587) === 465,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+
+  await transporter.sendMail({
+    from: process.env.SMTP_USER,
+    to: recipient,
+    subject,
+    text,
+  });
+}
+
+async function runYoutubeTokenHealthCheck() {
+  const hasRefreshToken = !!process.env.GOOGLE_REFRESH_TOKEN;
+  const hasClientId = !!process.env.GOOGLE_CLIENT_ID;
+  const hasClientSecret = !!process.env.GOOGLE_CLIENT_SECRET;
+  const hasRedirectUri = !!process.env.GOOGLE_REDIRECT_URI;
+
+  if (!hasRefreshToken || !hasClientId || !hasClientSecret || !hasRedirectUri) {
+    return {
+      ok: false,
+      reason: 'missing_config',
+      httpStatus: null,
+      config: { hasRefreshToken, hasClientId, hasClientSecret, hasRedirectUri },
+    };
+  }
+
+  try {
+    const healthClient = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      process.env.GOOGLE_REDIRECT_URI
+    );
+    healthClient.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
+    const { token } = await healthClient.getAccessToken();
+    const youtube = google.youtube({ version: 'v3', auth: healthClient });
+    const channels = await youtube.channels.list({ part: ['id'], mine: true });
+    const channelCount = Array.isArray(channels?.data?.items) ? channels.data.items.length : 0;
+    return {
+      ok: true,
+      accessTokenIssued: !!token,
+      channelCount,
+      reason: null,
+      httpStatus: 200,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      reason: error?.message || 'youtube_token_check_failed',
+      httpStatus: error?.response?.status || null,
+      config: { hasRefreshToken, hasClientId, hasClientSecret, hasRedirectUri },
+    };
+  }
+}
+
+function stopYoutubeTokenMonitor() {
+  if (youtubeTokenMonitorInitialTimeout) {
+    clearTimeout(youtubeTokenMonitorInitialTimeout);
+    youtubeTokenMonitorInitialTimeout = null;
+  }
+  if (youtubeTokenMonitorInterval) {
+    clearInterval(youtubeTokenMonitorInterval);
+    youtubeTokenMonitorInterval = null;
+  }
+}
+
+function startYoutubeTokenMonitor() {
+  if (!YOUTUBE_TOKEN_MONITOR_ENABLED) {
+    console.log('YOUTUBE_TOKEN_MONITOR_DISABLED');
+    return;
+  }
+  const dynoName = (process.env.DYNO || '').trim();
+  if (dynoName && dynoName !== 'web.1') {
+    console.log(`YOUTUBE_TOKEN_MONITOR_SKIPPED: DYNO=${dynoName}`);
+    return;
+  }
+  stopYoutubeTokenMonitor();
+
+  const runOnce = async () => {
+    if (youtubeTokenMonitorInFlight) return;
+    youtubeTokenMonitorInFlight = true;
+    try {
+      const result = await runYoutubeTokenHealthCheck();
+      if (result.ok) {
+        console.log(`YOUTUBE_TOKEN_MONITOR_OK: channels=${result.channelCount}`);
+      } else {
+        console.error(`YOUTUBE_TOKEN_MONITOR_FAIL: reason=${result.reason} status=${result.httpStatus || 'n/a'}`);
+        const now = Date.now();
+        if (now - youtubeTokenLastAlertAt >= YOUTUBE_TOKEN_MONITOR_ALERT_COOLDOWN_MS) {
+          youtubeTokenLastAlertAt = now;
+          const subject = '[HilaYuval] YouTube token health check failed';
+          const text = [
+            `Time: ${new Date(now).toISOString()}`,
+            `Reason: ${result.reason}`,
+            `HTTP status: ${result.httpStatus || 'n/a'}`,
+            `Config: ${JSON.stringify(result.config || {})}`,
+            '',
+            'Uploads to YouTube may fail until GOOGLE_REFRESH_TOKEN is refreshed.',
+          ].join('\n');
+          await sendYoutubeTokenAlert(subject, text);
+        }
+      }
+    } catch (monitorError) {
+      console.error(`YOUTUBE_TOKEN_MONITOR_RUN_ERROR: ${monitorError.message}`);
+    } finally {
+      youtubeTokenMonitorInFlight = false;
+    }
+  };
+
+  youtubeTokenMonitorInitialTimeout = setTimeout(() => {
+    runOnce().catch(() => {});
+    youtubeTokenMonitorInterval = setInterval(() => {
+      runOnce().catch(() => {});
+    }, YOUTUBE_TOKEN_MONITOR_INTERVAL_MS);
+  }, YOUTUBE_TOKEN_MONITOR_INITIAL_DELAY_MS);
+  youtubeTokenMonitorInitialTimeout.unref();
+
+  console.log(
+    `YOUTUBE_TOKEN_MONITOR_STARTED: initialDelayMs=${YOUTUBE_TOKEN_MONITOR_INITIAL_DELAY_MS} intervalMs=${YOUTUBE_TOKEN_MONITOR_INTERVAL_MS}`
+  );
+}
+
 // Handlebars setup
 app.engine('handlebars', engine({
     // Helpers defined here are globally available in all Handlebars templates.
@@ -1290,44 +1459,23 @@ app.get('/health/db', async (req, res) => {
 // Basic YouTube token health route for fast diagnostics.
 // Requires admin so token validity cannot be probed publicly.
 app.get('/health/youtube-token', requireAdmin, async (req, res) => {
-  const hasRefreshToken = !!process.env.GOOGLE_REFRESH_TOKEN;
-  const hasClientId = !!process.env.GOOGLE_CLIENT_ID;
-  const hasClientSecret = !!process.env.GOOGLE_CLIENT_SECRET;
-  const hasRedirectUri = !!process.env.GOOGLE_REDIRECT_URI;
-
-  if (!hasRefreshToken || !hasClientId || !hasClientSecret || !hasRedirectUri) {
-    return res.status(503).json({
-      service: 'youtube-token',
-      status: 'down',
-      reason: 'missing_config',
-      config: {
-        hasRefreshToken,
-        hasClientId,
-        hasClientSecret,
-        hasRedirectUri,
-      },
-      timestamp: new Date().toISOString(),
-    });
-  }
-
   try {
-    const healthClient = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      process.env.GOOGLE_REDIRECT_URI
-    );
-    healthClient.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
-
-    const { token } = await healthClient.getAccessToken();
-    const youtube = google.youtube({ version: 'v3', auth: healthClient });
-    const channels = await youtube.channels.list({ part: ['id'], mine: true });
-    const channelCount = Array.isArray(channels?.data?.items) ? channels.data.items.length : 0;
-
+    const result = await runYoutubeTokenHealthCheck();
+    if (!result.ok) {
+      return res.status(503).json({
+        service: 'youtube-token',
+        status: 'down',
+        reason: result.reason,
+        httpStatus: result.httpStatus,
+        config: result.config || null,
+        timestamp: new Date().toISOString(),
+      });
+    }
     return res.status(200).json({
       service: 'youtube-token',
       status: 'up',
-      accessTokenIssued: !!token,
-      channelCount,
+      accessTokenIssued: result.accessTokenIssued,
+      channelCount: result.channelCount,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
@@ -3951,6 +4099,11 @@ const server = app.listen(PORT, () => {
     } catch (reconErr) {
         console.error('RECONCILE_START_ERROR:', reconErr.message);
     }
+    try {
+        startYoutubeTokenMonitor();
+    } catch (monitorErr) {
+        console.error('YOUTUBE_TOKEN_MONITOR_START_ERROR:', monitorErr.message);
+    }
 });
 
 server.on('listening', () => {
@@ -3994,6 +4147,9 @@ gracefulSignals.forEach((signal) => {
       }
       try {
         reconciliationWorker.stop();
+      } catch (_) { /* ignore */ }
+      try {
+        stopYoutubeTokenMonitor();
       } catch (_) { /* ignore */ }
       try {
         await closePool(`app:${signal}`);
