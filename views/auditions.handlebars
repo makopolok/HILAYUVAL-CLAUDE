@@ -794,6 +794,10 @@ async function saveTagColor(target, tagColor) {
     throw new Error(payload.error || 'Failed to save color');
   }
   applyTagColorToAudition(auditionId, payload.tagColor || '');
+  // Keep list/cards in strict sync by reloading from DB-backed source of truth.
+  window.setTimeout(() => {
+    window.location.reload();
+  }, 120);
 }
 
 // Load all videos when page loads
