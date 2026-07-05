@@ -219,13 +219,17 @@
                   <tr class="audition-row" data-audition-id="{{id}}" data-project-id="{{../../project.id}}">
                     <td>
                       {{#if profile_picture_url}}
-                        <img
-                          src="{{profile_picture_url}}"
-                          alt="Profile picture"
-                          class="audition-list-avatar"
-                          width="54"
-                          height="54"
-                          loading="lazy">
+                        <div class="audition-list-avatar-wrapper">
+                          <img
+                            src="{{profile_picture_url}}"
+                            alt="Profile picture"
+                            class="audition-list-avatar"
+                            width="54"
+                            height="54"
+                            loading="lazy"
+                            onerror="this.classList.add('d-none'); if (this.nextElementSibling) this.nextElementSibling.classList.remove('d-none');">
+                          <div class="audition-list-avatar audition-list-avatar-missing d-none" aria-hidden="true"></div>
+                        </div>
                       {{else}}
                         <div class="audition-list-avatar audition-list-avatar-placeholder">
                           <i class="fas fa-user"></i>
@@ -1091,6 +1095,17 @@ body {
   justify-content: center;
   color: #8a8a8a;
   background: #f4f4f4;
+}
+
+.audition-list-avatar-wrapper {
+  width: 54px;
+  height: 54px;
+}
+
+.audition-list-avatar-missing {
+  display: inline-block;
+  border: 2px solid #dc3545;
+  background: #fff5f5;
 }
 
 .audition-tag-menu-item {
