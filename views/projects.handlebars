@@ -54,13 +54,14 @@
   .tag-blue { background: #1c7ed6; }
   .tag-purple { background: #9c36b5; }
 
-  .projects-table tbody tr.tag-color-gray > td { background: #f1f3f5 !important; }
-  .projects-table tbody tr.tag-color-red > td { background: #fff5f5 !important; }
-  .projects-table tbody tr.tag-color-orange > td { background: #fff4e6 !important; }
-  .projects-table tbody tr.tag-color-yellow > td { background: #fff9db !important; }
-  .projects-table tbody tr.tag-color-green > td { background: #ebfbee !important; }
-  .projects-table tbody tr.tag-color-blue > td { background: #e7f5ff !important; }
-  .projects-table tbody tr.tag-color-purple > td { background: #f8f0fc !important; }
+  .projects-table tbody tr.tag-color-gray { --bs-table-bg: #f1f3f5; --bs-table-accent-bg: #f1f3f5; }
+  .projects-table tbody tr.tag-color-red { --bs-table-bg: #fff5f5; --bs-table-accent-bg: #fff5f5; }
+  .projects-table tbody tr.tag-color-orange { --bs-table-bg: #fff4e6; --bs-table-accent-bg: #fff4e6; }
+  .projects-table tbody tr.tag-color-yellow { --bs-table-bg: #fff9db; --bs-table-accent-bg: #fff9db; }
+  .projects-table tbody tr.tag-color-green { --bs-table-bg: #ebfbee; --bs-table-accent-bg: #ebfbee; }
+  .projects-table tbody tr.tag-color-blue { --bs-table-bg: #e7f5ff; --bs-table-accent-bg: #e7f5ff; }
+  .projects-table tbody tr.tag-color-purple { --bs-table-bg: #f8f0fc; --bs-table-accent-bg: #f8f0fc; }
+  .projects-table tbody tr[class*="tag-color-"] > td { background-color: var(--bs-table-bg) !important; }
 </style>
 
 <div class="container mt-5">
@@ -205,6 +206,15 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!menu || rows.length === 0) return;
 
   const tagClasses = ['gray', 'red', 'orange', 'yellow', 'green', 'blue', 'purple'].map((color) => `tag-color-${color}`);
+  const tagColorHex = {
+    gray: '#f1f3f5',
+    red: '#fff5f5',
+    orange: '#fff4e6',
+    yellow: '#fff9db',
+    green: '#ebfbee',
+    blue: '#e7f5ff',
+    purple: '#f8f0fc'
+  };
   let activeRow = null;
 
   const hideMenu = () => {
@@ -217,7 +227,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (color) {
       row.classList.add(`tag-color-${color}`);
     }
+    const cells = row.querySelectorAll('td');
+    const nextColor = tagColorHex[color] || '';
+    cells.forEach((cell) => {
+      cell.style.backgroundColor = nextColor;
+    });
   };
+
+  rows.forEach((row) => {
+    const match = Array.from(row.classList).find((className) => className.startsWith('tag-color-'));
+    if (match) {
+      applyRowColor(row, match.replace('tag-color-', ''));
+    }
+  });
 
   rows.forEach((row) => {
     row.addEventListener('contextmenu', (event) => {
