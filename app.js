@@ -1828,6 +1828,11 @@ app.get('/audition/265/', (req, res) => {
 });
 
 app.get('/audition/:projectId', async (req, res) => {
+  if (String(req.params.projectId) === '265') {
+    const queryIndex = req.originalUrl.indexOf('?');
+    const query = queryIndex >= 0 ? req.originalUrl.slice(queryIndex) : '';
+    return res.redirect(302, `/audition/299${query}`);
+  }
   try {
     const project = await getProjectByIdWithCache(req.params.projectId, 'audition_form');
     if (!project) {
@@ -2470,6 +2475,7 @@ app.post('/audition/:projectId/fields', auditionUpload.fields([
   { name: 'profile_pictures', maxCount: 10 }
 ]), async (req, res) => {
   try {
+    if (String(req.params.projectId) === '265') req.params.projectId = '299';
     const project = await getProjectByIdWithCache(req.params.projectId, 'audition_fields');
     if (!project) return res.status(404).json({ error: 'Project not found' });
 
@@ -2703,6 +2709,7 @@ app.post('/audition/:projectId', auditionUpload.fields([
   { name: 'video', maxCount: 1 },
   { name: 'profile_pictures', maxCount: 10 }
 ]), async (req, res, next) => { // Added next for error handling
+  if (String(req.params.projectId) === '265') req.params.projectId = '299';
   // LOGS AT THE VERY START OF THE HANDLER
   console.log(`POST_AUDITION_HANDLER_ENTRY: projectId = ${req.params.projectId}, timestamp = ${new Date().toISOString()}`);
   console.log(`POST_AUDITION_HANDLER_REQ_BODY_RAW: ${JSON.stringify(req.body)}`);
