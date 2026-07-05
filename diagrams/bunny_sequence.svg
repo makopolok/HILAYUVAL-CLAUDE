@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900">
+  <style>
+    .actor { font: bold 13px sans-serif; fill: #1a365d }
+    .line { stroke: #2d3748; stroke-width: 1.5; marker-end: url(#arrow); }
+    .note { font: 12px sans-serif; fill: #2d3748 }
+    .box { fill: #fff; stroke: #4a5568; rx:6 }
+  </style>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 9 3.5, 0 7" fill="#2d3748" />
+    </marker>
+  </defs>
+
+  <!-- Actors -->
+  <text x="80" y="40" class="actor">User</text>
+  <text x="320" y="40" class="actor">Frontend</text>
+  <text x="600" y="40" class="actor">Server</text>
+  <text x="900" y="40" class="actor">Bunny</text>
+
+  <!-- Lifelines -->
+  <line x1="100" y1="60" x2="100" y2="820" stroke="#cbd5e0" stroke-dasharray="4 4" />
+  <line x1="360" y1="60" x2="360" y2="820" stroke="#cbd5e0" stroke-dasharray="4 4" />
+  <line x1="620" y1="60" x2="620" y2="820" stroke="#cbd5e0" stroke-dasharray="4 4" />
+  <line x1="920" y1="60" x2="920" y2="820" stroke="#cbd5e0" stroke-dasharray="4 4" />
+
+  <!-- Sequence arrows and notes -->
+  <line x1="100" y1="90" x2="360" y2="90" class="line" />
+  <text x="200" y="80" class="note">1. Click Upload (file+meta)</text>
+
+  <line x1="360" y1="140" x2="620" y2="140" class="line" />
+  <text x="420" y="130" class="note">2. Request upload intent</text>
+
+  <rect x="580" y="160" width="80" height="40" class="box" />
+  <text x="590" y="185" class="note">Validate</text>
+
+  <line x1="600" y1="220" x2="600" y2="260" stroke="#a0aec0" stroke-width="1" />
+  <text x="470" y="245" class="note">Create pending submission (submissionId)</text>
+
+  <line x1="620" y1="320" x2="360" y2="320" class="line" />
+  <text x="420" y="310" class="note">3. Return uploadUrl+token+submissionId</text>
+
+  <line x1="360" y1="380" x2="920" y2="380" class="line" />
+  <text x="500" y="370" class="note">4. Client uploads file to Bunny (PUT/POST)</text>
+
+  <line x1="920" y1="420" x2="620" y2="420" class="line" />
+  <text x="700" y="410" class="note">5. Bunny webhook: notify server of success</text>
+
+  <line x1="620" y1="460" x2="620" y2="560" stroke="#a0aec0" stroke-width="1" />
+  <text x="640" y="515" class="note">Map to submissionId, finalize audition row, DB insert with retry/backoff</text>
+
+  <rect x="640" y="560" width="420" height="80" class="box" />
+  <text x="660" y="600" class="note">If DB insert fails: mark submission state=error; enqueue retry; alert ops</text>
+
+  <line x1="620" y1="660" x2="360" y2="660" class="line" />
+  <text x="420" y="650" class="note">6. On success: notify frontend; invalidate caches; trigger thumbnails/mirror</text>
+
+  <!-- Annotated retry & failure paths -->
+  <rect x="60" y="700" width="320" height="80" rx="6" fill="#fffef0" stroke="#dd6b20" />
+  <text x="80" y="730" class="note">Retry / Failure Handling</text>
+  <text x="80" y="748" class="note">• Client retries uploads on transient network errors</text>
+  <text x="80" y="766" class="note">• Server retries DB insert with exponential backoff</text>
+  <text x="80" y="784" class="note">• Reconciliation job polls Bunny for unmatched uploads</text>
+
+</svg>

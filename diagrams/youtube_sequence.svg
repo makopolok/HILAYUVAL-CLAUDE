@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900">
+  <style>
+    .actor { font: bold 13px sans-serif; fill: #822727 }
+    .line { stroke: #2d3748; stroke-width: 1.5; marker-end: url(#arrow); }
+    .note { font: 12px sans-serif; fill: #2d3748 }
+    .box { fill: #fff; stroke: #4a5568; rx:6 }
+  </style>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 9 3.5, 0 7" fill="#2d3748" />
+    </marker>
+  </defs>
+
+  <!-- Actors -->
+  <text x="80" y="40" class="actor">User</text>
+  <text x="320" y="40" class="actor">Frontend</text>
+  <text x="600" y="40" class="actor">Server / Worker</text>
+  <text x="900" y="40" class="actor">YouTube API</text>
+
+  <!-- Lifelines -->
+  <line x1="100" y1="60" x2="100" y2="820" stroke="#e2e8f0" stroke-dasharray="4 4" />
+  <line x1="360" y1="60" x2="360" y2="820" stroke="#e2e8f0" stroke-dasharray="4 4" />
+  <line x1="620" y1="60" x2="620" y2="820" stroke="#e2e8f0" stroke-dasharray="4 4" />
+  <line x1="920" y1="60" x2="920" y2="820" stroke="#e2e8f0" stroke-dasharray="4 4" />
+
+  <!-- Sequence arrows and notes -->
+  <line x1="100" y1="90" x2="360" y2="90" class="line" />
+  <text x="200" y="80" class="note">1. Click Upload to YouTube</text>
+
+  <line x1="360" y1="140" x2="620" y2="140" class="line" />
+  <text x="420" y="130" class="note">2. Send file to server or request worker to fetch source</text>
+
+  <rect x="580" y="160" width="100" height="40" class="box" />
+  <text x="590" y="185" class="note">Prepare upload</text>
+
+  <line x1="620" y1="220" x2="920" y2="220" class="line" />
+  <text x="720" y="210" class="note">3. Start resumable upload session (Upload URL)</text>
+
+  <line x1="620" y1="280" x2="920" y2="280" class="line" />
+  <text x="720" y="270" class="note">4. Upload video chunks to YouTube</text>
+
+  <line x1="920" y1="340" x2="620" y2="340" class="line" />
+  <text x="720" y="330" class="note">5. YouTube acknowledges upload; processes video</text>
+
+  <line x1="620" y1="380" x2="620" y2="480" stroke="#a0aec0" stroke-width="1" />
+  <text x="640" y="430" class="note">6. Server receives completion; persist videoId &amp; metadata</text>
+
+  <rect x="640" y="480" width="420" height="80" class="box" />
+  <text x="660" y="520" class="note">Failure handling:</text>
+  <text x="660" y="540" class="note">• OAuth token expired → refresh &amp; retry</text>
+  <text x="660" y="560" class="note">• Upload interrupted → resume using session URL</text>
+  <text x="660" y="580" class="note">• DB insert fails → enqueue retry &amp; mark pending</text>
+
+  <line x1="620" y1="600" x2="360" y2="600" class="line" />
+  <text x="420" y="590" class="note">7. On success: notify frontend, invalidate caches, update playlists</text>
+
+</svg>

@@ -1,0 +1,62 @@
+Heroku Support Log Pack
+App: guarded-inlet-25431
+Generated (UTC): 2026-07-01T14:44:38Z
+Timezone note: app logs are UTC
+
+=== Error Summary (exact matches) ===
+2026-07-01T14:27:25.471654+00:00 app[web.1]: PROJECT_SERVICE_GET_BY_ID_DB_ERROR: Error fetching project or roles for id 265 (attempt 1/5): Error: Connection terminated due to connection timeout
+2026-07-01T14:27:27.773595+00:00 app[web.1]: PROJECT_SERVICE_GET_BY_ID_DB_ERROR: Error fetching project or roles for id 265 (attempt 2/5): Error: Connection terminated due to connection timeout
+2026-07-01T14:27:30.375322+00:00 app[web.1]: PROJECT_SERVICE_GET_BY_ID_DB_ERROR: Error fetching project or roles for id 265 (attempt 3/5): Error: Connection terminated due to connection timeout
+2026-07-01T14:27:33.576640+00:00 app[web.1]: PROJECT_SERVICE_GET_BY_ID_DB_ERROR: Error fetching project or roles for id 265 (attempt 4/5): Error: Connection terminated due to connection timeout
+2026-07-01T14:36:45.957494+00:00 app[web.1]: PROJECT_SERVICE_GET_BY_ID_DB_ERROR: Error fetching project or roles for id 299 (attempt 1/5): Error: Connection terminated due to connection timeout
+2026-07-01T14:36:48.259528+00:00 app[web.1]: PROJECT_SERVICE_GET_BY_ID_DB_ERROR: Error fetching project or roles for id 299 (attempt 2/5): Error: Connection terminated due to connection timeout
+2026-07-01T14:36:50.861951+00:00 app[web.1]: PROJECT_SERVICE_GET_BY_ID_DB_ERROR: Error fetching project or roles for id 299 (attempt 3/5): Error: Connection terminated due to connection timeout
+2026-07-01T14:36:54.066549+00:00 app[web.1]: PROJECT_SERVICE_GET_BY_ID_DB_ERROR: Error fetching project or roles for id 299 (attempt 4/5): Error: Connection terminated due to connection timeout
+2026-07-01T14:36:58.469595+00:00 app[web.1]: PROJECT_SERVICE_GET_BY_ID_DB_ERROR: Error fetching project or roles for id 299 (attempt 5/5): Error: Connection terminated due to connection timeout
+
+=== Context (±2 lines around each error) ===
+2026-07-01T14:27:15.800108+00:00 heroku[web.1]: source=web.1 dyno=heroku.460925107.bbcb24be-0df9-4bd5-bedd-fdb4d2d257e8 sample#memory_total=322.65MB sample#memory_rss=116.30MB sample#memory_cache=206.35MB sample#memory_swap=0.00MB sample#memory_pgpgin=0pages sample#memory_pgpgout=0pages sample#memory_quota=512.00MB
+2026-07-01T14:27:23.469893+00:00 app[web.1]: PROJECT_SERVICE_GET_BY_ID_START: Fetching project with id: 265, timestamp = 2026-07-01T14:27:23.469Z
+2026-07-01T14:27:25.471654+00:00 app[web.1]: PROJECT_SERVICE_GET_BY_ID_DB_ERROR: Error fetching project or roles for id 265 (attempt 1/5): Error: Connection terminated due to connection timeout
+2026-07-01T14:27:25.471669+00:00 app[web.1]: at /app/node_modules/pg-pool/index.js:45:11
+2026-07-01T14:27:25.471670+00:00 app[web.1]: at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+2026-07-01T14:27:25.471675+00:00 app[web.1]: }
+2026-07-01T14:27:25.471716+00:00 app[web.1]: PROJECT_SERVICE_GET_BY_ID_RETRY: Retrying project fetch for id 265 in 300ms due to transient DB error.
+2026-07-01T14:27:27.773595+00:00 app[web.1]: PROJECT_SERVICE_GET_BY_ID_DB_ERROR: Error fetching project or roles for id 265 (attempt 2/5): Error: Connection terminated due to connection timeout
+2026-07-01T14:27:27.773614+00:00 app[web.1]: at /app/node_modules/pg-pool/index.js:45:11
+2026-07-01T14:27:27.773614+00:00 app[web.1]: at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+2026-07-01T14:27:27.773619+00:00 app[web.1]: }
+2026-07-01T14:27:27.773622+00:00 app[web.1]: PROJECT_SERVICE_GET_BY_ID_RETRY: Retrying project fetch for id 265 in 600ms due to transient DB error.
+2026-07-01T14:27:30.375322+00:00 app[web.1]: PROJECT_SERVICE_GET_BY_ID_DB_ERROR: Error fetching project or roles for id 265 (attempt 3/5): Error: Connection terminated due to connection timeout
+2026-07-01T14:27:30.375345+00:00 app[web.1]: at /app/node_modules/pg-pool/index.js:45:11
+2026-07-01T14:27:30.375346+00:00 app[web.1]: at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+2026-07-01T14:27:32.334820+00:00 app[web.1]: [chunk] PUT uploadId=77de10740ac0315f44b3a5a7abce0eac chunkIndex=48 size=2097152
+2026-07-01T14:27:32.335214+00:00 heroku[router]: at=info method=PUT path="/upload-chunk/77de10740ac0315f44b3a5a7abce0eac/48" host=hilayuval.com request_id=a0ea4e97-39c3-57c7-0b0b-c57ff5c5cf6b fwd="104.28.131.73" dyno=web.1 connect=0ms service=13289ms status=200 bytes=27 protocol=http2.0 tls=true tls_version=tls1.3
+2026-07-01T14:27:33.576640+00:00 app[web.1]: PROJECT_SERVICE_GET_BY_ID_DB_ERROR: Error fetching project or roles for id 265 (attempt 4/5): Error: Connection terminated due to connection timeout
+2026-07-01T14:27:33.576663+00:00 app[web.1]: at /app/node_modules/pg-pool/index.js:45:11
+2026-07-01T14:27:33.576664+00:00 app[web.1]: at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+2026-07-01T14:36:43.954799+00:00 app[web.1]: POST_AUDITION_TRY_BLOCK_START: projectId = 299
+2026-07-01T14:36:43.954801+00:00 app[web.1]: PROJECT_SERVICE_GET_BY_ID_START: Fetching project with id: 299, timestamp = 2026-07-01T14:36:43.954Z
+2026-07-01T14:36:45.957494+00:00 app[web.1]: PROJECT_SERVICE_GET_BY_ID_DB_ERROR: Error fetching project or roles for id 299 (attempt 1/5): Error: Connection terminated due to connection timeout
+2026-07-01T14:36:45.957517+00:00 app[web.1]: at /app/node_modules/pg-pool/index.js:45:11
+2026-07-01T14:36:45.957517+00:00 app[web.1]: at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+2026-07-01T14:36:47.527769+00:00 heroku[web.1]: source=web.1 dyno=heroku.460925107.bbcb24be-0df9-4bd5-bedd-fdb4d2d257e8 sample#load_avg_1m=0.00 sample#load_avg_5m=0.00 sample#load_avg_15m=0.00
+2026-07-01T14:36:47.594478+00:00 heroku[web.1]: source=web.1 dyno=heroku.460925107.bbcb24be-0df9-4bd5-bedd-fdb4d2d257e8 sample#memory_total=415.28MB sample#memory_rss=118.59MB sample#memory_cache=296.68MB sample#memory_swap=0.00MB sample#memory_pgpgin=0pages sample#memory_pgpgout=0pages sample#memory_quota=512.00MB
+2026-07-01T14:36:48.259528+00:00 app[web.1]: PROJECT_SERVICE_GET_BY_ID_DB_ERROR: Error fetching project or roles for id 299 (attempt 2/5): Error: Connection terminated due to connection timeout
+2026-07-01T14:36:48.259545+00:00 app[web.1]: at /app/node_modules/pg-pool/index.js:45:11
+2026-07-01T14:36:48.259546+00:00 app[web.1]: at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+2026-07-01T14:36:48.259550+00:00 app[web.1]: }
+2026-07-01T14:36:48.259553+00:00 app[web.1]: PROJECT_SERVICE_GET_BY_ID_RETRY: Retrying project fetch for id 299 in 600ms due to transient DB error.
+2026-07-01T14:36:50.861951+00:00 app[web.1]: PROJECT_SERVICE_GET_BY_ID_DB_ERROR: Error fetching project or roles for id 299 (attempt 3/5): Error: Connection terminated due to connection timeout
+2026-07-01T14:36:50.861972+00:00 app[web.1]: at /app/node_modules/pg-pool/index.js:45:11
+2026-07-01T14:36:50.861973+00:00 app[web.1]: at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+2026-07-01T14:36:50.861977+00:00 app[web.1]: }
+2026-07-01T14:36:50.861993+00:00 app[web.1]: PROJECT_SERVICE_GET_BY_ID_RETRY: Retrying project fetch for id 299 in 1200ms due to transient DB error.
+2026-07-01T14:36:54.066549+00:00 app[web.1]: PROJECT_SERVICE_GET_BY_ID_DB_ERROR: Error fetching project or roles for id 299 (attempt 4/5): Error: Connection terminated due to connection timeout
+2026-07-01T14:36:54.066569+00:00 app[web.1]: at /app/node_modules/pg-pool/index.js:45:11
+2026-07-01T14:36:54.066570+00:00 app[web.1]: at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+2026-07-01T14:36:54.066582+00:00 app[web.1]: }
+2026-07-01T14:36:54.066585+00:00 app[web.1]: PROJECT_SERVICE_GET_BY_ID_RETRY: Retrying project fetch for id 299 in 2400ms due to transient DB error.
+2026-07-01T14:36:58.469595+00:00 app[web.1]: PROJECT_SERVICE_GET_BY_ID_DB_ERROR: Error fetching project or roles for id 299 (attempt 5/5): Error: Connection terminated due to connection timeout
+2026-07-01T14:36:58.469615+00:00 app[web.1]: at /app/node_modules/pg-pool/index.js:45:11
+2026-07-01T14:36:58.469616+00:00 app[web.1]: at process.processTicksAndRejections (node:internal/process/task_queues:104:5)

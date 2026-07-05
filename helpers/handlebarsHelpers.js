@@ -85,5 +85,29 @@ module.exports = {
         }
         
         return true;
+    },
+    youtubeVideoId: function(urlOrId) {
+        if (!urlOrId) return '';
+        
+        // If it's already just a video ID (11 chars, alphanumeric + dash/underscore), return it
+        if (/^[a-zA-Z0-9_-]{11}$/.test(urlOrId)) {
+            return urlOrId;
+        }
+        
+        // Try to extract video ID from various YouTube URL formats
+        const patterns = [
+            /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+            /v=([a-zA-Z0-9_-]{11})/,
+            /\/([a-zA-Z0-9_-]{11})(?:\?|$)/
+        ];
+        
+        for (const pattern of patterns) {
+            const match = urlOrId.match(pattern);
+            if (match && match[1]) {
+                return match[1];
+            }
+        }
+        
+        return urlOrId; // If extraction fails, return original
     }
 };
