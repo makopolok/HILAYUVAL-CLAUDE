@@ -2028,6 +2028,32 @@ app.get('/projects', requireAdmin, async (req, res) => {
   }
 });
 
+app.post('/projects/:projectId/tag-color', requireAdmin, async (req, res) => {
+  try {
+    const projectId = Number(req.params.projectId);
+    if (!Number.isInteger(projectId) || projectId <= 0) {
+      return res.status(400).json({ ok: false, error: 'Invalid project id.' });
+    }
+
+    const tagColor = req.body ? req.body.tagColor : null;
+    const result = await projectService.updateProjectTagColor(projectId, tagColor);
+    if (!result.ok) {
+      if (result.reason === 'invalid_color') {
+        return res.status(400).json({ ok: false, error: 'Invalid color value.' });
+      }
+      if (result.reason === 'not_found') {
+        return res.status(404).json({ ok: false, error: 'Project not found.' });
+      }
+      return res.status(400).json({ ok: false, error: 'Unable to update color.' });
+    }
+
+    return res.json({ ok: true, tagColor: result.row.tag_color });
+  } catch (error) {
+    console.error('[App.js POST /projects/:projectId/tag-color]', error);
+    return res.status(500).json({ ok: false, error: 'Failed to save color.' });
+  }
+});
+
 // Route to render the create project form
 app.get('/projects/create', requireAdmin, (req, res) => {
   res.render('createProject', {
