@@ -219,17 +219,23 @@
                   <tr id="audition-row-{{id}}" class="audition-row{{#if tag_color}} tag-color-{{tag_color}}{{/if}}" data-audition-id="{{id}}" data-project-id="{{../../project.id}}" data-tag-color="{{tag_color}}">
                     <td>
                       {{#if profile_picture_url}}
-                        <div class="audition-list-avatar-wrapper">
-                          <img
-                            src="{{profile_picture_url}}"
-                            alt="Profile picture"
-                            class="audition-list-avatar"
-                            width="54"
-                            height="54"
-                            loading="lazy"
-                            onerror="this.classList.add('d-none'); if (this.nextElementSibling) this.nextElementSibling.classList.remove('d-none');">
-                          <div class="audition-list-avatar audition-list-avatar-missing d-none" aria-hidden="true"></div>
-                        </div>
+                        <button
+                          type="button"
+                          class="audition-list-avatar-button audition-profile-preview-btn"
+                          data-full-image-url="{{profile_picture_url}}"
+                          aria-label="Open profile picture">
+                          <div class="audition-list-avatar-wrapper">
+                            <img
+                              src="{{profile_picture_url}}"
+                              alt="Profile picture"
+                              class="audition-list-avatar"
+                              width="54"
+                              height="54"
+                              loading="lazy"
+                              onerror="this.classList.add('d-none'); if (this.nextElementSibling) this.nextElementSibling.classList.remove('d-none');">
+                            <div class="audition-list-avatar audition-list-avatar-missing d-none" aria-hidden="true"></div>
+                          </div>
+                        </button>
                       {{else}}
                         <div class="audition-list-avatar audition-list-avatar-placeholder">
                           <i class="fas fa-user"></i>
@@ -599,6 +605,20 @@
   <button type="button" class="audition-tag-menu-item" data-tag-color="green"><span class="audition-tag-dot tag-green"></span>Green</button>
   <button type="button" class="audition-tag-menu-item" data-tag-color="blue"><span class="audition-tag-dot tag-blue"></span>Blue</button>
   <button type="button" class="audition-tag-menu-item" data-tag-color="purple"><span class="audition-tag-dot tag-purple"></span>Purple</button>
+</div>
+
+<div class="modal fade" id="profile-picture-modal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Profile picture</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body text-center">
+        <img id="profile-picture-modal-image" src="" alt="Profile picture preview" class="img-fluid rounded">
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Video Player Enhancement Script -->
@@ -1145,6 +1165,24 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
+  const profilePictureModalElement = document.getElementById('profile-picture-modal');
+  const profilePictureModalImage = document.getElementById('profile-picture-modal-image');
+  const profilePictureModal = (window.bootstrap && window.bootstrap.Modal && profilePictureModalElement)
+    ? new window.bootstrap.Modal(profilePictureModalElement)
+    : null;
+  document.querySelectorAll('.audition-profile-preview-btn').forEach((button) => {
+    button.addEventListener('click', () => {
+      const imageUrl = (button.dataset.fullImageUrl || '').trim();
+      if (!imageUrl) return;
+      if (profilePictureModal && profilePictureModalImage) {
+        profilePictureModalImage.src = imageUrl;
+        profilePictureModal.show();
+        return;
+      }
+      window.open(imageUrl, '_blank', 'noopener');
+    });
+  });
+
   let activeTagTarget = null;
   const tagMenu = document.getElementById('audition-tag-menu');
   const tagTargets = document.querySelectorAll('.audition-tag-card, .audition-row');
@@ -1270,6 +1308,15 @@ body {
 .audition-list-avatar-wrapper {
   width: 54px;
   height: 54px;
+}
+
+.audition-list-avatar-button {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border-radius: 999px;
+  cursor: zoom-in;
 }
 
 .audition-list-avatar-missing {
