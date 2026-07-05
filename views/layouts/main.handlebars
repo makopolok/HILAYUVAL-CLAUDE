@@ -9,8 +9,10 @@
           const savedTheme = localStorage.getItem('hilayuval-theme');
           const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
           const theme = savedTheme || (systemDark ? 'dark' : 'light');
+          document.documentElement.setAttribute('data-bs-theme', theme);
           document.documentElement.setAttribute('data-theme', theme);
         } catch (_) {
+          document.documentElement.setAttribute('data-bs-theme', 'light');
           document.documentElement.setAttribute('data-theme', 'light');
         }
       })();
@@ -45,71 +47,20 @@
     {{> breadcrumbs}}
     {{{body}}}
     <style>
-      html[data-theme='dark'] body {
-        background: #12161d !important;
-        color: #e9edf2 !important;
+      html[data-bs-theme='dark'] {
+        color-scheme: dark;
       }
 
-      html[data-theme='dark'] .navbar,
-      html[data-theme='dark'] .navbar-light,
-      html[data-theme='dark'] .bg-light {
-        background: #1a212c !important;
-        border-color: #2f3a48 !important;
+      html[data-bs-theme='dark'] .navbar-light,
+      html[data-bs-theme='dark'] .bg-light {
+        background-color: var(--bs-tertiary-bg) !important;
+        border-color: var(--bs-border-color) !important;
       }
 
-      html[data-theme='dark'] .container,
-      html[data-theme='dark'] .container-fluid,
-      html[data-theme='dark'] .text-muted {
-        color: #c7d0da !important;
-      }
-
-      html[data-theme='dark'] .card,
-      html[data-theme='dark'] .card-body,
-      html[data-theme='dark'] .accordion-item,
-      html[data-theme='dark'] .accordion-body,
-      html[data-theme='dark'] .table-responsive {
-        background: #1b2430 !important;
-        color: #e9edf2 !important;
-        border-color: #2f3a48 !important;
-      }
-
-      html[data-theme='dark'] .table > :not(caption) > * > * {
-        background-color: #1b2430 !important;
-        color: #e9edf2 !important;
-        border-color: #2f3a48 !important;
-      }
-
-      html[data-theme='dark'] .form-control,
-      html[data-theme='dark'] .form-select,
-      html[data-theme='dark'] textarea.form-control {
-        background: #121821 !important;
-        color: #e9edf2 !important;
-        border-color: #3a4758 !important;
-      }
-
-      html[data-theme='dark'] .form-control::placeholder {
-        color: #91a1b4 !important;
-      }
-
-      html[data-theme='dark'] .btn-outline-secondary,
-      html[data-theme='dark'] .btn-outline-primary,
-      html[data-theme='dark'] .btn-outline-danger,
-      html[data-theme='dark'] .btn-outline-success {
-        color: #d7e0ea !important;
-        border-color: #5a6a7d !important;
-      }
-
-      html[data-theme='dark'] #auditions-list-view,
-      html[data-theme='dark'] #auditions-list-view .card,
-      html[data-theme='dark'] #auditions-list-view .table-responsive,
-      html[data-theme='dark'] #auditions-list-view .auditions-list-table,
-      html[data-theme='dark'] #auditions-list-view .auditions-list-table thead,
-      html[data-theme='dark'] #auditions-list-view .auditions-list-table tbody,
-      html[data-theme='dark'] #auditions-list-view .auditions-list-table tr,
-      html[data-theme='dark'] #auditions-list-view .auditions-list-table td,
-      html[data-theme='dark'] #auditions-list-view .auditions-list-table th {
-        background: #1b2430 !important;
-        background-image: none !important;
+      html[data-bs-theme='dark'] .navbar-light .navbar-brand,
+      html[data-bs-theme='dark'] .navbar-light .navbar-nav .nav-link,
+      html[data-bs-theme='dark'] .navbar-light .navbar-text {
+        color: var(--bs-body-color) !important;
       }
     </style>
     {{> footer}}
@@ -121,6 +72,7 @@
     <script>
       (function () {
         const applyTheme = (theme) => {
+          document.documentElement.setAttribute('data-bs-theme', theme);
           document.documentElement.setAttribute('data-theme', theme);
           const iconClass = theme === 'dark' ? 'fa-sun' : 'fa-moon';
           const toggleButtons = document.querySelectorAll('[data-theme-toggle]');
@@ -132,13 +84,17 @@
           });
         };
 
-        const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+        const currentTheme = document.documentElement.getAttribute('data-bs-theme')
+          || document.documentElement.getAttribute('data-theme')
+          || 'light';
         applyTheme(currentTheme);
 
         const toggleButtons = document.querySelectorAll('[data-theme-toggle]');
         toggleButtons.forEach((button) => {
           button.addEventListener('click', () => {
-            const current = document.documentElement.getAttribute('data-theme') || 'light';
+            const current = document.documentElement.getAttribute('data-bs-theme')
+              || document.documentElement.getAttribute('data-theme')
+              || 'light';
             const next = current === 'dark' ? 'light' : 'dark';
             applyTheme(next);
             try {
