@@ -829,11 +829,7 @@ async function saveTagColor(target, tagColor) {
   if (!response.ok || !payload.ok) {
     throw new Error(payload.error || 'Failed to save color');
   }
-  applyTagColorToAudition(auditionId, payload.tagColor || '');
-  // Keep list/cards in strict sync by reloading from DB-backed source of truth.
-  window.setTimeout(() => {
-    window.location.reload();
-  }, 120);
+  return (payload.tagColor || '').toString().trim().toLowerCase();
 }
 
 // Load all videos when page loads
@@ -1210,6 +1206,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }
       target.addEventListener('contextmenu', (event) => {
         event.preventDefault();
+        event.stopPropagation();
         activeTagTarget = target;
         showTagMenu(event, target);
       });
@@ -1220,14 +1217,26 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!item || !activeTagTarget) return;
       const newColor = (item.dataset.tagColor || '').trim().toLowerCase();
       const selectedTarget = activeTagTarget;
-      tagMenu.classList.add('d-none');
+      const selectedAuditionId = selectedTarget.dataset.auditionId;
+      const previousColor = (selectedTarget.dataset.tagColor || '').trim().toLowerCase();
+      hideTagMenu();
+      activeTagTarget = null;
+
+      if (selectedAuditionId) {
+        applyTagColorToAudition(selectedAuditionId, newColor);
+      }
+
       try {
-        await saveTagColor(selectedTarget, newColor);
+        const persistedColor = await saveTagColor(selectedTarget, newColor);
+        if (selectedAuditionId && persistedColor !== newColor) {
+          applyTagColorToAudition(selectedAuditionId, persistedColor);
+        }
       } catch (error) {
         console.error('[AUDITION_TAG_COLOR_SAVE_ERROR]', error);
+        if (selectedAuditionId) {
+          applyTagColorToAudition(selectedAuditionId, previousColor);
+        }
         alert('Could not save row color. Please try again.');
-      } finally {
-        activeTagTarget = null;
       }
     });
 
