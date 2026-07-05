@@ -785,11 +785,13 @@ function applyTagColor(target, color) {
         cell.style.setProperty('--bs-table-accent-bg', bg);
         cell.style.backgroundColor = bg;
         cell.style.boxShadow = `inset 0 0 0 9999px ${bg}`;
+        cell.style.color = '#102a43';
       } else {
         cell.style.removeProperty('--bs-table-bg');
         cell.style.removeProperty('--bs-table-accent-bg');
         cell.style.removeProperty('background-color');
         cell.style.removeProperty('box-shadow');
+        cell.style.removeProperty('color');
       }
       if (index === 0) {
         if (border) {
@@ -1464,6 +1466,20 @@ body {
 .audition-tag-card.tag-color-purple,
 .audition-tag-card.tag-color-purple .card-body { background: #d0bfff !important; }
 
+.audition-tag-card[class*="tag-color-"],
+.audition-tag-card[class*="tag-color-"] .card-body,
+.audition-tag-card[class*="tag-color-"] .card-title,
+.audition-tag-card[class*="tag-color-"] .card-text,
+.audition-tag-card[class*="tag-color-"] .text-muted {
+  color: #102a43 !important;
+}
+
+.audition-tag-card[class*="tag-color-"] a,
+.audition-tag-card[class*="tag-color-"] .btn {
+  color: #102a43 !important;
+  border-color: rgba(16, 42, 67, 0.35) !important;
+}
+
 #auditions-list-view .auditions-list-table tbody tr.tag-color-gray > td { background: #cfd4da !important; }
 #auditions-list-view .auditions-list-table tbody tr.tag-color-red > td { background: #ffb3b3 !important; }
 #auditions-list-view .auditions-list-table tbody tr.tag-color-orange > td { background: #ffc078 !important; }
@@ -1471,6 +1487,12 @@ body {
 #auditions-list-view .auditions-list-table tbody tr.tag-color-green > td { background: #b2f2bb !important; }
 #auditions-list-view .auditions-list-table tbody tr.tag-color-blue > td { background: #a5d8ff !important; }
 #auditions-list-view .auditions-list-table tbody tr.tag-color-purple > td { background: #d0bfff !important; }
+#auditions-list-view .auditions-list-table tbody tr[class*="tag-color-"] > td { color: #102a43 !important; }
+#auditions-list-view .auditions-list-table tbody tr[class*="tag-color-"] > td a,
+#auditions-list-view .auditions-list-table tbody tr[class*="tag-color-"] > td .btn {
+  color: #102a43 !important;
+  border-color: rgba(16, 42, 67, 0.35) !important;
+}
 
 #auditions-list-view .auditions-list-table tbody tr.tag-color-gray > td:first-child { border-left: 6px solid #6c757d; }
 #auditions-list-view .auditions-list-table tbody tr.tag-color-red > td:first-child { border-left: 6px solid #e03131; }

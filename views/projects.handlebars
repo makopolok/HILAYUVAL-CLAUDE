@@ -61,7 +61,15 @@
   .projects-table tbody tr.tag-color-green { --bs-table-bg: #b2f2bb; --bs-table-accent-bg: #b2f2bb; }
   .projects-table tbody tr.tag-color-blue { --bs-table-bg: #a5d8ff; --bs-table-accent-bg: #a5d8ff; }
   .projects-table tbody tr.tag-color-purple { --bs-table-bg: #d0bfff; --bs-table-accent-bg: #d0bfff; }
-  .projects-table tbody tr[class*="tag-color-"] > td { background-color: var(--bs-table-bg) !important; }
+  .projects-table tbody tr[class*="tag-color-"] > td {
+    background-color: var(--bs-table-bg) !important;
+    color: #102a43 !important;
+  }
+  .projects-table tbody tr[class*="tag-color-"] > td a,
+  .projects-table tbody tr[class*="tag-color-"] > td .btn {
+    color: #102a43 !important;
+    border-color: rgba(16, 42, 67, 0.35) !important;
+  }
   .projects-table tbody tr.tag-color-gray > td:first-child { border-left: 6px solid #6c757d; }
   .projects-table tbody tr.tag-color-red > td:first-child { border-left: 6px solid #e03131; }
   .projects-table tbody tr.tag-color-orange > td:first-child { border-left: 6px solid #f08c00; }
@@ -242,11 +250,13 @@ document.addEventListener('DOMContentLoaded', () => {
         cell.style.setProperty('--bs-table-accent-bg', nextColor);
         cell.style.backgroundColor = nextColor;
         cell.style.boxShadow = `inset 0 0 0 9999px ${nextColor}`;
+        cell.style.color = '#102a43';
       } else {
         cell.style.removeProperty('--bs-table-bg');
         cell.style.removeProperty('--bs-table-accent-bg');
         cell.style.removeProperty('background-color');
         cell.style.removeProperty('box-shadow');
+        cell.style.removeProperty('color');
       }
     });
   };
