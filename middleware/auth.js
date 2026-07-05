@@ -65,18 +65,32 @@ const requireAdmin = (req, res, next) => {
   if (req.session && req.session.isAdmin) {
     return next();
   }
-  if (req.session) {
-    req.session.pendingAdminRedirect = req.originalUrl;
-  }
-  if (typeof req.flash === 'function') {
-    req.flash('error', 'Please log in as admin to continue.');
-  }
   const query = new URLSearchParams();
   if (req.originalUrl && req.originalUrl !== '/') {
     query.set('returnTo', req.originalUrl);
   }
   const suffix = query.toString() ? `?${query.toString()}` : '';
-  return res.redirect(`/admin/login${suffix}`);
+  const loginPath = `/admin/login${suffix}`;
+  const requestedWith = (req.get('x-requested-with') || '').toLowerCase();
+  const acceptHeader = (req.get('accept') || '').toLowerCase();
+  const expectsJson = requestedWith === 'fetch'
+    || acceptHeader.includes('application/json')
+    || (typeof req.accepts === 'function' && req.accepts(['html', 'json']) === 'json');
+
+  if (req.session) {
+    req.session.pendingAdminRedirect = req.originalUrl;
+  }
+  if (expectsJson) {
+    return res.status(401).json({
+      ok: false,
+      error: 'Admin authentication required.',
+      redirectTo: loginPath,
+    });
+  }
+  if (typeof req.flash === 'function') {
+    req.flash('error', 'Please log in as admin to continue.');
+  }
+  return res.redirect(loginPath);
 };
 
 const attachAdminToLocals = (req, res, next) => {

@@ -750,6 +750,37 @@ async function saveTagColor(card, tagColor) {
 
 // Load all videos when page loads
 document.addEventListener('DOMContentLoaded', function() {
+  const getAdminLoginRedirect = () => `/admin/login?returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+
+  async function fetchJsonOrThrow(url, options = {}) {
+    const requestHeaders = {
+      Accept: 'application/json',
+      'X-Requested-With': 'fetch',
+      ...(options.headers || {})
+    };
+    const response = await fetch(url, {
+      ...options,
+      headers: requestHeaders,
+      credentials: 'same-origin'
+    });
+    if (response.status === 401) {
+      const payload = await response.json().catch(() => ({}));
+      const redirectTo = payload.redirectTo || getAdminLoginRedirect();
+      window.location.assign(redirectTo);
+      throw new Error('Admin session expired');
+    }
+    const contentType = (response.headers.get('content-type') || '').toLowerCase();
+    if (!contentType.includes('application/json')) {
+      if (response.redirected || response.url.includes('/admin/login')) {
+        window.location.assign(getAdminLoginRedirect());
+        throw new Error('Admin session expired');
+      }
+      throw new Error('Unexpected non-JSON response');
+    }
+    const payload = await response.json();
+    return { response, payload };
+  }
+
   // Delete Audition Button Logic
   document.querySelectorAll('.delete-audition-btn').forEach(btn => {
     btn.addEventListener('click', async function() {
@@ -767,11 +798,10 @@ document.addEventListener('DOMContentLoaded', function() {
       btnElement.disabled = true;
 
       try {
-        const res = await fetch(`/projects/${projectId}/auditions/${auditionId}/delete`, {
+        const { payload: data } = await fetchJsonOrThrow(`/projects/${projectId}/auditions/${auditionId}/delete`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' }
         });
-        const data = await res.json();
         
         if (data.ok) {
           // Remove the card with a fade out effect
@@ -813,12 +843,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
       // Load current audition data
       try {
-        const res = await fetch(`/projects/${projectId}/auditions/${auditionId}/edit-data`);
-        if (!res.ok) {
-          alert('Error loading audition data');
-          return;
-        }
-        const data = await res.json();
+       const { response: res, payload: data } = await fetchJsonOrThrow(`/projects/${projectId}/auditions/${auditionId}/edit-data`);
+       if (!res.ok || !data.ok) {
+         alert('Error loading audition data');
+         return;
+       }
         
        // Update input fields with loaded data
        row.querySelectorAll('[data-field]').forEach(input => {
@@ -863,14 +892,12 @@ document.addEventListener('DOMContentLoaded', function() {
       this.disabled = true;
 
       try {
-        const res = await fetch(`/projects/${projectId}/auditions/${auditionId}/update`, {
+        const { response: res, payload: data } = await fetchJsonOrThrow(`/projects/${projectId}/auditions/${auditionId}/update`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData)
         });
-        
-        const data = await res.json();
-        
+
         if (data.ok) {
           // Reload page to show updated data from server
           setTimeout(() => {
