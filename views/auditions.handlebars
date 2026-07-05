@@ -327,18 +327,33 @@
   </div>
   <div id="auditions-cards-view" class="d-none">
   {{#if visible_roles.length}}
-    {{#each visible_roles}}
-      <div class="card mb-4 border-danger audition-role-card">
-        <div class="card-header bg-danger text-white fw-bold">
-          Role: {{this.name}} ({{this.totalAuditions}})
-          {{#if this.newAuditionsCount}}
-            <span class="ms-2 fw-semibold">+{{this.newAuditionsCount}} new</span>
-          {{/if}}
-        </div>
-        <div class="card-body">
-          {{#if this.auditions}}
-            <div class="row">
-              {{#each this.auditions}}
+    <div class="accordion auditions-role-accordion mb-4" id="auditions-cards-role-accordion">
+      {{#each visible_roles}}
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="cards-role-heading-{{this.id}}">
+            <button
+              class="accordion-button collapsed"
+              type="button"
+              data-bs-toggle="collapse"
+              data-bs-target="#cards-role-collapse-{{this.id}}"
+              aria-expanded="false"
+              aria-controls="cards-role-collapse-{{this.id}}">
+              <span class="auditions-role-label">{{this.name}}</span>
+              <span class="badge text-bg-light border auditions-role-count">{{this.totalAuditions}}</span>
+              {{#if this.newAuditionsCount}}
+                <span class="auditions-new-count-badge ms-2">+{{this.newAuditionsCount}} new</span>
+              {{/if}}
+            </button>
+          </h2>
+          <div
+            id="cards-role-collapse-{{this.id}}"
+            class="accordion-collapse collapse"
+            aria-labelledby="cards-role-heading-{{this.id}}"
+            data-bs-parent="#auditions-cards-role-accordion">
+            <div class="accordion-body">
+              {{#if this.auditions}}
+                <div class="row">
+                  {{#each this.auditions}}
                 <div class="col-md-6 col-lg-4 mb-4">
                   <div
                     class="card h-100 border-danger audition-video-card audition-tag-card{{#if tag_color}} tag-color-{{tag_color}}{{/if}}"
@@ -557,14 +572,16 @@
                     </div>
                   </div>
                 </div>
-              {{/each}}
+                  {{/each}}
+                </div>
+              {{else}}
+                <p class="text-muted mb-0">No auditions submitted for this role yet.</p>
+              {{/if}}
             </div>
-          {{else}}
-            <p class="text-muted">No auditions submitted for this role yet.</p>
-          {{/if}}
+          </div>
         </div>
-      </div>
-    {{/each}}
+      {{/each}}
+    </div>
   {{else}}
     <p>No matching roles found for the selected filter.</p>
   {{/if}}
