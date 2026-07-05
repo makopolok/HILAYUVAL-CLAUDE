@@ -3827,7 +3827,9 @@ app.get('/projects/:projectId/auditions/:auditionId/edit-data', requireAdmin, as
       agency: audition.agency || '',
       age: audition.age || '',
       height: audition.height || '',
-      current_location: audition.current_location || ''
+      current_location: audition.current_location || '',
+      video_url: audition.video_url || '',
+      video_type: audition.video_type || ''
     });
   } catch (error) {
     console.error('[App.js GET /projects/:projectId/auditions/:auditionId/edit-data]', error);
@@ -3856,7 +3858,7 @@ app.post('/projects/:projectId/auditions/:auditionId/update', requireAdmin, asyn
 
     // Extract fields from request body (no strict validation for admin edits)
     const updates = {};
-    const editableFields = ['first_name_en', 'last_name_en', 'first_name_he', 'last_name_he', 'email', 'phone', 'agency', 'age', 'height', 'current_location'];
+    const editableFields = ['first_name_en', 'last_name_en', 'first_name_he', 'last_name_he', 'email', 'phone', 'agency', 'age', 'height', 'current_location', 'video_url', 'video_type'];
     
     for (const field of editableFields) {
       if (req.body && field in req.body) {
@@ -3875,6 +3877,14 @@ app.post('/projects/:projectId/auditions/:auditionId/update', requireAdmin, asyn
       updates.height = Number(updates.height);
       if (isNaN(updates.height)) {
         updates.height = null;
+      }
+    }
+
+    // Validate video_url if provided
+    if (updates.video_url && typeof updates.video_url === 'string') {
+      updates.video_url = updates.video_url.trim();
+      if (!isValidHttpUrl(updates.video_url)) {
+        return res.status(400).json({ ok: false, error: 'Invalid video URL format.' });
       }
     }
 
