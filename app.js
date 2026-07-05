@@ -1287,6 +1287,60 @@ app.get('/health/db', async (req, res) => {
   });
 });
 
+// Basic YouTube token health route for fast diagnostics.
+// Requires admin so token validity cannot be probed publicly.
+app.get('/health/youtube-token', requireAdmin, async (req, res) => {
+  const hasRefreshToken = !!process.env.GOOGLE_REFRESH_TOKEN;
+  const hasClientId = !!process.env.GOOGLE_CLIENT_ID;
+  const hasClientSecret = !!process.env.GOOGLE_CLIENT_SECRET;
+  const hasRedirectUri = !!process.env.GOOGLE_REDIRECT_URI;
+
+  if (!hasRefreshToken || !hasClientId || !hasClientSecret || !hasRedirectUri) {
+    return res.status(503).json({
+      service: 'youtube-token',
+      status: 'down',
+      reason: 'missing_config',
+      config: {
+        hasRefreshToken,
+        hasClientId,
+        hasClientSecret,
+        hasRedirectUri,
+      },
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  try {
+    const healthClient = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      process.env.GOOGLE_REDIRECT_URI
+    );
+    healthClient.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
+
+    const { token } = await healthClient.getAccessToken();
+    const youtube = google.youtube({ version: 'v3', auth: healthClient });
+    const channels = await youtube.channels.list({ part: ['id'], mine: true });
+    const channelCount = Array.isArray(channels?.data?.items) ? channels.data.items.length : 0;
+
+    return res.status(200).json({
+      service: 'youtube-token',
+      status: 'up',
+      accessTokenIssued: !!token,
+      channelCount,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    return res.status(503).json({
+      service: 'youtube-token',
+      status: 'down',
+      reason: error?.message || 'youtube_token_check_failed',
+      httpStatus: error?.response?.status || null,
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
 // API: Create Bunny video + signed direct-upload credentials (TUS)
 app.post('/api/videos', directUploadCreateLimiter, async (req, res) => {
   try {
