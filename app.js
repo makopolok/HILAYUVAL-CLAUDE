@@ -125,8 +125,17 @@ const BUNNY_DIRECT_UPLOAD_MAX_PER_IP = Number.parseInt(process.env.BUNNY_DIRECT_
 const BUNNY_DIRECT_UPLOAD_MAX_PER_PROJECT_WINDOW = Number.parseInt(process.env.BUNNY_DIRECT_UPLOAD_MAX_PER_PROJECT_WINDOW || '80', 10);
 const BUNNY_DIRECT_UPLOAD_PROJECT_WINDOW_MS = Number.parseInt(process.env.BUNNY_DIRECT_UPLOAD_PROJECT_WINDOW_MS || String(60 * 60 * 1000), 10);
 const PROJECT_SNAPSHOT_CACHE_TTL_MS = Number.parseInt(process.env.PROJECT_SNAPSHOT_CACHE_TTL_MS || String(30 * 60 * 1000), 10);
+const BUNNY_AUTO_YOUTUBE_ENABLED = process.env.BUNNY_AUTO_YOUTUBE_ENABLED !== '0';
+const BUNNY_AUTO_YOUTUBE_DELETE_SOURCE = process.env.BUNNY_AUTO_YOUTUBE_DELETE_SOURCE !== '0';
+const BUNNY_AUTO_YOUTUBE_PROJECT_IDS = new Set(
+  trimToString(process.env.BUNNY_AUTO_YOUTUBE_PROJECT_IDS)
+    .split(',')
+    .map((value) => Number.parseInt(value.trim(), 10))
+    .filter((value) => Number.isFinite(value) && value > 0)
+);
 const directUploadIntentStore = new Map();
 const directUploadProjectQuotaStore = new Map();
+const bunnyYoutubeMirrorInFlight = new Set();
 const STRICT_AUDITION_PROJECT_IDS = new Set([265, 299]);
 const DEFAULT_AUDITION_FORM_RULES = Object.freeze({
   requireHebrewName: true,
@@ -330,6 +339,147 @@ async function insertAuditionWithRetry(auditionPayload, maxRetries = 3) {
     }
   }
   throw lastError;
+}
+
+function parseYouTubeVideoId(value) {
+  const raw = trimToString(value);
+  if (!raw) return null;
+  if (/^[A-Za-z0-9_-]{11}$/.test(raw)) return raw;
+  try {
+    const parsed = new URL(raw);
+    if (parsed.hostname.includes('youtube.com')) {
+      const id = parsed.searchParams.get('v');
+      return /^[A-Za-z0-9_-]{11}$/.test(id || '') ? id : null;
+    }
+    if (parsed.hostname.includes('youtu.be')) {
+      const id = parsed.pathname.replace('/', '');
+      return /^[A-Za-z0-9_-]{11}$/.test(id || '') ? id : null;
+    }
+  } catch (_) {
+    return null;
+  }
+  return null;
+}
+
+function shouldAutoMirrorBunnyProject(project) {
+  if (!BUNNY_AUTO_YOUTUBE_ENABLED || !project) return false;
+  const uploadMethod = trimToString(project.upload_method || project.uploadMethod).toLowerCase();
+  if (uploadMethod !== 'bunny_stream') return false;
+  if (BUNNY_AUTO_YOUTUBE_PROJECT_IDS.size === 0) return true;
+  return BUNNY_AUTO_YOUTUBE_PROJECT_IDS.has(Number(project.id));
+}
+
+async function mirrorAuditionFromBunnyToYoutube({ project, audition }) {
+  if (!project || !audition) {
+    throw new Error('Missing project or audition for Bunny->YouTube mirror.');
+  }
+
+  const auditionKey = `${project.id}:${audition.id}`;
+  if (bunnyYoutubeMirrorInFlight.has(auditionKey)) {
+    console.log(`AUTO_MIRROR_SKIP_IN_FLIGHT: key=${auditionKey}`);
+    return { skipped: true, reason: 'already_in_flight' };
+  }
+  bunnyYoutubeMirrorInFlight.add(auditionKey);
+
+  let tempDownloadPath = null;
+  try {
+    if (!process.env.GOOGLE_REFRESH_TOKEN) {
+      throw new Error('GOOGLE_REFRESH_TOKEN is not configured.');
+    }
+    if (trimToString(audition.video_type).toLowerCase() !== 'bunny_stream' || !trimToString(audition.video_url)) {
+      return { skipped: true, reason: 'not_bunny_source' };
+    }
+
+    const bunnyGuid = trimToString(audition.video_url);
+    const youtubeVideoUrl = trimToString(audition.youtube_video_url);
+    const existingYoutubeId = parseYouTubeVideoId(audition.youtube_video_id) || parseYouTubeVideoId(youtubeVideoUrl);
+
+    oauth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
+    const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
+
+    let youtubeVideoId = existingYoutubeId;
+    let resolvedYoutubeUrl = youtubeVideoUrl;
+    if (!youtubeVideoId) {
+      const download = await bunnyUploadService.downloadVideoToTemp(bunnyGuid);
+      tempDownloadPath = download.path;
+
+      const performerName = [
+        audition.first_name_en,
+        audition.last_name_en,
+        audition.first_name_he,
+        audition.last_name_he,
+      ].filter(Boolean).join(' ') || 'Audition Performer';
+      const title = `${performerName} - ${audition.role_name || audition.role || 'Audition'}`;
+      const description = [
+        `Audition submitted for project: ${audition.project_name || project.name}`,
+        audition.role_name ? `Role: ${audition.role_name}` : null,
+        audition.email ? `Email: ${audition.email}` : null,
+        audition.phone ? `Phone: ${audition.phone}` : null,
+      ].filter(Boolean).join('\n');
+      const videoMetadata = {
+        snippet: { title, description },
+        status: { privacyStatus: 'unlisted' },
+      };
+
+      const uploadResponse = await uploadToYouTubeResumable(
+        youtube,
+        { path: tempDownloadPath, originalname: `${performerName}-audition.mp4` },
+        videoMetadata
+      );
+      youtubeVideoId = trimToString(uploadResponse?.data?.id);
+      if (!youtubeVideoId) {
+        throw new Error('YouTube did not return a video ID.');
+      }
+      resolvedYoutubeUrl = `https://www.youtube.com/watch?v=${youtubeVideoId}`;
+    }
+
+    const verifyResponse = await youtube.videos.list({ part: ['id'], id: [youtubeVideoId] });
+    const existsOnYouTube = Array.isArray(verifyResponse?.data?.items) && verifyResponse.data.items.length > 0;
+    if (!existsOnYouTube) {
+      throw new Error(`YouTube video verification failed for ID ${youtubeVideoId}.`);
+    }
+    if (!resolvedYoutubeUrl) {
+      resolvedYoutubeUrl = `https://www.youtube.com/watch?v=${youtubeVideoId}`;
+    }
+
+    const sourceRole = audition.role_id
+      ? (Array.isArray(project.roles)
+        ? project.roles.find((role) => Number(role.id) === Number(audition.role_id))
+        : null)
+      : findProjectRoleByName(project, audition.role_name || audition.role);
+    if (sourceRole) {
+      const playlistId = await ensureRolePlaylist(youtube, project, sourceRole);
+      await addVideoToYouTubePlaylist(youtube, youtubeVideoId, playlistId);
+    }
+
+    await auditionService.updateAuditionYoutubeData(audition.id, {
+      youtubeVideoId,
+      youtubeVideoUrl: resolvedYoutubeUrl,
+    });
+
+    if (BUNNY_AUTO_YOUTUBE_DELETE_SOURCE) {
+      await bunnyUploadService.deleteVideo(bunnyGuid);
+      await auditionService.markAuditionYoutubePrimary(audition.id, {
+        youtubeVideoId,
+        youtubeVideoUrl: resolvedYoutubeUrl,
+      });
+      console.log(`AUTO_MIRROR_DONE_DELETE_OK: project=${project.id} audition=${audition.id} videoId=${youtubeVideoId}`);
+    } else {
+      console.log(`AUTO_MIRROR_DONE_KEEP_BUNNY: project=${project.id} audition=${audition.id} videoId=${youtubeVideoId}`);
+    }
+
+    return {
+      skipped: false,
+      youtubeVideoId,
+      youtubeVideoUrl: resolvedYoutubeUrl,
+      deletedBunnySource: BUNNY_AUTO_YOUTUBE_DELETE_SOURCE,
+    };
+  } finally {
+    if (tempDownloadPath) {
+      fs.promises.unlink(tempDownloadPath).catch(() => undefined);
+    }
+    bunnyYoutubeMirrorInFlight.delete(auditionKey);
+  }
 }
 
 async function getProjectByIdWithCache(projectId, contextLabel = 'unknown') {
@@ -3013,6 +3163,7 @@ app.post('/audition/:projectId', auditionUpload.fields([
     let videoType = null;
     let finalVideoUrl = null; // Using a more descriptive name
     let alreadyFinalized = false; // idempotent-finalize: audition already saved for this Bunny GUID
+    let savedAudition = null;
 
   if (videoFile) {
       console.log(`POST_AUDITION_UPLOADING_VIDEO: ${videoFile.originalname} for project ${project.id}. Project's uploadMethod: ${project.upload_method}`);
@@ -3140,6 +3291,7 @@ app.post('/audition/:projectId', auditionUpload.fields([
             if (existing) {
               console.log(`POST_AUDITION_IDEMPOTENT_HIT: guid=${guidFromForm} auditionId=${existing.id}`);
               alreadyFinalized = true;
+              savedAudition = existing;
             } else {
               // Intent was consumed but no audition persisted (previous attempt
               // crashed mid-insert). Safe to proceed and create the record now.
@@ -3195,7 +3347,6 @@ app.post('/audition/:projectId', auditionUpload.fields([
     };
     // Corrected logging to use req.params.projectId as projectId is not defined in this scope
     console.log(`[App.js POST /audition/:${req.params.projectId}] Prepared audition object: ${JSON.stringify(audition)}`);
-    let savedAudition = null;
     if (alreadyFinalized) {
       console.log(`[App.js POST /audition/:${req.params.projectId}] Skipping insert; audition already saved for this upload.`);
     } else {
@@ -3232,6 +3383,26 @@ app.post('/audition/:projectId', auditionUpload.fields([
       } catch (intentErr) {
         console.warn(`UPLOAD_INTENT_COMPLETE_WARN: guid=${finalVideoUrl} err=${intentErr.message}`);
       }
+    }
+
+    if (videoType === 'bunny_stream' && savedAudition && shouldAutoMirrorBunnyProject(project)) {
+      const bgProject = project;
+      const bgAuditionId = savedAudition.id;
+      setImmediate(async () => {
+        try {
+          const auditionForMirror = await auditionService.getAuditionById(bgAuditionId);
+          if (!auditionForMirror) {
+            console.warn(`AUTO_MIRROR_SKIP_NOT_FOUND: project=${bgProject.id} audition=${bgAuditionId}`);
+            return;
+          }
+          await mirrorAuditionFromBunnyToYoutube({ project: bgProject, audition: auditionForMirror });
+        } catch (mirrorErr) {
+          console.error(
+            `AUTO_MIRROR_FAILED: project=${bgProject.id} audition=${bgAuditionId} err=${mirrorErr.message}`,
+            mirrorErr
+          );
+        }
+      });
     }
     
     // Render beautiful success page

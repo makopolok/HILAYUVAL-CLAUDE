@@ -167,6 +167,22 @@ async function updateAuditionYoutubeData(auditionId, { youtubeVideoId, youtubeVi
   await pool.query(sql, [auditionId, youtubeVideoId || null, youtubeVideoUrl || null]);
 }
 
+// Promote a Bunny audition to YouTube as the primary source after successful mirroring.
+// Keeps youtube_* metadata in sync and flips video_type/video_url for playback.
+async function markAuditionYoutubePrimary(auditionId, { youtubeVideoId, youtubeVideoUrl }) {
+  const sql = `
+    UPDATE auditions
+    SET video_type = 'youtube',
+        video_url = $2,
+        youtube_video_id = $3,
+        youtube_video_url = $2,
+        youtube_synced_at = NOW(),
+        updated_at = NOW()
+    WHERE id = $1
+  `;
+  await pool.query(sql, [auditionId, youtubeVideoUrl || null, youtubeVideoId || null]);
+}
+
 // Idempotent-finalize helper: find an existing audition by its Bunny video GUID.
 // Used to detect duplicate/retried submissions so we return the already-saved
 // audition instead of creating a duplicate row or erroring out.
@@ -440,6 +456,7 @@ module.exports = {
   getAuditionById,
   deleteAudition,
   updateAuditionYoutubeData,
+  markAuditionYoutubePrimary,
   findAuditionByBunnyGuid,
   updateAuditionTagColor,
   updateAudition,
