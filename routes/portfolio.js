@@ -12,9 +12,6 @@ router.get('/', async (req, res) => {
         title: 'Hila Yuval Casting',
         projects,
         featuredProjects,
-        breadcrumbTrail: [
-            { label: 'Home', url: '/' },
-        ],
     });
 });
 

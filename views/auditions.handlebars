@@ -116,6 +116,9 @@
   .auditions-page .auditions-role-accordion .accordion-button {
     color: var(--audition-red);
     font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
   }
   .auditions-page .auditions-role-accordion .accordion-button:not(.collapsed) {
     color: #fff;
@@ -127,6 +130,15 @@
   }
   .auditions-page .auditions-role-accordion .accordion-button:not(.collapsed)::after {
     filter: brightness(0) invert(1);
+  }
+  .auditions-page .auditions-role-label {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .auditions-page .auditions-role-count {
+    flex: 0 0 auto;
+    min-width: 3rem;
+    text-align: center;
   }
 </style>
 <div class="container mt-5 auditions-page">
@@ -175,8 +187,11 @@
                 data-bs-target="#role-collapse-{{this.id}}"
                 aria-expanded="{{#if @first}}true{{else}}false{{/if}}"
                 aria-controls="role-collapse-{{this.id}}">
-                <span class="me-2">{{this.name}}</span>
-                <span class="badge text-bg-light border ms-auto">{{this.auditions.length}}</span>
+                <span class="auditions-role-label">{{this.name}}</span>
+                <span class="badge text-bg-light border auditions-role-count">{{this.auditions.length}}</span>
+                {{#if this.newAuditionsCount}}
+                  <span class="auditions-new-count-badge ms-2">+{{this.newAuditionsCount}} new</span>
+                {{/if}}
               </button>
             </h2>
             <div
