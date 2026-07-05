@@ -3210,7 +3210,7 @@ app.post('/audition/:projectId', auditionUpload.fields([
       console.log(`POST_AUDITION_UPLOADING_VIDEO: ${videoFile.originalname} for project ${project.id}. Project's uploadMethod: ${project.upload_method}`);
       
       if (project.upload_method === 'youtube') {
-        console.log(`POST_AUDITION_ATTEMPTING_YOUTUBE_UPLOAD: Role: ${selectedRole.name}, playlist_id: ${selectedRole.playlist_id || '(none yet)'}`);
+        console.log(`POST_AUDITION_ATTEMPTING_YOUTUBE_UPLOAD: Role: ${selectedRole.name}, youtube_playlist_id: ${selectedRole.youtube_playlist_id || '(none yet)'}`);
         if (!REFRESH_TOKEN) {
           console.error('POST_AUDITION_YOUTUBE_ERROR: Google Refresh Token not configured.');
           throw new Error('Google Refresh Token not configured. Cannot upload to YouTube.');
