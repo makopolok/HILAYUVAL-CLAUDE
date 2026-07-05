@@ -465,22 +465,25 @@ async function mirrorAuditionFromBunnyToYoutube({ project, audition }) {
       youtubeVideoUrl: resolvedYoutubeUrl,
     });
 
-    if (BUNNY_AUTO_YOUTUBE_DELETE_SOURCE) {
-      await bunnyUploadService.deleteVideo(bunnyGuid);
-      await auditionService.markAuditionYoutubePrimary(audition.id, {
-        youtubeVideoId,
-        youtubeVideoUrl: resolvedYoutubeUrl,
-      });
-      console.log(`AUTO_MIRROR_DONE_DELETE_OK: project=${project.id} audition=${audition.id} videoId=${youtubeVideoId}`);
-    } else {
-      console.log(`AUTO_MIRROR_DONE_KEEP_BUNNY: project=${project.id} audition=${audition.id} videoId=${youtubeVideoId}`);
-    }
+    // Schedule Bunny deletion 4 days in the future (safety window for recovery)
+    const deletionScheduledAt = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000);
+    await db.query(
+      'UPDATE auditions SET bunny_deletion_scheduled_at = $1 WHERE id = $2',
+      [deletionScheduledAt, audition.id]
+    );
+
+    await auditionService.markAuditionYoutubePrimary(audition.id, {
+      youtubeVideoId,
+      youtubeVideoUrl: resolvedYoutubeUrl,
+    });
+    console.log(`AUTO_MIRROR_DONE_SCHEDULED_BUNNY_DELETE: project=${project.id} audition=${audition.id} videoId=${youtubeVideoId} deleteAt=${deletionScheduledAt.toISOString()}`);
 
     return {
       skipped: false,
       youtubeVideoId,
       youtubeVideoUrl: resolvedYoutubeUrl,
-      deletedBunnySource: BUNNY_AUTO_YOUTUBE_DELETE_SOURCE,
+      deletedBunnySource: false,
+      bunnyDeletionScheduledAt: deletionScheduledAt,
     };
   } finally {
     if (tempDownloadPath) {
@@ -4366,6 +4369,71 @@ app.use((error, req, res, next) => {
 // Add at the end of middleware chain, before app.listen
 app.use(errorHandler);
 
+// Bunny deletion cleanup job - runs every hour
+async function startBunnyCleanupJob() {
+  const cleanupInterval = 60 * 60 * 1000; // Every hour
+  
+  async function cleanupExpiredBunnyFiles() {
+    try {
+      const { db } = require('./utils/database');
+      const now = new Date();
+      
+      // Find all auditions with scheduled deletion time in the past
+      const result = await db.query(
+        `SELECT id, first_name_en, last_name_en, video_url 
+         FROM auditions 
+         WHERE bunny_deletion_scheduled_at IS NOT NULL 
+         AND bunny_deletion_scheduled_at <= $1
+         AND video_type = 'bunny_stream'
+         LIMIT 50`,
+        [now]
+      );
+      
+      if (!result.rows || result.rows.length === 0) {
+        console.log('[BUNNY_CLEANUP] No expired Bunny files to delete');
+        return;
+      }
+      
+      console.log(`[BUNNY_CLEANUP] Found ${result.rows.length} expired Bunny files to delete`);
+      
+      for (const audition of result.rows) {
+        try {
+          // Extract Bunny GUID from URL
+          const urlMatch = audition.video_url?.match(/\/([a-f0-9-]+)$/);
+          if (!urlMatch) {
+            console.warn(`[BUNNY_CLEANUP] Could not extract GUID from URL: ${audition.video_url}`);
+            continue;
+          }
+          
+          const bunnyGuid = urlMatch[1];
+          
+          // Delete from Bunny
+          await bunnyUploadService.deleteVideo(bunnyGuid);
+          
+          // Update auditions table to clear the flag
+          await db.query(
+            'UPDATE auditions SET bunny_deletion_scheduled_at = NULL WHERE id = $1',
+            [audition.id]
+          );
+          
+          console.log(`[BUNNY_CLEANUP] Deleted Bunny file for audition ${audition.id} (${audition.first_name_en} ${audition.last_name_en})`);
+        } catch (err) {
+          console.error(`[BUNNY_CLEANUP_ERROR] Failed to delete audition ${audition.id}: ${err.message}`);
+        }
+      }
+    } catch (err) {
+      console.error('[BUNNY_CLEANUP_FATAL]', err);
+    }
+  }
+  
+  // Run initial cleanup
+  await cleanupExpiredBunnyFiles();
+  
+  // Schedule recurring cleanup
+  setInterval(cleanupExpiredBunnyFiles, cleanupInterval);
+  console.log('[BUNNY_CLEANUP] Job started - will run every hour');
+}
+
 const server = app.listen(PORT, () => {
     console.log(`INFO: Server attempting to run on port ${PORT}. Heroku process.env.PORT: ${process.env.PORT}. Timestamp: ${new Date().toISOString()}`);
     // Example: Check DB connection after server starts (if auditionService has such a method)
@@ -4388,6 +4456,11 @@ const server = app.listen(PORT, () => {
         startYoutubeTokenMonitor();
     } catch (monitorErr) {
         console.error('YOUTUBE_TOKEN_MONITOR_START_ERROR:', monitorErr.message);
+    }
+    try {
+        startBunnyCleanupJob();
+    } catch (cleanupErr) {
+        console.error('BUNNY_CLEANUP_START_ERROR:', cleanupErr.message);
     }
 });
 
