@@ -54,13 +54,13 @@
   .tag-blue { background: #1c7ed6; }
   .tag-purple { background: #9c36b5; }
 
-  .projects-table tbody tr.tag-color-gray { --bs-table-bg: #f1f3f5; --bs-table-accent-bg: #f1f3f5; }
-  .projects-table tbody tr.tag-color-red { --bs-table-bg: #fff5f5; --bs-table-accent-bg: #fff5f5; }
-  .projects-table tbody tr.tag-color-orange { --bs-table-bg: #fff4e6; --bs-table-accent-bg: #fff4e6; }
-  .projects-table tbody tr.tag-color-yellow { --bs-table-bg: #fff9db; --bs-table-accent-bg: #fff9db; }
-  .projects-table tbody tr.tag-color-green { --bs-table-bg: #ebfbee; --bs-table-accent-bg: #ebfbee; }
-  .projects-table tbody tr.tag-color-blue { --bs-table-bg: #e7f5ff; --bs-table-accent-bg: #e7f5ff; }
-  .projects-table tbody tr.tag-color-purple { --bs-table-bg: #f8f0fc; --bs-table-accent-bg: #f8f0fc; }
+  .projects-table tbody tr.tag-color-gray { --bs-table-bg: #dfe4ea; --bs-table-accent-bg: #dfe4ea; }
+  .projects-table tbody tr.tag-color-red { --bs-table-bg: #ffd6d6; --bs-table-accent-bg: #ffd6d6; }
+  .projects-table tbody tr.tag-color-orange { --bs-table-bg: #ffe0b3; --bs-table-accent-bg: #ffe0b3; }
+  .projects-table tbody tr.tag-color-yellow { --bs-table-bg: #fff3a3; --bs-table-accent-bg: #fff3a3; }
+  .projects-table tbody tr.tag-color-green { --bs-table-bg: #d4f4dd; --bs-table-accent-bg: #d4f4dd; }
+  .projects-table tbody tr.tag-color-blue { --bs-table-bg: #d6e8ff; --bs-table-accent-bg: #d6e8ff; }
+  .projects-table tbody tr.tag-color-purple { --bs-table-bg: #ead7ff; --bs-table-accent-bg: #ead7ff; }
   .projects-table tbody tr[class*="tag-color-"] > td { background-color: var(--bs-table-bg) !important; }
 </style>
 
@@ -207,13 +207,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const tagClasses = ['gray', 'red', 'orange', 'yellow', 'green', 'blue', 'purple'].map((color) => `tag-color-${color}`);
   const tagColorHex = {
-    gray: '#f1f3f5',
-    red: '#fff5f5',
-    orange: '#fff4e6',
-    yellow: '#fff9db',
-    green: '#ebfbee',
-    blue: '#e7f5ff',
-    purple: '#f8f0fc'
+    gray: '#dfe4ea',
+    red: '#ffd6d6',
+    orange: '#ffe0b3',
+    yellow: '#fff3a3',
+    green: '#d4f4dd',
+    blue: '#d6e8ff',
+    purple: '#ead7ff'
   };
   let activeRow = null;
 
