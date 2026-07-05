@@ -277,7 +277,7 @@
                       <div class="d-flex gap-2 flex-wrap audition-actions">
                         <div class="action-buttons">
                           {{#if video_url}}
-                            <a class="btn btn-outline-danger btn-sm" target="_blank" rel="noopener" href="{{#if video_watch_url}}{{video_watch_url}}{{else if embed_url}}{{embed_url}}{{else}}{{video_url}}{{/if}}">
+                            <a class="btn btn-outline-danger btn-sm" target="_blank" rel="noopener" href="{{#if youtube_video_url}}{{youtube_video_url}}{{else if video_watch_url}}{{video_watch_url}}{{else if embed_url}}{{embed_url}}{{else}}{{video_url}}{{/if}}">
                               <i class="fas fa-play"></i>
                             </a>
                           {{/if}}
@@ -540,22 +540,16 @@
                         <textarea class="form-control form-control-sm d-none edit-input" placeholder="About me" data-field="about_me" rows="3" style="margin-top: 0.5rem;">{{about_me}}</textarea>
                       </p>
                        
-                      <!-- Video URL and Type (editable for admin) -->
+                      <!-- Video URLs -->
                       <p class="card-text small mb-1 edit-field">
-                        <strong>Video URL:</strong> 
-                        <span class="edit-display">{{#if video_url}}<code class="small">{{video_url}}</code>{{else}}<span class="text-muted">—</span>{{/if}}</span>
+                        <strong>Bunny URL:</strong>
+                        <span class="edit-display">{{#if (eq video_type "bunny_stream")}}<code class="small">{{video_url}}</code>{{/if}}</span>
                         <input type="url" class="form-control form-control-sm d-none edit-input" placeholder="Video URL" data-field="video_url" value="{{video_url}}" style="margin-top: 0.5rem;" />
                       </p>
-                       
-                      <p class="card-text small mb-1 edit-field">
-                        <strong>Video Type:</strong> 
-                        <span class="edit-display">{{#if video_type}}{{video_type}}{{else}}<span class="text-muted">—</span>{{/if}}</span>
-                        <select class="form-select form-select-sm d-none edit-input" data-field="video_type" style="margin-top: 0.5rem;">
-                          <option value="">Select type</option>
-                          <option value="youtube" {{#if (eq video_type "youtube")}}selected{{/if}}>YouTube</option>
-                          <option value="bunny_stream" {{#if (eq video_type "bunny_stream")}}selected{{/if}}>Bunny Stream</option>
-                          <option value="vimeo" {{#if (eq video_type "vimeo")}}selected{{/if}}>Vimeo</option>
-                        </select>
+
+                      <p class="card-text small mb-1">
+                        <strong>YouTube URL:</strong>
+                        <span>{{#if youtube_video_url}}<code class="small">{{youtube_video_url}}</code>{{else if (eq video_type "youtube")}}<code class="small">{{video_url}}</code>{{/if}}</span>
                       </p>
                        
                       <p class="card-text"><small class="text-muted">Submitted: {{created_at_formatted}}</small></p>
