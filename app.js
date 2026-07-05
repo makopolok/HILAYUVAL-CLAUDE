@@ -1816,7 +1816,12 @@ app.post('/projects/create', requireAdmin, async (req, res, next) => { // Added 
 
 // Route to render project-specific audition form
 // Emergency redirect: keep legacy intake URL alive while project 265 issues are triaged.
-app.get(['/audition/265', '/audition/265/'], (req, res) => {
+app.get('/audition/265', (req, res) => {
+  const queryIndex = req.originalUrl.indexOf('?');
+  const query = queryIndex >= 0 ? req.originalUrl.slice(queryIndex) : '';
+  return res.redirect(302, `/audition/299${query}`);
+});
+app.get('/audition/265/', (req, res) => {
   const queryIndex = req.originalUrl.indexOf('?');
   const query = queryIndex >= 0 ? req.originalUrl.slice(queryIndex) : '';
   return res.redirect(302, `/audition/299${query}`);
