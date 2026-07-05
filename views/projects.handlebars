@@ -233,8 +233,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const item = event.target.closest('.project-tag-menu-item');
     if (!item || !activeRow) return;
 
-    const projectId = activeRow.dataset.projectId;
+    const selectedRow = activeRow;
+    const projectId = selectedRow.dataset.projectId;
     const tagColor = (item.dataset.tagColor || '').trim().toLowerCase();
+    hideMenu();
     try {
       const response = await fetch(`/projects/${projectId}/tag-color`, {
         method: 'POST',
@@ -254,8 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         throw new Error(payload.error || 'Failed to save project color');
       }
-      applyRowColor(activeRow, payload.tagColor || '');
-      hideMenu();
+      applyRowColor(selectedRow, payload.tagColor || '');
     } catch (error) {
       console.error('[PROJECT_TAG_COLOR_SAVE_ERROR]', error);
       alert('Could not save row color. Please try again.');
