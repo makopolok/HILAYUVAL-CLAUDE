@@ -749,8 +749,18 @@ function applyTagColor(target, color) {
           cell.style.removeProperty('border-left');
         }
       }
+
     });
   }
+}
+
+function getTagTargetsByAuditionId(auditionId) {
+  if (!auditionId) return [];
+  return document.querySelectorAll(`.audition-row[data-audition-id="${auditionId}"], .audition-tag-card[data-audition-id="${auditionId}"]`);
+}
+
+function applyTagColorToAudition(auditionId, color) {
+  getTagTargetsByAuditionId(auditionId).forEach((target) => applyTagColor(target, color));
 }
 
 function hideTagMenu() {
@@ -783,7 +793,7 @@ async function saveTagColor(target, tagColor) {
   if (!response.ok || !payload.ok) {
     throw new Error(payload.error || 'Failed to save color');
   }
-  applyTagColor(target, payload.tagColor || '');
+  applyTagColorToAudition(auditionId, payload.tagColor || '');
 }
 
 // Load all videos when page loads
@@ -1138,7 +1148,7 @@ document.addEventListener('DOMContentLoaded', function() {
     tagTargets.forEach((target) => {
       const initialColor = (target.dataset.tagColor || '').trim().toLowerCase();
       if (initialColor) {
-        applyTagColor(target, initialColor);
+        applyTagColorToAudition(target.dataset.auditionId, initialColor);
       }
       target.addEventListener('contextmenu', (event) => {
         event.preventDefault();
