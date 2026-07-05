@@ -106,6 +106,7 @@
             <th>State</th>
             <th>Project</th>
             <th>Role</th>
+            <th>Actor</th>
             <th>Bunny GUID</th>
             <th>Audition</th>
             <th>Mirror</th>
@@ -124,10 +125,23 @@
               {{#if this.project_id}}<span class="text-muted small">#{{this.project_id}}</span>{{/if}}
             </td>
             <td>{{#if this.role_name}}{{this.role_name}}{{else}}<span class="text-muted">&mdash;</span>{{/if}}</td>
-            <td><code class="small">{{this.guid}}</code></td>
+            <td>{{#if this.actor_name}}{{this.actor_name}}{{else}}<span class="text-muted">&mdash;</span>{{/if}}</td>
+            <td>
+              {{#if this.audition_admin_url}}
+                <a href="{{this.audition_admin_url}}" class="small">
+                  <code class="small">{{this.guid}}</code>
+                </a>
+              {{else}}
+                <code class="small">{{this.guid}}</code>
+              {{/if}}
+            </td>
             <td>
               {{#if this.audition_id}}
-                <a href="/projects/{{this.project_id}}/auditions" class="small">#{{this.audition_id}}</a>
+                {{#if this.audition_admin_url}}
+                  <a href="{{this.audition_admin_url}}" class="small">#{{this.audition_id}}</a>
+                {{else}}
+                  <a href="/projects/{{this.project_id}}/auditions" class="small">#{{this.audition_id}}</a>
+                {{/if}}
               {{else}}
                 <span class="text-muted">&mdash;</span>
               {{/if}}
@@ -156,7 +170,7 @@
             </td>
           </tr>
           {{else}}
-          <tr><td colspan="10" class="text-center text-muted py-4">No intents found.</td></tr>
+          <tr><td colspan="11" class="text-center text-muted py-4">No intents found.</td></tr>
           {{/each}}
         </tbody>
       </table>

@@ -216,7 +216,7 @@
                     </thead>
                     <tbody>
                       {{#each this.auditions}}
-                  <tr class="audition-row" data-audition-id="{{id}}" data-project-id="{{../../project.id}}">
+                  <tr id="audition-row-{{id}}" class="audition-row" data-audition-id="{{id}}" data-project-id="{{../../project.id}}">
                     <td>
                       {{#if profile_picture_url}}
                         <div class="audition-list-avatar-wrapper">

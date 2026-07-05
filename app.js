@@ -4186,6 +4186,13 @@ app.get('/admin/upload-intents', requireAdmin, async (req, res) => {
       badgeClass: intentBadgeClass(r.state),
       created_fmt: formatIntentTime(r.created_at),
       updated_fmt: formatIntentTime(r.updated_at),
+      audition_admin_url: (() => {
+        const projectId = Number(r.project_id);
+        const auditionId = Number(r.audition_id);
+        if (!Number.isInteger(projectId) || projectId <= 0) return '';
+        if (!Number.isInteger(auditionId) || auditionId <= 0) return '';
+        return `/projects/${projectId}/auditions#audition-row-${auditionId}`;
+      })(),
       youtube_link: trimToString(r.youtube_video_url)
         || (trimToString(r.youtube_video_id) ? `https://www.youtube.com/watch?v=${trimToString(r.youtube_video_id)}` : ''),
       mirrorStatus: (() => {

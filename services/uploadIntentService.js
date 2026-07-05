@@ -224,7 +224,12 @@ async function listRecent(limit = 50, offset = 0, projectId = null, mirrorFailur
            a.video_url AS audition_video_url,
            a.youtube_video_id,
            a.youtube_video_url,
-           a.youtube_synced_at
+           a.youtube_synced_at,
+           COALESCE(
+             NULLIF(BTRIM(a.search_full_name), ''),
+             NULLIF(BTRIM(CONCAT_WS(' ', NULLIF(BTRIM(a.first_name_he), ''), NULLIF(BTRIM(a.last_name_he), ''))), ''),
+             NULLIF(BTRIM(CONCAT_WS(' ', NULLIF(BTRIM(a.first_name_en), ''), NULLIF(BTRIM(a.last_name_en), ''))), '')
+           ) AS actor_name
      FROM upload_intents ui
      LEFT JOIN projects p ON p.id = ui.project_id
      LEFT JOIN auditions a ON a.id = ui.audition_id
