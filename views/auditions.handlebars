@@ -801,10 +801,18 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         const data = await res.json();
         
-        // Update input fields with loaded data
+       // Update input fields with loaded data
         row.querySelectorAll('[data-field]').forEach(input => {
           const fieldName = input.dataset.field;
-          input.value = data[fieldName] ?? '';
+          const value = data[fieldName] ?? '';
+          
+          if (input.tagName === 'SELECT') {
+            // For select elements, set the value property
+            input.value = value;
+          } else {
+            // For input elements, set the value attribute
+            input.value = value;
+          }
         });
       } catch (err) {
         console.error('Error loading edit data:', err);
