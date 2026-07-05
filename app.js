@@ -3886,6 +3886,8 @@ app.post('/projects/:projectId/auditions/:auditionId/update', requireAdmin, asyn
       if (!isValidHttpUrl(updates.video_url)) {
         return res.status(400).json({ ok: false, error: 'Invalid video URL format.' });
       }
+      // Clear youtube_video_url to force recalculation from new video_url
+      updates.youtube_video_url = null;
     }
 
     // Update the audition
