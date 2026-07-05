@@ -440,7 +440,25 @@
                       </div>
                        
                       <!-- Video Player -->
-                      {{#if video_url}}
+                      {{#if youtube_video_url}}
+                        <div class="mb-3 youtube-video">
+                          <div class="ratio ratio-16x9">
+                            <iframe
+                              data-src="https://www.youtube.com/embed/{{youtubeVideoId youtube_video_url}}"
+                              title="YouTube audition video"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowfullscreen
+                              loading="lazy"
+                              class="rounded">
+                            </iframe>
+                          </div>
+                          <div class="mt-2 text-center">
+                            <a class="btn btn-outline-primary btn-sm" target="_blank" rel="noopener" href="{{youtube_video_url}}">
+                              <i class="fab fa-youtube me-2"></i>YouTube
+                            </a>
+                          </div>
+                        </div>
+                      {{else if video_url}}
                         {{#if (eq video_type "youtube")}}
                         <div class="mb-3 youtube-video">
                           <div class="ratio ratio-16x9">
@@ -497,12 +515,7 @@
                           </div>
                         </div>
                         {{/if}}
-                        {{#if youtube_video_url}}
-                        <div class="alert alert-info small py-2 mb-3" role="alert">
-                          <i class="fab fa-youtube me-1"></i>
-                          Also available on YouTube: <a href="{{youtube_video_url}}" target="_blank" rel="noopener">open</a>
-                        </div>
-                        {{else if ../../youtube_ready}}
+                        {{#if ../../youtube_ready}}
                         <form method="POST" action="/projects/{{../../project.id}}/auditions/{{id}}/upload-to-youtube" class="mt-2">
                           <input type="hidden" name="redirect" value="{{../../redirect_to}}">
                           <button type="submit" class="btn btn-outline-danger btn-sm w-100">
