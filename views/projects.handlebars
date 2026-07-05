@@ -193,18 +193,6 @@
   </div>
   
   <hr class="my-4">
-  {{! Debug: Show raw deploymentInfo object }}
-  {{#if deploymentInfo}}
-  <div class="alert alert-warning small mb-2">
-    <strong>DEBUG - Raw data:</strong> 
-    Commit: {{deploymentInfo.commit}}, Version: {{deploymentInfo.version}}, Branch: {{deploymentInfo.branch}}, Date: {{deploymentInfo.deployDate}}
-  </div>
-  {{else}}
-  <div class="alert alert-danger small mb-2">
-    <strong>DEBUG:</strong> deploymentInfo is null/undefined!
-  </div>
-  {{/if}}
-  
   <div class="alert alert-info small mb-3">
     <strong>Version Info:</strong> 
     Commit: {{deploymentInfo.commit}} | 
