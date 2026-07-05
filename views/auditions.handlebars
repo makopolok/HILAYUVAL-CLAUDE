@@ -270,7 +270,8 @@
                     </td>
                     <td class="edit-field">
                       <span class="edit-display">{{#if current_location}}{{current_location}}{{else}}—{{/if}}</span>
-                      <input type="text" class="form-control form-control-sm d-none edit-input" placeholder="Location" data-field="current_location" value="{{current_location}}">
+                      <textarea class="form-control form-control-sm d-none edit-input" placeholder="Location" data-field="current_location" rows="2">{{current_location}}</textarea>
+                      <textarea class="form-control form-control-sm d-none edit-input mt-1" placeholder="About me" data-field="about_me" rows="3">{{about_me}}</textarea>
                     </td>
                     <td>
                       <div class="d-flex gap-2 flex-wrap audition-actions">
@@ -530,12 +531,14 @@
                         <input type="number" class="form-control form-control-sm d-none edit-input" placeholder="Height (cm)" data-field="height" value="{{height}}" style="margin-top: 0.5rem;">
                       </p>
                       {{/if}}
-                      {{#if current_location}}
                       <p class="card-text small mb-1 edit-field">
-                        <strong>Based in:</strong> <span class="edit-display">{{current_location}}</span>
-                        <input type="text" class="form-control form-control-sm d-none edit-input" placeholder="Location" data-field="current_location" value="{{current_location}}" style="margin-top: 0.5rem;">
+                        <strong>Based in:</strong> <span class="edit-display">{{#if current_location}}{{current_location}}{{else}}—{{/if}}</span>
+                        <textarea class="form-control form-control-sm d-none edit-input" placeholder="Location" data-field="current_location" rows="2" style="margin-top: 0.5rem;">{{current_location}}</textarea>
                       </p>
-                      {{/if}}
+                      <p class="card-text small mb-1 edit-field">
+                        <strong>About me:</strong> <span class="edit-display">{{#if about_me}}{{about_me}}{{else}}—{{/if}}</span>
+                        <textarea class="form-control form-control-sm d-none edit-input" placeholder="About me" data-field="about_me" rows="3" style="margin-top: 0.5rem;">{{about_me}}</textarea>
+                      </p>
                        
                       <!-- Video URL and Type (editable for admin) -->
                       <p class="card-text small mb-1 edit-field">

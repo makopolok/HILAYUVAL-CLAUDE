@@ -3828,6 +3828,7 @@ app.get('/projects/:projectId/auditions/:auditionId/edit-data', requireAdmin, as
       age: audition.age || '',
       height: audition.height || '',
       current_location: audition.current_location || '',
+      about_me: audition.about_me || '',
       video_url: audition.video_url || '',
       video_type: audition.video_type || ''
     });
@@ -3858,7 +3859,7 @@ app.post('/projects/:projectId/auditions/:auditionId/update', requireAdmin, asyn
 
     // Extract fields from request body (no strict validation for admin edits)
     const updates = {};
-    const editableFields = ['first_name_en', 'last_name_en', 'first_name_he', 'last_name_he', 'email', 'phone', 'agency', 'age', 'height', 'current_location', 'video_url', 'video_type'];
+    const editableFields = ['first_name_en', 'last_name_en', 'first_name_he', 'last_name_he', 'email', 'phone', 'agency', 'age', 'height', 'current_location', 'about_me', 'video_url', 'video_type'];
     
     for (const field of editableFields) {
       if (req.body && field in req.body) {
