@@ -549,13 +549,29 @@
                       <!-- Video URLs -->
                       <p class="card-text small mb-1 edit-field">
                         <strong>Bunny URL:</strong>
-                        <span class="edit-display">{{#if (eq video_type "bunny_stream")}}<code class="small">{{video_url}}</code>{{/if}}</span>
+                        <span class="edit-display">
+                          {{#if (eq video_type "bunny_stream")}}
+                            {{#if embed_url}}
+                              <a href="{{embed_url}}" target="_blank" rel="noopener"><code class="small">{{embed_url}}</code></a>
+                            {{else if video_watch_url}}
+                              <a href="{{video_watch_url}}" target="_blank" rel="noopener"><code class="small">{{video_watch_url}}</code></a>
+                            {{else}}
+                              <code class="small">{{video_url}}</code>
+                            {{/if}}
+                          {{/if}}
+                        </span>
                         <input type="url" class="form-control form-control-sm d-none edit-input" placeholder="Video URL" data-field="video_url" value="{{video_url}}" style="margin-top: 0.5rem;" />
                       </p>
 
                       <p class="card-text small mb-1">
                         <strong>YouTube URL:</strong>
-                        <span>{{#if youtube_video_url}}<code class="small">{{youtube_video_url}}</code>{{else if (eq video_type "youtube")}}<code class="small">{{video_url}}</code>{{/if}}</span>
+                        <span>
+                          {{#if youtube_video_url}}
+                            <a href="{{youtube_video_url}}" target="_blank" rel="noopener"><code class="small">{{youtube_video_url}}</code></a>
+                          {{else if (eq video_type "youtube")}}
+                            <a href="{{#if video_watch_url}}{{video_watch_url}}{{else}}{{video_url}}{{/if}}" target="_blank" rel="noopener"><code class="small">{{#if video_watch_url}}{{video_watch_url}}{{else}}{{video_url}}{{/if}}</code></a>
+                          {{/if}}
+                        </span>
                       </p>
                        
                       <p class="card-text"><small class="text-muted">Submitted: {{created_at_formatted}}</small></p>
