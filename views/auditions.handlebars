@@ -216,7 +216,7 @@
                     </thead>
                     <tbody>
                       {{#each this.auditions}}
-                  <tr id="audition-row-{{id}}" class="audition-row" data-audition-id="{{id}}" data-project-id="{{../../project.id}}">
+                  <tr id="audition-row-{{id}}" class="audition-row{{#if tag_color}} tag-color-{{tag_color}}{{/if}}" data-audition-id="{{id}}" data-project-id="{{../../project.id}}" data-tag-color="{{tag_color}}">
                     <td>
                       {{#if profile_picture_url}}
                         <div class="audition-list-avatar-wrapper">
@@ -695,18 +695,62 @@ function testIframeLoad(container) {
 }
 
 const TAG_COLOR_CLASSES = ['gray', 'red', 'orange', 'yellow', 'green', 'blue', 'purple'].map((color) => `tag-color-${color}`);
+const TAG_COLOR_HEX = {
+  gray: '#cfd4da',
+  red: '#ffb3b3',
+  orange: '#ffc078',
+  yellow: '#ffe066',
+  green: '#b2f2bb',
+  blue: '#a5d8ff',
+  purple: '#d0bfff'
+};
+const TAG_COLOR_BORDER = {
+  gray: '#6c757d',
+  red: '#e03131',
+  orange: '#f08c00',
+  yellow: '#f59f00',
+  green: '#2f9e44',
+  blue: '#1c7ed6',
+  purple: '#9c36b5'
+};
 
-function clearTagColorClasses(card) {
-  TAG_COLOR_CLASSES.forEach((className) => card.classList.remove(className));
+function clearTagColorClasses(target) {
+  TAG_COLOR_CLASSES.forEach((className) => target.classList.remove(className));
 }
 
-function applyTagColor(card, color) {
-  clearTagColorClasses(card);
+function applyTagColor(target, color) {
+  clearTagColorClasses(target);
   const normalized = (color || '').toString().trim().toLowerCase();
   if (normalized) {
-    card.classList.add(`tag-color-${normalized}`);
+    target.classList.add(`tag-color-${normalized}`);
   }
-  card.dataset.tagColor = normalized;
+  target.dataset.tagColor = normalized;
+
+  if (target.tagName === 'TR') {
+    const cells = target.querySelectorAll('td');
+    const bg = TAG_COLOR_HEX[normalized] || '';
+    const border = TAG_COLOR_BORDER[normalized] || '';
+    cells.forEach((cell, index) => {
+      if (bg) {
+        cell.style.setProperty('--bs-table-bg', bg);
+        cell.style.setProperty('--bs-table-accent-bg', bg);
+        cell.style.backgroundColor = bg;
+        cell.style.boxShadow = `inset 0 0 0 9999px ${bg}`;
+      } else {
+        cell.style.removeProperty('--bs-table-bg');
+        cell.style.removeProperty('--bs-table-accent-bg');
+        cell.style.removeProperty('background-color');
+        cell.style.removeProperty('box-shadow');
+      }
+      if (index === 0) {
+        if (border) {
+          cell.style.borderLeft = `6px solid ${border}`;
+        } else {
+          cell.style.removeProperty('border-left');
+        }
+      }
+    });
+  }
 }
 
 function hideTagMenu() {
@@ -725,9 +769,9 @@ function showTagMenu(event, card) {
   menu.dataset.auditionId = card.dataset.auditionId;
 }
 
-async function saveTagColor(card, tagColor) {
-  const projectId = card.dataset.projectId;
-  const auditionId = card.dataset.auditionId;
+async function saveTagColor(target, tagColor) {
+  const projectId = target.dataset.projectId;
+  const auditionId = target.dataset.auditionId;
   if (!projectId || !auditionId) return;
 
   const response = await fetch(`/projects/${projectId}/auditions/${auditionId}/tag-color`, {
@@ -739,7 +783,7 @@ async function saveTagColor(card, tagColor) {
   if (!response.ok || !payload.ok) {
     throw new Error(payload.error || 'Failed to save color');
   }
-  applyTagColor(card, payload.tagColor || '');
+  applyTagColor(target, payload.tagColor || '');
 }
 
 // Load all videos when page loads
@@ -1087,30 +1131,35 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  let activeTagCard = null;
+  let activeTagTarget = null;
   const tagMenu = document.getElementById('audition-tag-menu');
-  const tagCards = document.querySelectorAll('.audition-tag-card');
-  if (tagMenu && tagCards.length) {
-    tagCards.forEach((card) => {
-      card.addEventListener('contextmenu', (event) => {
+  const tagTargets = document.querySelectorAll('.audition-tag-card, .audition-row');
+  if (tagMenu && tagTargets.length) {
+    tagTargets.forEach((target) => {
+      const initialColor = (target.dataset.tagColor || '').trim().toLowerCase();
+      if (initialColor) {
+        applyTagColor(target, initialColor);
+      }
+      target.addEventListener('contextmenu', (event) => {
         event.preventDefault();
-        activeTagCard = card;
-        showTagMenu(event, card);
+        activeTagTarget = target;
+        showTagMenu(event, target);
       });
     });
 
     tagMenu.addEventListener('click', async (event) => {
       const item = event.target.closest('.audition-tag-menu-item');
-      if (!item || !activeTagCard) return;
+      if (!item || !activeTagTarget) return;
       const newColor = (item.dataset.tagColor || '').trim().toLowerCase();
+      const selectedTarget = activeTagTarget;
       tagMenu.classList.add('d-none');
       try {
-        await saveTagColor(activeTagCard, newColor);
+        await saveTagColor(selectedTarget, newColor);
       } catch (error) {
         console.error('[AUDITION_TAG_COLOR_SAVE_ERROR]', error);
         alert('Could not save row color. Please try again.');
       } finally {
-        activeTagCard = null;
+        activeTagTarget = null;
       }
     });
 
@@ -1270,17 +1319,33 @@ body {
 .tag-purple { background: #9c36b5; }
 
 .audition-tag-card.tag-color-gray,
-.audition-tag-card.tag-color-gray .card-body { background: #f1f3f5 !important; }
+.audition-tag-card.tag-color-gray .card-body { background: #cfd4da !important; }
 .audition-tag-card.tag-color-red,
-.audition-tag-card.tag-color-red .card-body { background: #fff5f5 !important; }
+.audition-tag-card.tag-color-red .card-body { background: #ffb3b3 !important; }
 .audition-tag-card.tag-color-orange,
-.audition-tag-card.tag-color-orange .card-body { background: #fff4e6 !important; }
+.audition-tag-card.tag-color-orange .card-body { background: #ffc078 !important; }
 .audition-tag-card.tag-color-yellow,
-.audition-tag-card.tag-color-yellow .card-body { background: #fff9db !important; }
+.audition-tag-card.tag-color-yellow .card-body { background: #ffe066 !important; }
 .audition-tag-card.tag-color-green,
-.audition-tag-card.tag-color-green .card-body { background: #ebfbee !important; }
+.audition-tag-card.tag-color-green .card-body { background: #b2f2bb !important; }
 .audition-tag-card.tag-color-blue,
-.audition-tag-card.tag-color-blue .card-body { background: #e7f5ff !important; }
+.audition-tag-card.tag-color-blue .card-body { background: #a5d8ff !important; }
 .audition-tag-card.tag-color-purple,
-.audition-tag-card.tag-color-purple .card-body { background: #f8f0fc !important; }
+.audition-tag-card.tag-color-purple .card-body { background: #d0bfff !important; }
+
+#auditions-list-view .auditions-list-table tbody tr.tag-color-gray > td { background: #cfd4da !important; }
+#auditions-list-view .auditions-list-table tbody tr.tag-color-red > td { background: #ffb3b3 !important; }
+#auditions-list-view .auditions-list-table tbody tr.tag-color-orange > td { background: #ffc078 !important; }
+#auditions-list-view .auditions-list-table tbody tr.tag-color-yellow > td { background: #ffe066 !important; }
+#auditions-list-view .auditions-list-table tbody tr.tag-color-green > td { background: #b2f2bb !important; }
+#auditions-list-view .auditions-list-table tbody tr.tag-color-blue > td { background: #a5d8ff !important; }
+#auditions-list-view .auditions-list-table tbody tr.tag-color-purple > td { background: #d0bfff !important; }
+
+#auditions-list-view .auditions-list-table tbody tr.tag-color-gray > td:first-child { border-left: 6px solid #6c757d; }
+#auditions-list-view .auditions-list-table tbody tr.tag-color-red > td:first-child { border-left: 6px solid #e03131; }
+#auditions-list-view .auditions-list-table tbody tr.tag-color-orange > td:first-child { border-left: 6px solid #f08c00; }
+#auditions-list-view .auditions-list-table tbody tr.tag-color-yellow > td:first-child { border-left: 6px solid #f59f00; }
+#auditions-list-view .auditions-list-table tbody tr.tag-color-green > td:first-child { border-left: 6px solid #2f9e44; }
+#auditions-list-view .auditions-list-table tbody tr.tag-color-blue > td:first-child { border-left: 6px solid #1c7ed6; }
+#auditions-list-view .auditions-list-table tbody tr.tag-color-purple > td:first-child { border-left: 6px solid #9c36b5; }
 </style>
