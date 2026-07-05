@@ -1199,6 +1199,33 @@ document.addEventListener('DOMContentLoaded', function() {
   const tagMenu = document.getElementById('audition-tag-menu');
   const tagTargets = document.querySelectorAll('.audition-tag-card, .audition-row');
   if (tagMenu && tagTargets.length) {
+    const keepTargetAccordionOpen = (target) => {
+      if (!target) return;
+      const auditionId = target.dataset ? target.dataset.auditionId : null;
+      const listRow = target.classList.contains('audition-row')
+        ? target
+        : (auditionId ? document.querySelector(`.audition-row[data-audition-id="${auditionId}"]`) : null);
+      if (!listRow) return;
+      const collapse = listRow.closest('.accordion-collapse');
+      if (!collapse) return;
+      const headerButton = document.querySelector(`[data-bs-target="#${collapse.id}"], [aria-controls="${collapse.id}"]`);
+      if (window.bootstrap && window.bootstrap.Collapse) {
+        const instance = window.bootstrap.Collapse.getOrCreateInstance(collapse, { toggle: false });
+        instance.show();
+      } else {
+        collapse.classList.add('show');
+      }
+      if (headerButton) {
+        headerButton.classList.remove('collapsed');
+        headerButton.setAttribute('aria-expanded', 'true');
+      }
+    };
+
+    tagMenu.addEventListener('mousedown', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+
     tagTargets.forEach((target) => {
       const initialColor = (target.dataset.tagColor || '').trim().toLowerCase();
       if (initialColor) {
@@ -1213,6 +1240,8 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     tagMenu.addEventListener('click', async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
       const item = event.target.closest('.audition-tag-menu-item');
       if (!item || !activeTagTarget) return;
       const newColor = (item.dataset.tagColor || '').trim().toLowerCase();
@@ -1225,17 +1254,20 @@ document.addEventListener('DOMContentLoaded', function() {
       if (selectedAuditionId) {
         applyTagColorToAudition(selectedAuditionId, newColor);
       }
+      keepTargetAccordionOpen(selectedTarget);
 
       try {
         const persistedColor = await saveTagColor(selectedTarget, newColor);
         if (selectedAuditionId && persistedColor !== newColor) {
           applyTagColorToAudition(selectedAuditionId, persistedColor);
         }
+        keepTargetAccordionOpen(selectedTarget);
       } catch (error) {
         console.error('[AUDITION_TAG_COLOR_SAVE_ERROR]', error);
         if (selectedAuditionId) {
           applyTagColorToAudition(selectedAuditionId, previousColor);
         }
+        keepTargetAccordionOpen(selectedTarget);
         alert('Could not save row color. Please try again.');
       }
     });
