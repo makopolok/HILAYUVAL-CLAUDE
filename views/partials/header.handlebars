@@ -2,6 +2,12 @@
 <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom mb-3">
 	<div class="container-fluid">
 		<div class="d-flex align-items-center gap-2 ms-auto">
+			<a href="/admin/upload-intents" class="btn btn-outline-primary btn-sm">
+				<i class="fa-solid fa-cloud-arrow-up me-1"></i>Upload Intents Monitor
+			</a>
+			<button type="button" class="btn btn-outline-secondary btn-sm" data-theme-toggle aria-label="Toggle dark mode" title="Toggle dark mode">
+				<i class="fa-solid fa-moon me-1" data-theme-icon></i>Dark Mode
+			</button>
 			<span class="text-muted small d-none d-md-inline">Signed in as {{adminUser.email}}</span>
 			<form method="POST" action="/admin/logout" class="d-inline">
 				{{#if currentPath}}
