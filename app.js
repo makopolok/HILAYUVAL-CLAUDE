@@ -3989,30 +3989,41 @@ app.get('/projects/:projectId/auditions', requireAdmin, async (req, res) => {
       }
     }
 
-    // Prepare display metadata for YouTube submissions
-    for (const a of auditions) {
-      if (!a || !a.video_url || a.video_type !== 'youtube') continue;
-      let videoId = null;
+    // Prepare display metadata for YouTube links (across both Bunny and YouTube primary rows).
+    const extractYoutubeId = (value) => {
+      const raw = trimToString(value);
+      if (!raw) return null;
       try {
-        const parsed = new URL(a.video_url.startsWith('http') ? a.video_url : `https://${a.video_url}`);
-        videoId = parsed.searchParams.get('v');
-        if (!videoId && parsed.pathname) {
-          const parts = parsed.pathname.split('/').filter(Boolean);
-          if (parts.length > 0) {
-            videoId = parts[parts.length - 1];
-          }
-        }
+        const parsed = new URL(raw.startsWith('http') ? raw : `https://${raw}`);
+        const fromQuery = parsed.searchParams.get('v');
+        if (fromQuery) return fromQuery;
+        const parts = parsed.pathname.split('/').filter(Boolean);
+        if (parts.length > 0) return parts[parts.length - 1];
       } catch (_) {
-        const match = a.video_url.match(/[?&]v=([^&]+)/);
-        if (match) {
-          videoId = match[1];
-        }
+        const match = raw.match(/[?&]v=([^&]+)/);
+        if (match && match[1]) return match[1];
       }
-      if (videoId) {
-        a.embed_url = `https://www.youtube.com/embed/${videoId}`;
-        a.video_watch_url = `https://www.youtube.com/watch?v=${videoId}`;
+      return null;
+    };
+
+    for (const a of auditions) {
+      if (!a) continue;
+      const videoType = trimToString(a.video_type).toLowerCase();
+      const fallbackYoutubeUrl = videoType === 'youtube' ? trimToString(a.video_url) : '';
+      const youtubeUrl = trimToString(a.youtube_video_url) || fallbackYoutubeUrl;
+      const youtubeId = trimToString(a.youtube_video_id) || extractYoutubeId(youtubeUrl) || extractYoutubeId(a.video_url);
+
+      if (youtubeId) {
+        a.youtube_embed_url = `https://www.youtube.com/embed/${youtubeId}`;
+        a.youtube_watch_url = `https://www.youtube.com/watch?v=${youtubeId}`;
+      } else if (youtubeUrl) {
+        a.youtube_watch_url = youtubeUrl;
       } else {
-        a.video_watch_url = a.video_url;
+        a.youtube_watch_url = '';
+      }
+
+      if (!a.video_watch_url && videoType === 'youtube' && a.youtube_watch_url) {
+        a.video_watch_url = a.youtube_watch_url;
       }
     }
 

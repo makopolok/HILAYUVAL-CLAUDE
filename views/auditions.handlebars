@@ -283,7 +283,7 @@
                       <div class="d-flex gap-2 flex-wrap audition-actions">
                         <div class="action-buttons">
                           {{#if video_url}}
-                            <a class="btn btn-outline-danger btn-sm" target="_blank" rel="noopener" href="{{#if youtube_video_url}}{{youtube_video_url}}{{else if video_watch_url}}{{video_watch_url}}{{else if embed_url}}{{embed_url}}{{else}}{{video_url}}{{/if}}">
+                            <a class="btn btn-outline-danger btn-sm" target="_blank" rel="noopener" href="{{#if youtube_watch_url}}{{youtube_watch_url}}{{else if youtube_video_url}}{{youtube_video_url}}{{else if video_watch_url}}{{video_watch_url}}{{else if embed_url}}{{embed_url}}{{else}}{{video_url}}{{/if}}">
                               <i class="fas fa-play"></i>
                             </a>
                           {{/if}}
@@ -440,11 +440,11 @@
                       </div>
                        
                       <!-- Video Player -->
-                      {{#if youtube_video_url}}
+                      {{#if youtube_embed_url}}
                         <div class="mb-3 youtube-video">
                           <div class="ratio ratio-16x9">
                             <iframe
-                              data-src="https://www.youtube.com/embed/{{youtubeVideoId youtube_video_url}}"
+                              data-src="{{youtube_embed_url}}"
                               title="YouTube audition video"
                               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                               allowfullscreen
@@ -453,7 +453,7 @@
                             </iframe>
                           </div>
                           <div class="mt-2 text-center">
-                            <a class="btn btn-outline-primary btn-sm" target="_blank" rel="noopener" href="{{youtube_video_url}}">
+                            <a class="btn btn-outline-primary btn-sm" target="_blank" rel="noopener" href="{{youtube_watch_url}}">
                               <i class="fab fa-youtube me-2"></i>YouTube
                             </a>
                           </div>
@@ -579,8 +579,8 @@
                       <p class="card-text small mb-1">
                         <strong>YouTube URL:</strong>
                         <span>
-                          {{#if youtube_video_url}}
-                            <a href="{{youtube_video_url}}" target="_blank" rel="noopener"><code class="small">{{youtube_video_url}}</code></a>
+                          {{#if youtube_watch_url}}
+                            <a href="{{youtube_watch_url}}" target="_blank" rel="noopener"><code class="small">{{youtube_watch_url}}</code></a>
                           {{else if (eq video_type "youtube")}}
                             <a href="{{#if video_watch_url}}{{video_watch_url}}{{else}}{{video_url}}{{/if}}" target="_blank" rel="noopener"><code class="small">{{#if video_watch_url}}{{video_watch_url}}{{else}}{{video_url}}{{/if}}</code></a>
                           {{/if}}
