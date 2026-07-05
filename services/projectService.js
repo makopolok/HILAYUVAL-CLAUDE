@@ -274,10 +274,20 @@ async function updateRolePlaylistId(roleId, playlistId) {
   await pool.query('UPDATE roles SET playlist_id = $1 WHERE id = $2', [playlistId, roleId]);
 }
 
+async function updateRoleYouTubePlaylistId(roleId, youtubePlaylistId) {
+  await pool.query('UPDATE roles SET youtube_playlist_id = $1 WHERE id = $2', [youtubePlaylistId, roleId]);
+}
+
+async function updateRoleBunnyCollectionId(roleId, bunnyCollectionId) {
+  await pool.query('UPDATE roles SET bunny_collection_id = $1 WHERE id = $2', [bunnyCollectionId, roleId]);
+}
+
 module.exports.renameRole = renameRole;
 module.exports.deleteRole = deleteRole;
 module.exports.softDeleteRole = softDeleteRole;
 module.exports.restoreRole = restoreRole;
 module.exports.purgeRole = purgeRole;
 module.exports.updateRolePlaylistId = updateRolePlaylistId;
+module.exports.updateRoleYouTubePlaylistId = updateRoleYouTubePlaylistId;
+module.exports.updateRoleBunnyCollectionId = updateRoleBunnyCollectionId;
 module.exports.updateProjectTagColor = updateProjectTagColor;

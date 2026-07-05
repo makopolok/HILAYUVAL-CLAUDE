@@ -239,6 +239,8 @@ function buildSubmissionProjectSnapshot(project) {
         id: role.id,
         name: role.name,
         playlist_id: role.playlist_id || null,
+        youtube_playlist_id: role.youtube_playlist_id || null,
+        bunny_collection_id: role.bunny_collection_id || null,
       }))
       : [],
   };
@@ -1111,8 +1113,8 @@ async function createAndPersistYouTubePlaylist(youtube, project, role, maxRetrie
         },
       });
       const playlistId = res.data.id;
-      await projectService.updateRolePlaylistId(role.id, playlistId);
-      role.playlist_id = playlistId;
+      await projectService.updateRoleYouTubePlaylistId(role.id, playlistId);
+      role.youtube_playlist_id = playlistId;
       console.log(`YOUTUBE_PLAYLIST_CREATED: role=${role.name} project=${project.name} playlistId=${playlistId} (attempt ${retries + 1}/${maxRetries + 1})`);
       return playlistId;
     } catch (err) {
@@ -1151,30 +1153,30 @@ async function createAndPersistYouTubePlaylist(youtube, project, role, maxRetrie
 async function ensureRolePlaylist(youtube, project, role, skipValidation = true) {
   // If we have a valid cached playlist ID and skipValidation is true (default for audition submissions),
   // just use it without making extra API calls. This reduces rate limit pressure.
-  if (skipValidation && isValidYouTubePlaylistId(role.playlist_id)) {
-    console.log(`YOUTUBE_PLAYLIST_CACHED: role=${role.name} project=${project.name} playlistId=${role.playlist_id}`);
-    return role.playlist_id;
+  if (skipValidation && isValidYouTubePlaylistId(role.youtube_playlist_id)) {
+    console.log(`YOUTUBE_PLAYLIST_CACHED: role=${role.name} project=${project.name} playlistId=${role.youtube_playlist_id}`);
+    return role.youtube_playlist_id;
   }
 
   // Full validation: check if the playlist still exists on YouTube
-  if (isValidYouTubePlaylistId(role.playlist_id)) {
+  if (isValidYouTubePlaylistId(role.youtube_playlist_id)) {
     try {
       const check = await youtube.playlists.list({
         part: ['id'],
-        id: [role.playlist_id],
+        id: [role.youtube_playlist_id],
         mine: true,
         maxResults: 1,
       });
       const items = (check && check.data && Array.isArray(check.data.items)) ? check.data.items : [];
       if (items.length > 0) {
-        console.log(`YOUTUBE_PLAYLIST_VALIDATED: role=${role.name} project=${project.name} playlistId=${role.playlist_id}`);
-        return role.playlist_id;
+        console.log(`YOUTUBE_PLAYLIST_VALIDATED: role=${role.name} project=${project.name} playlistId=${role.youtube_playlist_id}`);
+        return role.youtube_playlist_id;
       }
 
-      console.warn(`YOUTUBE_PLAYLIST_NOT_OWNED_OR_INACCESSIBLE: role=${role.name} project=${project.name} playlistId=${role.playlist_id}. Recreating.`);
+      console.warn(`YOUTUBE_PLAYLIST_NOT_OWNED_OR_INACCESSIBLE: role=${role.name} project=${project.name} playlistId=${role.youtube_playlist_id}. Recreating.`);
       return await createAndPersistYouTubePlaylist(youtube, project, role);
     } catch (err) {
-      console.warn(`YOUTUBE_PLAYLIST_VALIDATION_FAILED: role=${role.name} project=${project.name} playlistId=${role.playlist_id} err=${err.message}. Recreating.`);
+      console.warn(`YOUTUBE_PLAYLIST_VALIDATION_FAILED: role=${role.name} project=${project.name} playlistId=${role.youtube_playlist_id} err=${err.message}. Recreating.`);
       return await createAndPersistYouTubePlaylist(youtube, project, role);
     }
   }
@@ -1471,12 +1473,12 @@ function isValidBunnyCollectionId(id) {
 
 // Ensure a role has a Bunny collection. Creates one if missing and persists the GUID.
 async function ensureBunnyCollection(project, role) {
-  if (isValidBunnyCollectionId(role.playlist_id)) return role.playlist_id;
+  if (isValidBunnyCollectionId(role.bunny_collection_id)) return role.bunny_collection_id;
 
   const collectionName = `${project.name} — ${role.name}`;
   const guid = await bunnyUploadService.createCollection(collectionName);
-  await projectService.updateRolePlaylistId(role.id, guid);
-  role.playlist_id = guid;
+  await projectService.updateRoleBunnyCollectionId(role.id, guid);
+  role.bunny_collection_id = guid;
   console.log(`BUNNY_COLLECTION_CREATED: role=${role.name} project=${project.name} guid=${guid}`);
   return guid;
 }
