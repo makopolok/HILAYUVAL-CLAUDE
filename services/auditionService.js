@@ -370,6 +370,8 @@ async function updateAudition(auditionId, updates) {
     age: { table: 'auditions', column: 'age' },
     height: { table: 'auditions', column: 'height' },
     current_location: { table: 'auditions', column: 'current_location' },
+    video_url: { table: 'auditions', column: 'video_url' },
+    video_type: { table: 'auditions', column: 'video_type' },
     email: { table: 'audition_contacts', column: 'email' },
     phone: { table: 'audition_contacts', column: 'phone' },
     agency: { table: 'audition_contacts', column: 'agency' }
