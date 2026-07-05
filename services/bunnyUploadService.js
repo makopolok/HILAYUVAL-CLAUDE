@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const FormData = require('form-data');
 const os = require('os');
+const sharp = require('sharp');
 const { promisify } = require('util');
 const stream = require('stream');
 
@@ -18,6 +19,14 @@ const BUNNY_VIDEO_API_KEY = process.env.BUNNY_VIDEO_API_KEY;
 const BUNNY_STREAM_LIBRARY_ID = process.env.BUNNY_STREAM_LIBRARY_ID;
 // Optional public CDN base (e.g. https://yourpullzone.b-cdn.net)
 const BUNNY_CDN_BASE_URL = process.env.BUNNY_CDN_BASE_URL?.replace(/\/$/, '');
+const PROFILE_IMAGE_MAX_DIMENSION_RAW = Number.parseInt(process.env.PROFILE_IMAGE_MAX_DIMENSION || '1600', 10);
+const PROFILE_IMAGE_QUALITY_RAW = Number.parseInt(process.env.PROFILE_IMAGE_QUALITY || '82', 10);
+const PROFILE_IMAGE_MAX_DIMENSION = Number.isFinite(PROFILE_IMAGE_MAX_DIMENSION_RAW) && PROFILE_IMAGE_MAX_DIMENSION_RAW >= 300 && PROFILE_IMAGE_MAX_DIMENSION_RAW <= 4096
+  ? PROFILE_IMAGE_MAX_DIMENSION_RAW
+  : 1600;
+const PROFILE_IMAGE_QUALITY = Number.isFinite(PROFILE_IMAGE_QUALITY_RAW) && PROFILE_IMAGE_QUALITY_RAW >= 40 && PROFILE_IMAGE_QUALITY_RAW <= 95
+  ? PROFILE_IMAGE_QUALITY_RAW
+  : 82;
 
 module.exports = {
   // Create a Bunny.net Stream Collection and return its GUID
@@ -108,20 +117,38 @@ module.exports = {
     if (!BUNNY_STORAGE_ZONE || !BUNNY_API_KEY) {
       throw new Error('Bunny.net Storage Zone credentials not configured.');
     }
-    const uploadUrl = `https://storage.bunnycdn.com/${BUNNY_STORAGE_ZONE}/images/${Date.now()}_${imageFile.originalname}`;
+    const originalName = imageFile.originalname || `profile_${Date.now()}`;
+    const normalizedBaseName = (path.parse(originalName).name || 'profile')
+      .replace(/[^a-zA-Z0-9_-]/g, '_')
+      .slice(0, 80) || 'profile';
+    const fileName = `${Date.now()}_${normalizedBaseName}.jpg`;
+    const uploadUrl = `https://storage.bunnycdn.com/${BUNNY_STORAGE_ZONE}/images/${fileName}`;
     try {
-      const fileStream = fs.createReadStream(imageFile.path);
-      const res = await axios.put(uploadUrl, fileStream, {
+      const normalizedBuffer = await sharp(imageFile.path)
+        .rotate()
+        .resize({
+          width: PROFILE_IMAGE_MAX_DIMENSION,
+          height: PROFILE_IMAGE_MAX_DIMENSION,
+          fit: 'inside',
+          withoutEnlargement: true,
+        })
+        .flatten({ background: '#ffffff' })
+        .jpeg({
+          quality: PROFILE_IMAGE_QUALITY,
+          mozjpeg: true,
+        })
+        .toBuffer();
+      const res = await axios.put(uploadUrl, normalizedBuffer, {
         headers: {
           'AccessKey': BUNNY_API_KEY,
-          'Content-Type': imageFile.mimetype || 'application/octet-stream',
+          'Content-Type': 'image/jpeg',
+          'Content-Length': normalizedBuffer.length,
         },
         maxContentLength: Infinity,
         maxBodyLength: Infinity,
       });
       fs.unlinkSync(imageFile.path);
       if (res.status === 201 || res.status === 200) {
-          const fileName = path.basename(uploadUrl);
           // If a CDN base is configured, build absolute URL; otherwise return relative path
           const publicUrl = BUNNY_CDN_BASE_URL ? `${BUNNY_CDN_BASE_URL}/images/${fileName}` : `/images/${fileName}`;
           return {
@@ -133,6 +160,9 @@ module.exports = {
       }
     } catch (error) {
       if (fs.existsSync(imageFile.path)) fs.unlinkSync(imageFile.path);
+      if (error?.response?.status) {
+        throw new Error(`Bunny.net image upload failed (${error.response.status}).`);
+      }
       throw error;
     }
   },
