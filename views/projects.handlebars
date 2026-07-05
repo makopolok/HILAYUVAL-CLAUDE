@@ -54,14 +54,21 @@
   .tag-blue { background: #1c7ed6; }
   .tag-purple { background: #9c36b5; }
 
-  .projects-table tbody tr.tag-color-gray { --bs-table-bg: #dfe4ea; --bs-table-accent-bg: #dfe4ea; }
-  .projects-table tbody tr.tag-color-red { --bs-table-bg: #ffd6d6; --bs-table-accent-bg: #ffd6d6; }
-  .projects-table tbody tr.tag-color-orange { --bs-table-bg: #ffe0b3; --bs-table-accent-bg: #ffe0b3; }
-  .projects-table tbody tr.tag-color-yellow { --bs-table-bg: #fff3a3; --bs-table-accent-bg: #fff3a3; }
-  .projects-table tbody tr.tag-color-green { --bs-table-bg: #d4f4dd; --bs-table-accent-bg: #d4f4dd; }
-  .projects-table tbody tr.tag-color-blue { --bs-table-bg: #d6e8ff; --bs-table-accent-bg: #d6e8ff; }
-  .projects-table tbody tr.tag-color-purple { --bs-table-bg: #ead7ff; --bs-table-accent-bg: #ead7ff; }
+  .projects-table tbody tr.tag-color-gray { --bs-table-bg: #cfd4da; --bs-table-accent-bg: #cfd4da; }
+  .projects-table tbody tr.tag-color-red { --bs-table-bg: #ffb3b3; --bs-table-accent-bg: #ffb3b3; }
+  .projects-table tbody tr.tag-color-orange { --bs-table-bg: #ffc078; --bs-table-accent-bg: #ffc078; }
+  .projects-table tbody tr.tag-color-yellow { --bs-table-bg: #ffe066; --bs-table-accent-bg: #ffe066; }
+  .projects-table tbody tr.tag-color-green { --bs-table-bg: #b2f2bb; --bs-table-accent-bg: #b2f2bb; }
+  .projects-table tbody tr.tag-color-blue { --bs-table-bg: #a5d8ff; --bs-table-accent-bg: #a5d8ff; }
+  .projects-table tbody tr.tag-color-purple { --bs-table-bg: #d0bfff; --bs-table-accent-bg: #d0bfff; }
   .projects-table tbody tr[class*="tag-color-"] > td { background-color: var(--bs-table-bg) !important; }
+  .projects-table tbody tr.tag-color-gray > td:first-child { border-left: 6px solid #6c757d; }
+  .projects-table tbody tr.tag-color-red > td:first-child { border-left: 6px solid #e03131; }
+  .projects-table tbody tr.tag-color-orange > td:first-child { border-left: 6px solid #f08c00; }
+  .projects-table tbody tr.tag-color-yellow > td:first-child { border-left: 6px solid #f59f00; }
+  .projects-table tbody tr.tag-color-green > td:first-child { border-left: 6px solid #2f9e44; }
+  .projects-table tbody tr.tag-color-blue > td:first-child { border-left: 6px solid #1c7ed6; }
+  .projects-table tbody tr.tag-color-purple > td:first-child { border-left: 6px solid #9c36b5; }
 </style>
 
 <div class="container mt-5">
@@ -207,13 +214,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const tagClasses = ['gray', 'red', 'orange', 'yellow', 'green', 'blue', 'purple'].map((color) => `tag-color-${color}`);
   const tagColorHex = {
-    gray: '#dfe4ea',
-    red: '#ffd6d6',
-    orange: '#ffe0b3',
-    yellow: '#fff3a3',
-    green: '#d4f4dd',
-    blue: '#d6e8ff',
-    purple: '#ead7ff'
+    gray: '#cfd4da',
+    red: '#ffb3b3',
+    orange: '#ffc078',
+    yellow: '#ffe066',
+    green: '#b2f2bb',
+    blue: '#a5d8ff',
+    purple: '#d0bfff'
   };
   let activeRow = null;
 
@@ -230,7 +237,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const cells = row.querySelectorAll('td');
     const nextColor = tagColorHex[color] || '';
     cells.forEach((cell) => {
-      cell.style.backgroundColor = nextColor;
+      if (nextColor) {
+        cell.style.setProperty('--bs-table-bg', nextColor);
+        cell.style.setProperty('--bs-table-accent-bg', nextColor);
+        cell.style.backgroundColor = nextColor;
+        cell.style.boxShadow = `inset 0 0 0 9999px ${nextColor}`;
+      } else {
+        cell.style.removeProperty('--bs-table-bg');
+        cell.style.removeProperty('--bs-table-accent-bg');
+        cell.style.removeProperty('background-color');
+        cell.style.removeProperty('box-shadow');
+      }
     });
   };
 
