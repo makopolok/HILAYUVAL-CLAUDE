@@ -881,11 +881,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Helper function to toggle edit mode
   function toggleEditMode(row, isEditing) {
-    row.querySelectorAll('.edit-field').forEach((field, idx) => {
+    row.querySelectorAll('.edit-field').forEach(field => {
       const display = field.querySelector('.edit-display');
       const input = field.querySelector('.edit-input');
-      const fieldLabel = display ? display.textContent.substring(0, 20) : 'no-display';
-      console.log(`Field ${idx} (${fieldLabel}): display=${!!display}, input=${!!input}, input.type=${input?.type}`);
       
       if (display) display.classList.toggle('d-none', isEditing);
       if (input) input.classList.toggle('d-none', !isEditing);
