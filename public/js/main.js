@@ -3,6 +3,7 @@
 	const MAX_FILE_SIZE_BYTES = 400 * 1024 * 1024; // 400MB hard cap
 	const MAX_DURATION_SECONDS = 7 * 60; // 7 minutes
 	const MAX_VIDEO_HEIGHT = 1080;
+	const TUS_CDN_URL = 'https://cdn.jsdelivr.net/npm/tus-js-client@3.1.3/dist/tus.min.js';
 	let currentUpload = null;
 	let pendingMetadata = null;
 
@@ -25,10 +26,29 @@
 		return payload;
 	}
 
+	function loadScriptOnce(src) {
+		return new Promise((resolve, reject) => {
+			const existing = document.querySelector(`script[src="${src}"]`);
+			if (existing && window.tus && window.tus.Upload) {
+				resolve();
+				return;
+			}
+
+			const script = document.createElement('script');
+			script.src = src;
+			script.async = true;
+			script.onload = () => resolve();
+			script.onerror = () => reject(new Error('Upload library could not be loaded.'));
+			document.head.appendChild(script);
+		});
+	}
+
 	function uploadViaTus({ file, uploadMeta, onProgress }) {
 		return new Promise((resolve, reject) => {
 			if (!window.tus || !window.tus.Upload) {
-				reject(new Error('Upload library is unavailable. Please refresh and try again.'));
+				loadScriptOnce(TUS_CDN_URL)
+					.then(() => uploadViaTus({ file, uploadMeta, onProgress }).then(resolve).catch(reject))
+					.catch(reject);
 				return;
 			}
 
