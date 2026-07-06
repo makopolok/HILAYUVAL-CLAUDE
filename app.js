@@ -4020,7 +4020,7 @@ app.post('/projects/:projectId/auditions/:auditionId/update', requireAdmin, asyn
 
     // Extract fields from request body (no strict validation for admin edits)
     const updates = {};
-    const editableFields = ['first_name_en', 'last_name_en', 'first_name_he', 'last_name_he', 'email', 'phone', 'agency', 'age', 'height', 'current_location', 'about_me', 'video_url', 'video_type', 'youtube_video_url'];
+    const editableFields = ['first_name_en', 'last_name_en', 'first_name_he', 'last_name_he', 'email', 'phone', 'agency', 'age', 'height', 'current_location', 'about_me', 'video_url', 'video_type', 'youtube_video_url', 'youtube_watch_url'];
      
     for (const field of editableFields) {
       if (req.body && field in req.body) {
@@ -4067,6 +4067,10 @@ app.post('/projects/:projectId/auditions/:auditionId/update', requireAdmin, asyn
       // If empty after trim, set to null
       if (!updates.youtube_video_url) {
         updates.youtube_video_url = null;
+      } else {
+        // When youtube_video_url is updated, also update youtube_watch_url to match
+        // This keeps the display URL consistent with the stored URL
+        updates.youtube_watch_url = updates.youtube_video_url;
       }
     }
 
