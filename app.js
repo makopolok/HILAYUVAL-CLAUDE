@@ -41,6 +41,14 @@ const uploadJobs = new Map();
 // Keys are submissionId, values: { projectId, body, profilePictures, expiry }
 const pendingSubmissions = new Map();
 const projectSnapshotCache = new Map();
+const agencySuggestionsCache = {
+  loadedAt: 0,
+  value: null,
+};
+const activeAgentsCatalogCache = {
+  loadedAt: 0,
+  value: null,
+};
 
 const BUILD_INFO_PATH = path.join(__dirname, 'build-info.json');
 const TAG_COLOR_STYLES = {
@@ -67,6 +75,11 @@ const getBuildInfo = () => {
 };
 
 function loadAgencySuggestions() {
+  const cacheTtlMs = 10 * 60 * 1000;
+  if (agencySuggestionsCache.value && (Date.now() - agencySuggestionsCache.loadedAt) < cacheTtlMs) {
+    return agencySuggestionsCache.value;
+  }
+
   const suggestions = [];
   const filePath = path.join(__dirname, 'data', 'agency-suggestions.json');
 
@@ -94,7 +107,7 @@ function loadAgencySuggestions() {
   }
 
   const seen = new Set();
-  return suggestions.map((entry) => {
+  const normalized = suggestions.map((entry) => {
     if (typeof entry === 'string') {
       return { label: entry.trim(), value: entry.trim(), search: entry.trim() };
     }
@@ -110,18 +123,47 @@ function loadAgencySuggestions() {
     seen.add(key);
     return true;
   });
+  agencySuggestionsCache.value = normalized;
+  agencySuggestionsCache.loadedAt = Date.now();
+  return normalized;
 }
 
 function loadAgentsCatalog() {
+  const cacheTtlMs = 10 * 60 * 1000;
+  if (activeAgentsCatalogCache.value && (Date.now() - activeAgentsCatalogCache.loadedAt) < cacheTtlMs) {
+    return activeAgentsCatalogCache.value;
+  }
+
   const filePath = path.join(__dirname, 'data', 'agents.seed.json');
   try {
     if (!fs.existsSync(filePath)) return [];
     const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    return Array.isArray(parsed) ? parsed : [];
+    const catalog = Array.isArray(parsed) ? parsed : [];
+    activeAgentsCatalogCache.value = catalog;
+    activeAgentsCatalogCache.loadedAt = Date.now();
+    return catalog;
   } catch (error) {
     console.warn(`[AGENTS] Failed to load catalog: ${error.message}`);
     return [];
   }
+}
+
+async function loadActiveAgentsCatalog() {
+  const cacheTtlMs = 5 * 60 * 1000;
+  if (activeAgentsCatalogCache.value && (Date.now() - activeAgentsCatalogCache.loadedAt) < cacheTtlMs) {
+    return activeAgentsCatalogCache.value;
+  }
+
+  const result = await dbPool.query(`
+    SELECT id, hebrew_name, english_name, phone, email, search_aliases
+    FROM agents
+    WHERE active = TRUE
+    ORDER BY hebrew_name ASC
+  `);
+  const catalog = result.rows.length ? result.rows : loadAgentsCatalog();
+  activeAgentsCatalogCache.value = catalog;
+  activeAgentsCatalogCache.loadedAt = Date.now();
+  return catalog;
 }
 
 function createSignedSubmissionToken(payload) {
@@ -1862,14 +1904,14 @@ app.put('/api/videos/:guid/upload', (req, res) => {
 // Route to render audition submission form
 app.get('/audition', (req, res) => {
   const libId = process.env.BUNNY_STREAM_LIBRARY_ID || '';
-  dbPool.query(`SELECT id, hebrew_name, english_name, phone, email, search_aliases FROM agents WHERE active = TRUE ORDER BY hebrew_name ASC`)
-    .then((result) => {
+  loadActiveAgentsCatalog()
+    .then((agentsCatalog) => {
       res.render('audition', {
         bunny_stream_library_id: libId,
         upload_method: 'bunny_stream',
         show_current_location_field: false,
         agency_suggestions: loadAgencySuggestions(),
-        agents_catalog: result.rows.length ? result.rows : loadAgentsCatalog(),
+        agents_catalog: agentsCatalog,
         auditionRules: getAuditionFormRules(),
         direct_upload_require_captcha: BUNNY_DIRECT_UPLOAD_REQUIRE_CAPTCHA,
         turnstile_site_key: BUNNY_TURNSTILE_SITE_KEY,
@@ -2335,7 +2377,10 @@ app.get('/audition/:projectId', async (req, res) => {
     return res.redirect(302, `/audition/299${query}`);
   }
   try {
-    const project = await getProjectByIdWithCache(req.params.projectId, 'audition_form');
+    const [project, agentsCatalog] = await Promise.all([
+      getProjectByIdWithCache(req.params.projectId, 'audition_form'),
+      loadActiveAgentsCatalog(),
+    ]);
     if (!project) {
       return res.status(404).send('Project not found.');
     }
@@ -2347,7 +2392,6 @@ app.get('/audition/:projectId', async (req, res) => {
       || 'latest';
     const viewUploadMethod = project ? (project.uploadMethod || project.upload_method || 'bunny_stream') : 'bunny_stream';
     const showCurrentLocationField = String(project.id) === '265' || String(project.id) === '299';
-    const agentsResult = await dbPool.query(`SELECT id, hebrew_name, english_name, phone, email, search_aliases FROM agents WHERE active = TRUE ORDER BY hebrew_name ASC`);
     return res.render('audition', {
       project,
       bunny_stream_library_id: libId,
@@ -2355,7 +2399,7 @@ app.get('/audition/:projectId', async (req, res) => {
       upload_method: viewUploadMethod,
       show_current_location_field: showCurrentLocationField,
       agency_suggestions: loadAgencySuggestions(),
-      agents_catalog: agentsResult.rows.length ? agentsResult.rows : loadAgentsCatalog(),
+      agents_catalog: agentsCatalog,
       auditionRules: getAuditionFormRules(project),
       direct_upload_require_captcha: BUNNY_DIRECT_UPLOAD_REQUIRE_CAPTCHA,
       turnstile_site_key: BUNNY_TURNSTILE_SITE_KEY,
