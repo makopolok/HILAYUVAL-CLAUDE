@@ -4027,8 +4027,6 @@ app.post('/projects/:projectId/auditions/:auditionId/update', requireAdmin, asyn
         updates[field] = req.body[field] || null;
       }
     }
-     
-    console.log('[UPDATE_AUDITION_DEBUG] Updates received:', JSON.stringify(updates));
 
     // Convert age and height to numbers if provided
     if (updates.age) {
@@ -4076,7 +4074,6 @@ app.post('/projects/:projectId/auditions/:auditionId/update', requireAdmin, asyn
       return res.status(400).json({ ok: false, error: result.error || 'Failed to update audition.' });
     }
 
-    console.log('[UPDATE_AUDITION_SUCCESS] auditionId:', auditionId, 'youtube_video_url:', result.row?.youtube_video_url);
     return res.json({ ok: true, audition: result.row });
   } catch (error) {
     console.error('[App.js POST /projects/:projectId/auditions/:auditionId/update]', error);

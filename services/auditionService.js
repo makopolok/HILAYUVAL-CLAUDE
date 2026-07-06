@@ -413,8 +413,6 @@ async function updateAudition(auditionId, updates) {
       return `${column} = $${paramCount++}`;
     });
      
-    console.log('[AUDIT_SERVICE_UPDATE] auditionUpdates:', JSON.stringify(auditionUpdates));
-     
     const sql = `
       UPDATE auditions
       SET ${setClauses.join(', ')},
@@ -428,7 +426,6 @@ async function updateAudition(auditionId, updates) {
       if (!rows[0]) {
         return { ok: false, error: 'Audition not found.' };
       }
-      console.log('[AUDIT_SERVICE_UPDATE_SUCCESS] youtube_video_url:', rows[0].youtube_video_url);
     } catch (error) {
       console.error('Error updating audition:', error);
       return { ok: false, error: 'Failed to update audition data.' };
