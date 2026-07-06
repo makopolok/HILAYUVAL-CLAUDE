@@ -1,0 +1,72 @@
+<div class="container my-4">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+    <div>
+      <h1 class="h3 mb-1">Request Preview</h1>
+      <p class="text-muted mb-0">Review the parsed requests before saving them.</p>
+    </div>
+    <a href="/admin/agents/audit" class="btn btn-outline-secondary btn-sm">Back to audit</a>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <form method="POST" action="/admin/projects/{{projectId}}/agent-requests">
+        <input type="hidden" name="bulk_mode" value="1">
+        <div class="list-group mb-3">
+          {{#each rows}}
+          <div class="list-group-item">
+            <div class="d-flex justify-content-between align-items-start gap-2">
+              <div>
+                <div class="fw-semibold">{{agencyName}}</div>
+                <div class="small text-muted">{{actorName}}{{#if roleName}} · {{roleName}}{{/if}}{{#if note}} · {{note}}{{/if}}</div>
+              </div>
+              <div class="small text-muted">
+                {{#if agent}}
+                  Matched: {{agent.english_name}}
+                  {{#if (eq agent.matchedVia "contact")}}
+                    <span class="badge text-bg-info ms-1">via contact</span>
+                  {{/if}}
+                {{else}}
+                  {{#if candidates.length}}
+                    {{#if (eq candidates.length 1)}}1 possible match{{else}}{{candidates.length}} possible matches{{/if}}
+                  {{else}}
+                    No agency match
+                  {{/if}}
+                {{/if}}
+              </div>
+            </div>
+            <div class="mt-3 row g-2 align-items-end">
+              <div class="col-md-5">
+                <label class="form-label small">Agency match</label>
+                <select class="form-select form-select-sm" name="agent_ids">
+                  <option value="">No match yet</option>
+                  {{#if agent}}
+                    <option value="{{agent.id}}" selected>{{agent.english_name}} / {{agent.hebrew_name}}</option>
+                  {{/if}}
+                  {{#each candidates}}
+                    <option value="{{id}}" {{#if (eq ../agent.id id)}}selected{{/if}}>
+                      {{english_name}} / {{hebrew_name}} (score {{score}}{{#if (eq matchedVia "contact")}}, contact{{/if}})
+                    </option>
+                  {{/each}}
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small">Actor</label>
+                <input class="form-control form-control-sm" name="actor_names" value="{{actorName}}">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small">Role</label>
+                <input class="form-control form-control-sm" name="role_names" value="{{roleName}}">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small">Note</label>
+                <input class="form-control form-control-sm" name="notes" value="{{note}}">
+              </div>
+            </div>
+          </div>
+          {{/each}}
+        </div>
+        <button class="btn btn-primary">Save requests</button>
+      </form>
+    </div>
+  </div>
+</div>

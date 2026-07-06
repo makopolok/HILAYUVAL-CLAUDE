@@ -72,6 +72,69 @@
         <button class="btn btn-danger btn-sm" name="tag_color" value="red">All red</button>
       </form>
 
+      <div class="border rounded p-3 mb-3">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+          <h3 class="h6 mb-0">Pre-audition requests</h3>
+          <form method="POST" action="/admin/projects/{{id}}/send-request-emails">
+            <button class="btn btn-outline-primary btn-sm">Send request emails</button>
+          </form>
+        </div>
+        <form method="POST" action="/admin/projects/{{id}}/agent-requests/bulk-parse" class="mb-3">
+          <label class="form-label small fw-semibold">Paste requests</label>
+          <textarea class="form-control mb-2" name="bulk_text" rows="4" placeholder="Agency | Actor | Role | Note&#10;Agency | Actor | Role | Note"></textarea>
+          <div class="small text-muted mb-2">Format: `Agency | Actor | Role | Note`. One request per line.</div>
+          <button class="btn btn-outline-primary btn-sm">Preview pasted requests</button>
+        </form>
+        <form method="POST" action="/admin/projects/{{id}}/agent-requests" class="row g-2 align-items-end">
+          <div class="col-md-4">
+            <label class="form-label small">Agency</label>
+            <select class="form-select form-select-sm" name="agent_id" required>
+              <option value="" selected disabled>Select agency</option>
+              {{#each ../agencies}}
+              <option value="{{id}}">{{english_name}} / {{hebrew_name}}</option>
+              {{/each}}
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small">Actor name</label>
+            <input class="form-control form-control-sm" name="actor_name" required>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small">Role</label>
+            <input class="form-control form-control-sm" name="role_name">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small">Note</label>
+            <input class="form-control form-control-sm" name="note" placeholder="Kindly, if possible...">
+          </div>
+          <div class="col-12">
+            <button class="btn btn-primary btn-sm">Add request</button>
+          </div>
+        </form>
+
+        <div class="mt-3">
+          {{#if requests.length}}
+            <div class="list-group list-group-flush">
+              {{#each requests}}
+              <div class="list-group-item px-0 d-flex justify-content-between align-items-start gap-2">
+                <div>
+                  <div class="fw-semibold">{{actor_name}}</div>
+                  <div class="small text-muted">{{#if role_name}}{{role_name}} · {{/if}}{{english_name}}</div>
+                  {{#if note}}<div class="small text-muted">{{note}}</div>{{/if}}
+                  {{#if email_sent_at}}<div class="small text-success">Sent to {{email_sent_to}}</div>{{/if}}
+                </div>
+                <form method="POST" action="/admin/project-agent-requests/{{id}}/delete" onsubmit="return confirm('Remove this request?');">
+                  <button class="btn btn-outline-danger btn-sm">Remove</button>
+                </form>
+              </div>
+              {{/each}}
+            </div>
+          {{else}}
+            <div class="text-muted small">No pre-audition requests yet.</div>
+          {{/if}}
+        </div>
+      </div>
+
       <div class="row g-3">
         {{#each ../agencies}}
         <div class="col-md-6 col-xl-4">
