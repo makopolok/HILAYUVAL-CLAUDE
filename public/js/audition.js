@@ -392,7 +392,7 @@
       return parsed.map((item) => ({
         id: item.id,
         label: item.label || item.english_name || item.hebrew_name || item.value || '',
-        value: item.value || item.hebrew_name || item.label || '',
+        value: item.value || item.english_name || item.label || item.hebrew_name || '',
         english: item.english_name || item.label || '',
         hebrew: item.hebrew_name || item.value || '',
         search: item.search || item.search_aliases || [],
@@ -445,9 +445,10 @@
     function choose(value) {
       const selected = matches.find((item) => (item.english || item.label || '') === value) || null;
       const storedValue = selected ? (selected.english || selected.label || selected.value || value) : value;
+      const displayValue = selected ? (selected.english || selected.label || selected.value || value) : value;
       input.value = storedValue;
       if (agentIdInput) agentIdInput.value = selected && selected.id ? String(selected.id) : '';
-      if (agentTextInput) agentTextInput.value = storedValue;
+      if (agentTextInput) agentTextInput.value = displayValue;
       input.dispatchEvent(new Event('input', { bubbles: true }));
       input.dispatchEvent(new Event('change', { bubbles: true }));
       hideMenu();
@@ -496,7 +497,7 @@
         `;
         button.addEventListener('mousedown', (event) => {
           event.preventDefault();
-          choose(item.value || item.label || '');
+          choose(item.english || item.label || item.value || '');
         });
         menu.appendChild(button);
       });
@@ -529,7 +530,7 @@
         renderMenu(input.value);
       } else if (event.key === 'Enter' && activeIndex >= 0 && matches[activeIndex]) {
         event.preventDefault();
-        choose(matches[activeIndex].value || matches[activeIndex].label || '');
+        choose(matches[activeIndex].english || matches[activeIndex].label || matches[activeIndex].value || '');
       } else if (event.key === 'Escape') {
         hideMenu();
       }
