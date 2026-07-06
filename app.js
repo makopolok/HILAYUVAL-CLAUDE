@@ -4027,6 +4027,8 @@ app.post('/projects/:projectId/auditions/:auditionId/update', requireAdmin, asyn
         updates[field] = req.body[field] || null;
       }
     }
+     
+    console.log('[UPDATE_AUDITION_DEBUG] auditionId:', auditionId, 'Updates:', JSON.stringify(updates));
 
     // Convert age and height to numbers if provided
     if (updates.age) {
