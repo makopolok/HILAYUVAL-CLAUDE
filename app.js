@@ -28,7 +28,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const uploadIntentService = require('./services/uploadIntentService');
 const reconciliationWorker = require('./services/reconciliationWorker');
 const { attachAdminToLocals, requireAdmin } = require('./middleware/auth');
-const { closePool } = require('./utils/database');
+const { closePool, getPool } = require('./utils/database');
 // Add a version log at the top for deployment verification
 console.log('INFO: app.js version 2025-06-08_2200_MANUAL_CHUNKS running');
 
@@ -65,6 +65,64 @@ const getBuildInfo = () => {
   return null;
 };
 
+function loadAgencySuggestions() {
+  const suggestions = [];
+  const filePath = path.join(__dirname, 'data', 'agency-suggestions.json');
+
+  try {
+    if (fs.existsSync(filePath)) {
+      const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      if (Array.isArray(parsed)) {
+        suggestions.push(...parsed);
+      }
+    }
+  } catch (error) {
+    console.warn(`[AGENCY_SUGGESTIONS] Failed to load ${filePath}: ${error.message}`);
+  }
+
+  const envJson = (process.env.AGENCY_SUGGESTIONS_JSON || '').trim();
+  if (envJson) {
+    try {
+      const parsed = JSON.parse(envJson);
+      if (Array.isArray(parsed)) {
+        suggestions.push(...parsed);
+      }
+    } catch (error) {
+      console.warn(`[AGENCY_SUGGESTIONS] Failed to parse AGENCY_SUGGESTIONS_JSON: ${error.message}`);
+    }
+  }
+
+  const seen = new Set();
+  return suggestions.map((entry) => {
+    if (typeof entry === 'string') {
+      return { label: entry.trim(), value: entry.trim(), search: entry.trim() };
+    }
+    if (!entry || typeof entry !== 'object') return null;
+    const label = (entry.label || entry.name || entry.hebrew || entry.english || '').toString().trim();
+    const value = (entry.value || entry.label || entry.name || entry.english || entry.hebrew || '').toString().trim();
+    const search = (entry.search || entry.keywords || '').toString().trim();
+    if (!label && !value) return null;
+    return { label: label || value, value, search };
+  }).filter(Boolean).filter((entry) => {
+    const key = `${entry.label}::${entry.value}::${entry.search}`.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function loadAgentsCatalog() {
+  const filePath = path.join(__dirname, 'data', 'agents.seed.json');
+  try {
+    if (!fs.existsSync(filePath)) return [];
+    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.warn(`[AGENTS] Failed to load catalog: ${error.message}`);
+    return [];
+  }
+}
+
 function createSignedSubmissionToken(payload) {
   const secret = process.env.SESSION_SECRET || process.env.COOKIE_SECRET || 'default_submission_secret_change_me';
   const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
@@ -90,6 +148,7 @@ function parseSignedSubmissionToken(token) {
 }
 
 const app = express();
+const dbPool = getPool();
 
 // Diagnostic middleware: log non-numeric or prefixed projectId values for investigation
 app.use((req, res, next) => {
@@ -1801,18 +1860,39 @@ app.put('/api/videos/:guid/upload', (req, res) => {
 // Route to render audition submission form
 app.get('/audition', (req, res) => {
   const libId = process.env.BUNNY_STREAM_LIBRARY_ID || '';
-  res.render('audition', {
-    bunny_stream_library_id: libId,
-    upload_method: 'bunny_stream',
-    show_current_location_field: false,
-    auditionRules: getAuditionFormRules(),
-    direct_upload_require_captcha: BUNNY_DIRECT_UPLOAD_REQUIRE_CAPTCHA,
-    turnstile_site_key: BUNNY_TURNSTILE_SITE_KEY,
-    breadcrumbTrail: [
-      { label: 'Home', url: '/' },
-      { label: 'Audition', url: '/audition' },
-    ]
-  });
+  dbPool.query(`SELECT id, hebrew_name, english_name, phone, email, search_aliases FROM agents WHERE active = TRUE ORDER BY hebrew_name ASC`)
+    .then((result) => {
+      res.render('audition', {
+        bunny_stream_library_id: libId,
+        upload_method: 'bunny_stream',
+        show_current_location_field: false,
+        agency_suggestions: loadAgencySuggestions(),
+        agents_catalog: result.rows.length ? result.rows : loadAgentsCatalog(),
+        auditionRules: getAuditionFormRules(),
+        direct_upload_require_captcha: BUNNY_DIRECT_UPLOAD_REQUIRE_CAPTCHA,
+        turnstile_site_key: BUNNY_TURNSTILE_SITE_KEY,
+        breadcrumbTrail: [
+          { label: 'Home', url: '/' },
+          { label: 'Audition', url: '/audition' },
+        ]
+      });
+    })
+    .catch(() => {
+      res.render('audition', {
+        bunny_stream_library_id: libId,
+        upload_method: 'bunny_stream',
+        show_current_location_field: false,
+        agency_suggestions: loadAgencySuggestions(),
+        agents_catalog: loadAgentsCatalog(),
+        auditionRules: getAuditionFormRules(),
+        direct_upload_require_captcha: BUNNY_DIRECT_UPLOAD_REQUIRE_CAPTCHA,
+        turnstile_site_key: BUNNY_TURNSTILE_SITE_KEY,
+        breadcrumbTrail: [
+          { label: 'Home', url: '/' },
+          { label: 'Audition', url: '/audition' },
+        ]
+      });
+    });
 });
 
 // POST route to handle audition form submission and upload to YouTube
@@ -2265,12 +2345,15 @@ app.get('/audition/:projectId', async (req, res) => {
       || 'latest';
     const viewUploadMethod = project ? (project.uploadMethod || project.upload_method || 'bunny_stream') : 'bunny_stream';
     const showCurrentLocationField = String(project.id) === '265' || String(project.id) === '299';
+    const agentsResult = await dbPool.query(`SELECT id, hebrew_name, english_name, phone, email, search_aliases FROM agents WHERE active = TRUE ORDER BY hebrew_name ASC`);
     return res.render('audition', {
       project,
       bunny_stream_library_id: libId,
       asset_version: assetVersion,
       upload_method: viewUploadMethod,
       show_current_location_field: showCurrentLocationField,
+      agency_suggestions: loadAgencySuggestions(),
+      agents_catalog: agentsResult.rows.length ? agentsResult.rows : loadAgentsCatalog(),
       auditionRules: getAuditionFormRules(project),
       direct_upload_require_captcha: BUNNY_DIRECT_UPLOAD_REQUIRE_CAPTCHA,
       turnstile_site_key: BUNNY_TURNSTILE_SITE_KEY,
@@ -3102,6 +3185,8 @@ app.post('/upload-chunk/:uploadId/assemble', async (req, res) => {
         first_name_he: body.first_name_he, last_name_he: body.last_name_he,
         first_name_en: body.first_name_en, last_name_en: body.last_name_en,
         phone: body.phone, email: body.email, agency: body.agency,
+        agent_id: body.agent_id || null,
+        agent_text: body.agent_text || body.agency || null,
         age: body.age, height: body.height,
         current_location: body.current_location,
         about_me: body.about_me,
@@ -3290,6 +3375,8 @@ app.post('/audition/:projectId', auditionUpload.fields([
               first_name_he: bgBody.first_name_he, last_name_he: bgBody.last_name_he,
               first_name_en: bgBody.first_name_en, last_name_en: bgBody.last_name_en,
               phone: bgBody.phone, email: bgBody.email, agency: bgBody.agency,
+              agent_id: bgBody.agent_id || null,
+              agent_text: bgBody.agent_text || bgBody.agency || null,
               age: bgBody.age, height: bgBody.height,
               current_location: bgBody.current_location,
               about_me: bgBody.about_me,
@@ -4306,6 +4393,447 @@ app.get('/admin/upload-intents', requireAdmin, async (req, res) => {
       return res.status(500).json({ ok: false, error: err.message });
     }
     res.status(500).render('error/500', { message: 'Failed to load upload intents.' });
+  }
+});
+
+app.get('/admin/agents', requireAdmin, async (req, res) => {
+  try {
+    const { rows } = await dbPool.query(`
+      SELECT
+        a.*,
+        COUNT(au.id)::int AS audition_count
+      FROM agents a
+      LEFT JOIN auditions au ON au.agent_id = a.id
+      GROUP BY a.id
+      ORDER BY a.active DESC, a.hebrew_name ASC
+    `);
+
+    const contactsResult = await dbPool.query(`
+      SELECT id, agent_id, contact_name, phone, email, is_primary
+      FROM agent_contacts
+      ORDER BY is_primary DESC, contact_name ASC, id ASC
+    `);
+    const contactsByAgent = new Map();
+    contactsResult.rows.forEach((contact) => {
+      if (!contactsByAgent.has(contact.agent_id)) {
+        contactsByAgent.set(contact.agent_id, []);
+      }
+      contactsByAgent.get(contact.agent_id).push(contact);
+    });
+
+    const agents = rows.map((row) => ({
+      ...row,
+      search_aliases: Array.isArray(row.search_aliases) ? row.search_aliases.join(', ') : (row.search_aliases || ''),
+      contacts: contactsByAgent.get(row.id) || []
+    }));
+
+    res.render('admin/agents', {
+      title: 'Agents',
+      agents,
+      agentFilters: {
+        query: (req.query.q || '').toString().trim(),
+        status: (req.query.status || 'all').toString(),
+      },
+      breadcrumbTrail: [
+        { label: 'Home', url: '/' },
+        { label: 'Admin', url: '/admin/login' },
+        { label: 'Agents', url: '/admin/agents' },
+      ],
+    });
+  } catch (error) {
+    console.error('[ADMIN_AGENTS_LOAD_ERROR]', error);
+    res.status(500).send('Could not load agents right now.');
+  }
+});
+
+app.get('/admin/agents/audit', requireAdmin, async (req, res) => {
+  try {
+    const projectRows = await dbPool.query(`
+      SELECT
+        p.id,
+        p.name,
+        COUNT(a.id)::int AS audition_count,
+        COUNT(DISTINCT a.agent_id)::int AS linked_agents
+      FROM projects p
+      LEFT JOIN auditions a ON a.project_id = p.id
+      GROUP BY p.id
+      ORDER BY p.id DESC
+    `);
+    const agencyRows = await dbPool.query(`
+      SELECT
+        ag.id,
+        ag.hebrew_name,
+        ag.english_name,
+        COUNT(a.id)::int AS audition_count,
+        ARRAY_REMOVE(ARRAY_AGG(DISTINCT p.id ORDER BY p.id DESC), NULL) AS project_ids,
+        ARRAY_REMOVE(ARRAY_AGG(DISTINCT p.name ORDER BY p.id DESC), NULL) AS project_names
+      FROM agents ag
+      LEFT JOIN auditions a ON a.agent_id = ag.id
+      LEFT JOIN projects p ON p.id = a.project_id
+      GROUP BY ag.id
+      ORDER BY ag.active DESC, ag.hebrew_name ASC
+    `);
+
+    const unlinkedAuditions = await dbPool.query(`
+      SELECT a.id, a.project_id, p.name AS project_name, a.role, a.first_name_en, a.last_name_en, a.first_name_he, a.last_name_he, a.agent_text
+      FROM auditions a
+      LEFT JOIN projects p ON p.id = a.project_id
+      WHERE a.agent_id IS NULL AND COALESCE(BTRIM(a.agent_text), '') <> ''
+      ORDER BY a.created_at DESC
+      LIMIT 50
+    `);
+
+    const expectedResult = await dbPool.query(`
+      SELECT pea.project_id, pea.agent_id, pea.tag_color, ag.hebrew_name, ag.english_name
+      FROM project_expected_agents pea
+      JOIN agents ag ON ag.id = pea.agent_id
+      ORDER BY ag.hebrew_name ASC
+    `);
+    const expectedByProject = new Map();
+    expectedResult.rows.forEach((row) => {
+      if (!expectedByProject.has(row.project_id)) {
+        expectedByProject.set(row.project_id, []);
+      }
+      expectedByProject.get(row.project_id).push(row);
+    });
+
+    const submissionsResult = await dbPool.query(`
+      SELECT DISTINCT a.project_id, a.agent_id
+      FROM auditions a
+      WHERE a.agent_id IS NOT NULL
+    `);
+    const submittedByProject = new Map();
+    submissionsResult.rows.forEach((row) => {
+      if (!submittedByProject.has(row.project_id)) {
+        submittedByProject.set(row.project_id, new Set());
+      }
+      submittedByProject.get(row.project_id).add(row.agent_id);
+    });
+
+    const projects = projectRows.rows.map((project) => {
+      const expectedAgents = expectedByProject.get(project.id) || [];
+      const submittedSet = submittedByProject.get(project.id) || new Set();
+      const expectedWithStatus = expectedAgents.map((agent) => ({
+        ...agent,
+        submitted: submittedSet.has(agent.agent_id)
+      }));
+      const statusCounts = expectedWithStatus.reduce((acc, agent) => {
+        const status = ['green', 'yellow', 'red'].includes(agent.tag_color) ? agent.tag_color : 'yellow';
+        acc[status] += 1;
+        return acc;
+      }, { green: 0, yellow: 0, red: 0 });
+      return {
+        ...project,
+        expectedAgents: expectedWithStatus,
+        expectedCount: expectedAgents.length,
+        missingCount: expectedWithStatus.filter((agent) => agent.tag_color !== 'green').length,
+        statusCounts,
+        unassignedCount: agencyRows.rows.length - expectedAgents.length
+      };
+    });
+
+    const overallSummary = projects.reduce((acc, project) => {
+      acc.green += project.statusCounts.green;
+      acc.yellow += project.statusCounts.yellow;
+      acc.red += project.statusCounts.red;
+      acc.unassigned += project.unassignedCount;
+      return acc;
+    }, { green: 0, yellow: 0, red: 0, unassigned: 0 });
+
+    res.render('admin/agent-audit', {
+      title: 'Agent Audit',
+      projects,
+      agencies: agencyRows.rows,
+      unlinkedAuditions: unlinkedAuditions.rows,
+      overallSummary,
+      breadcrumbTrail: [
+        { label: 'Home', url: '/' },
+        { label: 'Admin', url: '/admin/login' },
+        { label: 'Agents', url: '/admin/agents' },
+        { label: 'Audit', url: '/admin/agents/audit' },
+      ],
+    });
+  } catch (error) {
+    console.error('[ADMIN_AGENT_AUDIT_LOAD_ERROR]', error);
+    res.status(500).send('Could not load agent audit right now.');
+  }
+});
+
+app.post('/admin/projects/:projectId/expected-agents', requireAdmin, async (req, res) => {
+  const projectId = Number(req.params.projectId);
+  if (!Number.isInteger(projectId) || projectId <= 0) {
+    req.flash('error', 'Invalid project id.');
+    return res.redirect('/admin/agents/audit');
+  }
+  const agentIds = Array.isArray(req.body.agent_ids)
+    ? req.body.agent_ids
+    : (req.body.agent_ids ? [req.body.agent_ids] : []);
+  const agentStatuses = Array.isArray(req.body.agent_statuses)
+    ? req.body.agent_statuses
+    : (req.body.agent_statuses ? [req.body.agent_statuses] : []);
+  try {
+    await dbPool.query('DELETE FROM project_expected_agents WHERE project_id = $1', [projectId]);
+    for (let index = 0; index < agentIds.length; index += 1) {
+      const agentId = Number(agentIds[index]);
+      const tagColor = (agentStatuses[index] || 'yellow').toString().trim().toLowerCase();
+      if (Number.isInteger(agentId) && agentId > 0) {
+        await dbPool.query(
+          'INSERT INTO project_expected_agents (project_id, agent_id, tag_color) VALUES ($1, $2, $3) ON CONFLICT (project_id, agent_id) DO UPDATE SET tag_color = EXCLUDED.tag_color',
+          [projectId, agentId, ['green', 'yellow', 'red'].includes(tagColor) ? tagColor : 'yellow']
+        );
+      }
+    }
+    req.flash('success', 'Expected agencies updated.');
+    return res.redirect('/admin/agents/audit');
+  } catch (error) {
+    console.error('[ADMIN_EXPECTED_AGENTS_SAVE_ERROR]', error);
+    req.flash('error', 'Could not update expected agencies.');
+    return res.redirect('/admin/agents/audit');
+  }
+});
+
+app.post('/admin/projects/:projectId/expected-agents/:agentId', requireAdmin, async (req, res) => {
+  const projectId = Number(req.params.projectId);
+  const agentId = Number(req.params.agentId);
+  if (!Number.isInteger(projectId) || projectId <= 0 || !Number.isInteger(agentId) || agentId <= 0) {
+    req.flash('error', 'Invalid project or agent id.');
+    return res.redirect('/admin/agents/audit');
+  }
+  const status = (req.body.tag_color || 'yellow').toString().trim().toLowerCase();
+  if (!['green', 'yellow', 'red'].includes(status)) {
+    req.flash('error', 'Invalid status color.');
+    return res.redirect('/admin/agents/audit');
+  }
+  try {
+    await dbPool.query(
+      `INSERT INTO project_expected_agents (project_id, agent_id, tag_color)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (project_id, agent_id)
+       DO UPDATE SET tag_color = EXCLUDED.tag_color`,
+      [projectId, agentId, status]
+    );
+    req.flash('success', 'Agency status updated.');
+    return res.redirect('/admin/agents/audit');
+  } catch (error) {
+    console.error('[ADMIN_EXPECTED_AGENT_STATUS_SAVE_ERROR]', error);
+    req.flash('error', 'Could not update agency status.');
+    return res.redirect('/admin/agents/audit');
+  }
+});
+
+app.post('/admin/projects/:projectId/expected-agents/:agentId/remove', requireAdmin, async (req, res) => {
+  const projectId = Number(req.params.projectId);
+  const agentId = Number(req.params.agentId);
+  if (!Number.isInteger(projectId) || projectId <= 0 || !Number.isInteger(agentId) || agentId <= 0) {
+    req.flash('error', 'Invalid project or agent id.');
+    return res.redirect('/admin/agents/audit');
+  }
+  try {
+    await dbPool.query('DELETE FROM project_expected_agents WHERE project_id = $1 AND agent_id = $2', [projectId, agentId]);
+    req.flash('success', 'Agency removed from expected list.');
+    return res.redirect('/admin/agents/audit');
+  } catch (error) {
+    console.error('[ADMIN_EXPECTED_AGENT_REMOVE_ERROR]', error);
+    req.flash('error', 'Could not remove agency.');
+    return res.redirect('/admin/agents/audit');
+  }
+});
+
+app.post('/admin/projects/:projectId/expected-agents/bulk-status', requireAdmin, async (req, res) => {
+  const projectId = Number(req.params.projectId);
+  if (!Number.isInteger(projectId) || projectId <= 0) {
+    req.flash('error', 'Invalid project id.');
+    return res.redirect('/admin/agents/audit');
+  }
+  const tagColor = (req.body.tag_color || 'yellow').toString().trim().toLowerCase();
+  if (!['green', 'yellow', 'red'].includes(tagColor)) {
+    req.flash('error', 'Invalid status color.');
+    return res.redirect('/admin/agents/audit');
+  }
+  try {
+    await dbPool.query(
+      `UPDATE project_expected_agents
+       SET tag_color = $2
+       WHERE project_id = $1`,
+      [projectId, tagColor]
+    );
+    req.flash('success', `All expected agencies marked ${tagColor}.`);
+    return res.redirect('/admin/agents/audit');
+  } catch (error) {
+    console.error('[ADMIN_EXPECTED_AGENTS_BULK_STATUS_ERROR]', error);
+    req.flash('error', 'Could not update project status.');
+    return res.redirect('/admin/agents/audit');
+  }
+});
+
+app.post('/admin/agents', requireAdmin, async (req, res) => {
+  const { hebrew_name, english_name, phone, email, search_aliases } = req.body;
+  try {
+    await dbPool.query(
+      `INSERT INTO agents (hebrew_name, english_name, phone, email, search_aliases)
+       VALUES ($1,$2,$3,$4,$5)
+       `,
+      [
+        (hebrew_name || '').trim(),
+        (english_name || '').trim(),
+        (phone || '').trim() || null,
+        (email || '').trim() || null,
+        (search_aliases || '')
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+      ]
+    );
+    req.flash('success', 'Agent saved.');
+    return res.redirect('/admin/agents');
+  } catch (error) {
+    console.error('[ADMIN_AGENTS_SAVE_ERROR]', error);
+    req.flash('error', 'Could not save agent.');
+    return res.redirect('/admin/agents');
+  }
+});
+
+app.post('/admin/agents/:agentId', requireAdmin, async (req, res) => {
+  const agentId = Number(req.params.agentId);
+  if (!Number.isInteger(agentId) || agentId <= 0) {
+    req.flash('error', 'Invalid agent id.');
+    return res.redirect('/admin/agents');
+  }
+  const { hebrew_name, english_name, phone, email, search_aliases, active } = req.body;
+  try {
+    await dbPool.query(
+      `UPDATE agents
+       SET hebrew_name = $2,
+           english_name = $3,
+           phone = $4,
+           email = $5,
+           search_aliases = $6,
+           active = $7,
+           updated_at = NOW()
+       WHERE id = $1`,
+      [
+        agentId,
+        (hebrew_name || '').trim(),
+        (english_name || '').trim(),
+        (phone || '').trim() || null,
+        (email || '').trim() || null,
+        (search_aliases || '').split(',').map((s) => s.trim()).filter(Boolean),
+        active === '1' || active === 'true' || active === 'on'
+      ]
+    );
+    req.flash('success', 'Agent updated.');
+    return res.redirect('/admin/agents');
+  } catch (error) {
+    console.error('[ADMIN_AGENTS_UPDATE_ERROR]', error);
+    req.flash('error', 'Could not update agent.');
+    return res.redirect('/admin/agents');
+  }
+});
+
+app.post('/admin/agents/:agentId/delete', requireAdmin, async (req, res) => {
+  const agentId = Number(req.params.agentId);
+  if (!Number.isInteger(agentId) || agentId <= 0) {
+    req.flash('error', 'Invalid agent id.');
+    return res.redirect('/admin/agents');
+  }
+  try {
+    await dbPool.query('DELETE FROM agents WHERE id = $1', [agentId]);
+    req.flash('success', 'Agent deleted.');
+    return res.redirect('/admin/agents');
+  } catch (error) {
+    console.error('[ADMIN_AGENTS_DELETE_ERROR]', error);
+    req.flash('error', 'Could not delete agent.');
+    return res.redirect('/admin/agents');
+  }
+});
+
+app.post('/admin/agents/:agentId/contacts', requireAdmin, async (req, res) => {
+  const agentId = Number(req.params.agentId);
+  if (!Number.isInteger(agentId) || agentId <= 0) {
+    req.flash('error', 'Invalid agent id.');
+    return res.redirect('/admin/agents');
+  }
+  const { contact_name, phone, email, is_primary } = req.body;
+  try {
+    if (is_primary === '1' || is_primary === 'true' || is_primary === 'on') {
+      await dbPool.query('UPDATE agent_contacts SET is_primary = FALSE WHERE agent_id = $1', [agentId]);
+    }
+    await dbPool.query(
+      `INSERT INTO agent_contacts (agent_id, contact_name, phone, email, is_primary)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [
+        agentId,
+        (contact_name || '').trim() || null,
+        (phone || '').trim() || null,
+        (email || '').trim() || null,
+        is_primary === '1' || is_primary === 'true' || is_primary === 'on'
+      ]
+    );
+    req.flash('success', 'Associate contact added.');
+    return res.redirect('/admin/agents');
+  } catch (error) {
+    console.error('[ADMIN_AGENT_CONTACT_ADD_ERROR]', error);
+    req.flash('error', 'Could not add associate contact.');
+    return res.redirect('/admin/agents');
+  }
+});
+
+app.post('/admin/agent-contacts/:contactId', requireAdmin, async (req, res) => {
+  const contactId = Number(req.params.contactId);
+  if (!Number.isInteger(contactId) || contactId <= 0) {
+    req.flash('error', 'Invalid contact id.');
+    return res.redirect('/admin/agents');
+  }
+  const { contact_name, phone, email, is_primary } = req.body;
+  try {
+    const contactResult = await dbPool.query('SELECT agent_id FROM agent_contacts WHERE id = $1', [contactId]);
+    if (!contactResult.rows.length) {
+      req.flash('error', 'Associate contact not found.');
+      return res.redirect('/admin/agents');
+    }
+    const agentId = contactResult.rows[0].agent_id;
+    if (is_primary === '1' || is_primary === 'true' || is_primary === 'on') {
+      await dbPool.query('UPDATE agent_contacts SET is_primary = FALSE WHERE agent_id = $1 AND id <> $2', [agentId, contactId]);
+    }
+    await dbPool.query(
+      `UPDATE agent_contacts
+       SET contact_name = $2,
+           phone = $3,
+           email = $4,
+           is_primary = $5,
+           updated_at = NOW()
+       WHERE id = $1`,
+      [
+        contactId,
+        (contact_name || '').trim() || null,
+        (phone || '').trim() || null,
+        (email || '').trim() || null,
+        is_primary === '1' || is_primary === 'true' || is_primary === 'on'
+      ]
+    );
+    req.flash('success', 'Associate contact updated.');
+    return res.redirect('/admin/agents');
+  } catch (error) {
+    console.error('[ADMIN_AGENT_CONTACT_UPDATE_ERROR]', error);
+    req.flash('error', 'Could not update associate contact.');
+    return res.redirect('/admin/agents');
+  }
+});
+
+app.post('/admin/agent-contacts/:contactId/delete', requireAdmin, async (req, res) => {
+  const contactId = Number(req.params.contactId);
+  if (!Number.isInteger(contactId) || contactId <= 0) {
+    req.flash('error', 'Invalid contact id.');
+    return res.redirect('/admin/agents');
+  }
+  try {
+    await dbPool.query('DELETE FROM agent_contacts WHERE id = $1', [contactId]);
+    req.flash('success', 'Associate contact deleted.');
+    return res.redirect('/admin/agents');
+  } catch (error) {
+    console.error('[ADMIN_AGENT_CONTACT_DELETE_ERROR]', error);
+    req.flash('error', 'Could not delete associate contact.');
+    return res.redirect('/admin/agents');
   }
 });
 

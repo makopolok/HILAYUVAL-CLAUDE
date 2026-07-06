@@ -359,6 +359,190 @@
     clearFileError('video');
   }
 
+  function normalizeSuggestionText(value) {
+    return (value || '')
+      .toString()
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, ' ');
+  }
+
+  function loadAgencySuggestions() {
+    const node = document.getElementById('agency-suggestions-data');
+    if (!node) return [];
+    try {
+      const parsed = JSON.parse(node.textContent || '[]');
+      if (!Array.isArray(parsed)) return [];
+      return parsed.map((item) => ({
+        id: item.id,
+        label: item.label || item.english_name || item.hebrew_name || item.value || '',
+        value: item.value || item.hebrew_name || item.label || '',
+        english: item.english_name || item.label || '',
+        hebrew: item.hebrew_name || item.value || '',
+        search: item.search || item.search_aliases || [],
+        phone: item.phone || '',
+        email: item.email || ''
+      }));
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function setupAgencyAutocomplete() {
+    const input = document.getElementById('agency');
+    const agentIdInput = document.getElementById('agent_id');
+    const agentTextInput = document.getElementById('agent_text');
+    const shell = input ? input.closest('.agency-autocomplete-shell') : null;
+    const menu = document.getElementById('agency-suggestions-list');
+    const items = loadAgencySuggestions();
+    if (!input || !menu || !items.length) return;
+
+    let activeIndex = -1;
+    let matches = [];
+    let openDirection = 'down';
+
+    function hideMenu() {
+      menu.classList.add('d-none');
+      menu.classList.remove('drop-up', 'drop-down');
+      menu.innerHTML = '';
+      input.setAttribute('aria-expanded', 'false');
+      input.setAttribute('aria-activedescendant', '');
+      activeIndex = -1;
+    }
+
+    function calculateDirection() {
+      if (!shell) return 'down';
+
+      const rect = shell.getBoundingClientRect();
+      const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+      const spaceBelow = viewportHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      const minMenuHeight = 220;
+
+      if (spaceBelow < minMenuHeight && spaceAbove > spaceBelow) {
+        return 'up';
+      }
+      return 'down';
+    }
+
+    function choose(value) {
+      input.value = value;
+      const selected = matches.find((item) => (item.value || item.label || '') === value) || null;
+      if (agentIdInput) agentIdInput.value = selected && selected.id ? String(selected.id) : '';
+      if (agentTextInput) agentTextInput.value = value;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      hideMenu();
+    }
+
+    function renderMenu(query) {
+      const normalizedQuery = normalizeSuggestionText(query);
+      if (!normalizedQuery) {
+        hideMenu();
+        return;
+      }
+
+      matches = items.filter((item) => {
+        const label = (item && item.label) || '';
+        const value = (item && item.value) || '';
+        const english = (item && item.english) || '';
+        const hebrew = (item && item.hebrew) || '';
+        const search = Array.isArray(item && item.search) ? (item.search || []).join(' ') : ((item && item.search) || '');
+        return [label, value, english, hebrew, search].some((text) => normalizeSuggestionText(text).includes(normalizedQuery));
+      }).slice(0, 8);
+
+      if (!matches.length) {
+        hideMenu();
+        return;
+      }
+
+      openDirection = calculateDirection();
+      menu.classList.remove('drop-up', 'drop-down');
+      menu.classList.add(openDirection === 'up' ? 'drop-up' : 'drop-down');
+
+      menu.innerHTML = '';
+      matches.forEach((item, index) => {
+        const button = document.createElement('button');
+        const rowId = `agency-suggestion-${index}`;
+        const isActive = index === activeIndex;
+        button.type = 'button';
+        button.id = rowId;
+        button.className = `list-group-item list-group-item-action text-start agency-suggestion-item ${isActive ? 'active' : ''}`;
+        button.setAttribute('role', 'option');
+        button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        button.innerHTML = `
+          <div class="d-flex flex-column gap-1">
+            <div class="d-flex justify-content-between align-items-start gap-2">
+              <div class="fw-semibold agency-suggestion-primary">${item.english || item.label || item.value}</div>
+              ${item.phone ? `<span class="badge text-bg-light border agency-suggestion-meta">${item.phone}</span>` : ''}
+            </div>
+            <div class="small ${isActive ? 'text-white-50' : 'text-muted'} agency-suggestion-secondary">${item.hebrew || item.value || ''}</div>
+            ${item.email ? `<div class="small ${isActive ? 'text-white-50' : 'text-muted'} agency-suggestion-secondary">${item.email}</div>` : ''}
+          </div>
+        `;
+        button.addEventListener('mousedown', (event) => {
+          event.preventDefault();
+          choose(item.value || item.label || '');
+        });
+        menu.appendChild(button);
+      });
+
+      menu.classList.remove('d-none');
+      input.setAttribute('aria-expanded', 'true');
+      if (matches[activeIndex]) {
+        input.setAttribute('aria-activedescendant', `agency-suggestion-${activeIndex}`);
+      } else {
+        input.setAttribute('aria-activedescendant', '');
+      }
+    }
+
+    input.addEventListener('input', () => {
+      if (agentIdInput) agentIdInput.value = '';
+      if (agentTextInput) agentTextInput.value = input.value;
+      renderMenu(input.value);
+    });
+
+    input.addEventListener('keydown', (event) => {
+      if (menu.classList.contains('d-none')) return;
+
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        activeIndex = Math.min(activeIndex + 1, matches.length - 1);
+        renderMenu(input.value);
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        activeIndex = Math.max(activeIndex - 1, 0);
+        renderMenu(input.value);
+      } else if (event.key === 'Enter' && activeIndex >= 0 && matches[activeIndex]) {
+        event.preventDefault();
+        choose(matches[activeIndex].value || matches[activeIndex].label || '');
+      } else if (event.key === 'Escape') {
+        hideMenu();
+      }
+    });
+
+    input.addEventListener('blur', () => {
+      window.setTimeout(hideMenu, 120);
+    });
+
+    window.addEventListener('resize', () => {
+      if (!menu.classList.contains('d-none')) {
+        renderMenu(input.value);
+      }
+    });
+
+    window.addEventListener('scroll', () => {
+      if (!menu.classList.contains('d-none')) {
+        renderMenu(input.value);
+      }
+    }, true);
+
+    document.addEventListener('click', (event) => {
+      if (event.target === input || menu.contains(event.target)) return;
+      hideMenu();
+    });
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('audition-form');
     const videoInput = document.getElementById('video');
@@ -379,6 +563,8 @@
     if (profileInput) {
       profileInput.addEventListener('change', handleProfilePicturesSelection);
     }
+
+    setupAgencyAutocomplete();
 
     ['first_name_he', 'last_name_he', 'first_name_en', 'last_name_en', 'phone', 'email', 'age', 'height', 'showreel_url', 'role']
       .map((id) => document.getElementById(id))

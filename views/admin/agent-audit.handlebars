@@ -1,0 +1,147 @@
+<div class="container my-4">
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+      <h1 class="h3 mb-1">Agent Audit</h1>
+      <p class="text-muted mb-0">Green means submitted, yellow means expected but still pending, and red means not interested.</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="/admin/agents" class="btn btn-outline-secondary btn-sm">Agents</a>
+      <a href="/admin/upload-intents" class="btn btn-outline-secondary btn-sm">Upload Intents</a>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm bg-success-subtle">
+        <div class="card-body py-3">
+          <div class="text-uppercase small text-success fw-semibold">Submitted</div>
+          <div class="display-6 mb-0">{{overallSummary.green}}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm bg-warning-subtle">
+        <div class="card-body py-3">
+          <div class="text-uppercase small text-warning-emphasis fw-semibold">Pending</div>
+          <div class="display-6 mb-0">{{overallSummary.yellow}}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm bg-danger-subtle">
+        <div class="card-body py-3">
+          <div class="text-uppercase small text-danger fw-semibold">Not interested</div>
+          <div class="display-6 mb-0">{{overallSummary.red}}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm bg-light">
+        <div class="card-body py-3">
+          <div class="text-uppercase small text-muted fw-semibold">Unassigned</div>
+          <div class="display-6 mb-0">{{overallSummary.unassigned}}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {{#each projects}}
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+        <div>
+          <h2 class="h5 mb-1">{{name}}</h2>
+          <div class="text-muted small">Project #{{id}}</div>
+        </div>
+        <div class="text-end">
+          <div class="small text-muted">{{audition_count}} audition{{#unless (eq audition_count 1)}}s{{/unless}}</div>
+          <div class="small text-muted">{{expectedCount}} expected agency{{#unless (eq expectedCount 1)}}ies{{/unless}}</div>
+          <div class="small text-muted">{{missingCount}} not green</div>
+          <div class="small text-success">Green: {{statusCounts.green}}</div>
+          <div class="small text-warning-emphasis">Yellow: {{statusCounts.yellow}}</div>
+          <div class="small text-danger">Red: {{statusCounts.red}}</div>
+          <div class="small text-muted">Unassigned: {{unassignedCount}}</div>
+          <a href="/projects/{{id}}/auditions" class="btn btn-outline-primary btn-sm mt-2">View project auditions</a>
+        </div>
+      </div>
+
+      <form method="POST" action="/admin/projects/{{id}}/expected-agents/bulk-status" class="d-flex flex-wrap gap-2 align-items-center mb-3">
+        <span class="small text-muted fw-semibold">Bulk mark:</span>
+        <button class="btn btn-success btn-sm" name="tag_color" value="green">All green</button>
+        <button class="btn btn-warning btn-sm" name="tag_color" value="yellow">All yellow</button>
+        <button class="btn btn-danger btn-sm" name="tag_color" value="red">All red</button>
+      </form>
+
+      <div class="row g-3">
+        {{#each ../agencies}}
+        <div class="col-md-6 col-xl-4">
+          <div class="border rounded p-3 h-100 {{#if (lookupExpected ../expectedAgents id)}}{{expectedStatusClass (lookupExpectedStatusValue ../expectedAgents id)}}{{else}}bg-light{{/if}}">
+            <div class="fw-semibold">{{english_name}}</div>
+            <div class="small text-muted">{{hebrew_name}}</div>
+            <div class="small text-muted mt-1">
+              {{#if (lookupExpected ../expectedAgents id)}}
+                {{expectedStatusLabel (lookupExpectedStatusValue ../expectedAgents id)}}
+              {{else}}
+                Not assigned
+              {{/if}}
+            </div>
+
+            <form method="POST" action="/admin/projects/{{../id}}/expected-agents/{{id}}" class="mt-3 d-flex gap-2 align-items-center flex-wrap">
+              <select class="form-select form-select-sm" name="tag_color">
+                <option value="yellow" {{#if (eq (lookupExpectedStatusValue ../expectedAgents id) "yellow")}}selected{{/if}}>Yellow</option>
+                <option value="green" {{#if (eq (lookupExpectedStatusValue ../expectedAgents id) "green")}}selected{{/if}}>Green</option>
+                <option value="red" {{#if (eq (lookupExpectedStatusValue ../expectedAgents id) "red")}}selected{{/if}}>Red</option>
+              </select>
+              <button class="btn btn-primary btn-sm">Save</button>
+            </form>
+
+            <form method="POST" action="/admin/projects/{{../id}}/expected-agents/{{id}}/remove" class="mt-2">
+              <button class="btn btn-outline-danger btn-sm" {{#unless (lookupExpected ../expectedAgents id)}}disabled{{/unless}}>Remove</button>
+            </form>
+          </div>
+        </div>
+        {{/each}}
+      </div>
+
+      <div class="row g-3 mt-2">
+        <div class="col-lg-6">
+          <div class="border rounded p-3 h-100">
+            <h3 class="h6">Status by expected agency</h3>
+            {{#if expectedAgents.length}}
+              {{#each expectedAgents}}
+              <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                <div>
+                  <div class="fw-semibold">{{english_name}}</div>
+                  <div class="small text-muted">{{hebrew_name}}</div>
+                </div>
+                <span class="badge {{expectedStatusClass tag_color}}">{{expectedStatusLabel tag_color}}</span>
+              </div>
+              {{/each}}
+            {{else}}
+              <div class="text-muted small">No expected agencies set yet.</div>
+            {{/if}}
+          </div>
+        </div>
+        <div class="col-lg-6">
+          <div class="border rounded p-3 h-100">
+            <h3 class="h6">Recent unlinked auditions</h3>
+            {{#if unlinkedAuditions.length}}
+            <div class="list-group list-group-flush">
+              {{#each unlinkedAuditions}}
+              <div class="list-group-item px-0">
+                <div class="fw-semibold">{{#if first_name_en}}{{first_name_en}} {{last_name_en}}{{else}}{{first_name_he}} {{last_name_he}}{{/if}}</div>
+                <div class="small text-muted">{{project_name}} · {{role}}</div>
+                <div class="small text-muted">Stored agency text: {{agent_text}}</div>
+              </div>
+              {{/each}}
+            </div>
+            {{else}}
+            <div class="text-muted small">No recent unlinked auditions.</div>
+            {{/if}}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {{/each}}
+</div>

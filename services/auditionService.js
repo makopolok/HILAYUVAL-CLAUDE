@@ -13,6 +13,8 @@ const NAME_SEARCH_SQL = `COALESCE(
     REGEXP_REPLACE(
       CONCAT_WS(' ',
         NULLIF(BTRIM(a.search_full_name), ''),
+        NULLIF(BTRIM(a.first_name_en), ''),
+        NULLIF(BTRIM(a.last_name_en), ''),
         NULLIF(BTRIM(a.first_name_he), ''),
         NULLIF(BTRIM(a.last_name_he), ''),
         NULLIF(BTRIM(a.role_locked_name), ''),
@@ -79,14 +81,16 @@ async function insertAudition(audition) {
           first_name_en, last_name_en,
           age, height,
           current_location, about_me,
-          profile_pictures, showreel_url, video_url, video_type
+          profile_pictures, showreel_url, video_url, video_type,
+          agent_id, agent_text
         ) VALUES (
           $1, $2, $3,
           $4, $5,
           $6, $7,
           $8, $9,
           $10, $11,
-          $12::jsonb, $13, $14, $15
+          $12::jsonb, $13, $14, $15,
+          $16, $17
         )
         RETURNING *;
       `;
@@ -106,7 +110,9 @@ async function insertAudition(audition) {
         JSON.stringify(profilePictures),
         audition.showreel_url,
         audition.video_url,
-        audition.video_type
+        audition.video_type,
+        audition.agent_id || null,
+        audition.agent_text || audition.agency || null
       ];
 
       const insertedAudition = await client.query(insertAuditionQuery, auditionValues);
@@ -124,7 +130,14 @@ async function insertAudition(audition) {
       );
 
       await client.query('COMMIT');
-      return { ...row, email: audition.email, phone: audition.phone, agency: audition.agency };
+      return {
+        ...row,
+        email: audition.email,
+        phone: audition.phone,
+        agency: audition.agency,
+        agent_id: audition.agent_id || null,
+        agent_text: audition.agent_text || audition.agency || null
+      };
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;

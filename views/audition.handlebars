@@ -49,7 +49,13 @@
     </div>
     <div class="mb-3">
       <label for="agency" class="form-label">Agency</label>
-      <input type="text" class="form-control" id="agency" name="agency">
+      <div class="position-relative agency-autocomplete-shell">
+        <input type="text" class="form-control agency-autocomplete-input" id="agency" name="agency" autocomplete="off" aria-autocomplete="list" aria-expanded="false" aria-controls="agency-suggestions-list">
+        <input type="hidden" id="agent_id" name="agent_id" value="">
+        <input type="hidden" id="agent_text" name="agent_text" value="">
+        <div id="agency-suggestions-list" class="list-group position-absolute w-100 shadow-sm d-none agency-autocomplete-menu" role="listbox"></div>
+      </div>
+      <div class="form-text text-muted">Start typing to pick a verified agency name in Hebrew or English.</div>
     </div>
     <div class="mb-3">
       <label for="age" class="form-label">Age (optional)</label>
@@ -318,4 +324,5 @@
 {{#if (and direct_upload_require_captcha turnstile_site_key)}}
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 {{/if}}
+<script type="application/json" id="agency-suggestions-data">{{json agents_catalog}}</script>
 <script src="/js/audition.js?v={{asset_version}}"></script>

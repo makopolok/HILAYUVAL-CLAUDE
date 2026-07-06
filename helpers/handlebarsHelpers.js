@@ -109,5 +109,31 @@ module.exports = {
         }
         
         return urlOrId; // If extraction fails, return original
+    },
+    json: function(value) {
+        return new Handlebars.SafeString(JSON.stringify(value ?? []));
+    },
+    lookupExpected: function(list, agentId) {
+        if (!Array.isArray(list)) return false;
+        return list.some((item) => String(item.agent_id) === String(agentId));
+    },
+    lookupExpectedStatus: function(list, agentId, tagColor) {
+        if (!Array.isArray(list)) return false;
+        return list.some((item) => String(item.agent_id) === String(agentId) && String(item.tag_color) === String(tagColor));
+    },
+    lookupExpectedStatusValue: function(list, agentId) {
+        if (!Array.isArray(list)) return 'yellow';
+        const match = list.find((item) => String(item.agent_id) === String(agentId));
+        return match && match.tag_color ? match.tag_color : 'yellow';
+    },
+    expectedStatusLabel: function(tagColor) {
+        if (tagColor === 'green') return 'Submitted';
+        if (tagColor === 'red') return 'Not interested';
+        return 'Missing';
+    },
+    expectedStatusClass: function(tagColor) {
+        if (tagColor === 'green') return 'text-bg-success';
+        if (tagColor === 'red') return 'text-bg-danger';
+        return 'text-bg-warning';
     }
 };
