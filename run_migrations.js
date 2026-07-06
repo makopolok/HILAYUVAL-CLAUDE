@@ -44,26 +44,50 @@ async function runMigrations() {
     await connectWithRetry();
     console.log('✅ Database connected successfully');
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS schema_migrations (
+        migration_name TEXT PRIMARY KEY,
+        applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+    console.log('✅ Migration tracker ready');
+
     // Get all migration files
     const migrationsDir = path.join(__dirname, 'migrations');
     const migrationFiles = fs.readdirSync(migrationsDir)
       .filter(file => file.endsWith('.sql'))
       .sort();
 
+    const appliedResult = await pool.query(`
+      SELECT migration_name
+      FROM schema_migrations
+      ORDER BY migration_name ASC
+    `);
+    const appliedMigrations = new Set(appliedResult.rows.map((row) => row.migration_name));
+
     console.log(`Found ${migrationFiles.length} migration files:`);
     migrationFiles.forEach(file => console.log(`  - ${file}`));
 
     // Run each migration
     for (const file of migrationFiles) {
+      if (appliedMigrations.has(file)) {
+        console.log(`⏭️  Skipping already-applied migration: ${file}`);
+        continue;
+      }
+
       console.log(`\n🔧 Running migration: ${file}`);
       const migrationPath = path.join(migrationsDir, file);
       const sql = fs.readFileSync(migrationPath, 'utf8');
       
       try {
         await pool.query(sql);
+        await pool.query(
+          `INSERT INTO schema_migrations (migration_name) VALUES ($1) ON CONFLICT (migration_name) DO NOTHING`,
+          [file]
+        );
         console.log(`✅ Migration ${file} completed successfully`);
       } catch (err) {
-        console.log(`⚠️  Migration ${file} error (might already exist): ${err.message}`);
+        console.log(`⚠️  Migration ${file} error: ${err.message}`);
       }
     }
 
