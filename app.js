@@ -4020,7 +4020,7 @@ app.post('/projects/:projectId/auditions/:auditionId/update', requireAdmin, asyn
 
     // Extract fields from request body (no strict validation for admin edits)
     const updates = {};
-    const editableFields = ['first_name_en', 'last_name_en', 'first_name_he', 'last_name_he', 'email', 'phone', 'agency', 'age', 'height', 'current_location', 'about_me', 'video_url', 'video_type', 'youtube_video_url', 'youtube_watch_url'];
+    const editableFields = ['first_name_en', 'last_name_en', 'first_name_he', 'last_name_he', 'email', 'phone', 'agency', 'age', 'height', 'current_location', 'about_me', 'video_url', 'video_type', 'youtube_video_url'];
      
     for (const field of editableFields) {
       if (req.body && field in req.body) {
@@ -4070,9 +4070,8 @@ app.post('/projects/:projectId/auditions/:auditionId/update', requireAdmin, asyn
           console.log('[YOUTUBE_URL_VALIDATION]', 'Invalid URL:', updates.youtube_video_url);
           return res.status(400).json({ ok: false, error: 'Invalid YouTube URL format. Must be a valid HTTPS URL.' });
         } else {
-          // Valid URL - update watch_url to match
-          updates.youtube_watch_url = updates.youtube_video_url;
-          console.log('[YOUTUBE_URL_VALIDATION]', 'Valid URL set for youtube_watch_url:', updates.youtube_watch_url);
+          // Valid URL
+          console.log('[YOUTUBE_URL_VALIDATION]', 'Valid YouTube URL:', updates.youtube_video_url);
         }
       } else {
         updates.youtube_video_url = null;
