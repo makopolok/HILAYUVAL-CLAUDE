@@ -65,16 +65,14 @@ async function runMigrations() {
     `);
     const appliedMigrations = new Set(appliedResult.rows.map((row) => row.migration_name));
 
-    console.log(`Found ${migrationFiles.length} migration files:`);
-    migrationFiles.forEach(file => console.log(`  - ${file}`));
+    const pendingMigrations = migrationFiles.filter((file) => !appliedMigrations.has(file));
+
+    console.log(`Found ${migrationFiles.length} migration files.`);
+    console.log(`Pending migrations: ${pendingMigrations.length}`);
+    pendingMigrations.forEach(file => console.log(`  - ${file}`));
 
     // Run each migration
-    for (const file of migrationFiles) {
-      if (appliedMigrations.has(file)) {
-        console.log(`⏭️  Skipping already-applied migration: ${file}`);
-        continue;
-      }
-
+    for (const file of pendingMigrations) {
       console.log(`\n🔧 Running migration: ${file}`);
       const migrationPath = path.join(migrationsDir, file);
       const sql = fs.readFileSync(migrationPath, 'utf8');
