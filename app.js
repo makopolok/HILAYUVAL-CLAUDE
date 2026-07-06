@@ -4045,16 +4045,17 @@ app.post('/projects/:projectId/auditions/:auditionId/update', requireAdmin, asyn
     }
 
     // Validate video_url if provided and non-empty
+    // Note: video_url can be either a full URL or a Bunny GUID, so only validate if it looks like a URL
     if (updates.video_url && typeof updates.video_url === 'string') {
       updates.video_url = updates.video_url.trim();
-      if (updates.video_url && !isValidHttpUrl(updates.video_url)) {
-        return res.status(400).json({ ok: false, error: 'Invalid video URL format.' });
-      }
-      // If empty after trim, set to null
-      if (!updates.video_url) {
+      if (updates.video_url) {
+        // Only validate as URL if it looks like a URL (starts with http:// or https://)
+        if (updates.video_url.match(/^https?:\/\//i) && !isValidHttpUrl(updates.video_url)) {
+          return res.status(400).json({ ok: false, error: 'Invalid video URL format.' });
+        }
+      } else {
         updates.video_url = null;
       }
-      // Don't clear youtube_video_url anymore - allow independent edits
     }
 
     // Validate youtube_video_url if provided and non-empty
