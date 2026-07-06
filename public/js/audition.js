@@ -443,10 +443,11 @@
     }
 
     function choose(value) {
-      input.value = value;
-      const selected = matches.find((item) => (item.value || item.label || '') === value) || null;
+      const selected = matches.find((item) => (item.english || item.label || '') === value) || null;
+      const storedValue = selected ? (selected.english || selected.label || selected.value || value) : value;
+      input.value = storedValue;
       if (agentIdInput) agentIdInput.value = selected && selected.id ? String(selected.id) : '';
-      if (agentTextInput) agentTextInput.value = value;
+      if (agentTextInput) agentTextInput.value = storedValue;
       input.dispatchEvent(new Event('input', { bubbles: true }));
       input.dispatchEvent(new Event('change', { bubbles: true }));
       hideMenu();
@@ -488,13 +489,9 @@
         button.setAttribute('role', 'option');
         button.setAttribute('aria-selected', isActive ? 'true' : 'false');
         button.innerHTML = `
-          <div class="d-flex flex-column gap-1">
-            <div class="d-flex justify-content-between align-items-start gap-2">
-              <div class="fw-semibold agency-suggestion-primary">${item.english || item.label || item.value}</div>
-              ${item.phone ? `<span class="badge text-bg-light border agency-suggestion-meta">${item.phone}</span>` : ''}
-            </div>
-            <div class="small ${isActive ? 'text-white-50' : 'text-muted'} agency-suggestion-secondary">${item.hebrew || item.value || ''}</div>
-            ${item.email ? `<div class="small ${isActive ? 'text-white-50' : 'text-muted'} agency-suggestion-secondary">${item.email}</div>` : ''}
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span class="fw-semibold agency-suggestion-primary">${item.english || item.label || item.value}</span>
+            <span class="small ${isActive ? 'text-white-50' : 'text-muted'} agency-suggestion-secondary">/ ${item.hebrew || item.value || ''}</span>
           </div>
         `;
         button.addEventListener('mousedown', (event) => {
