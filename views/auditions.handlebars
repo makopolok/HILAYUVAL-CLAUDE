@@ -581,6 +581,8 @@
                         <span class="edit-display">
                           {{#if youtube_watch_url}}
                             <a href="{{youtube_watch_url}}" target="_blank" rel="noopener"><code class="small">{{youtube_watch_url}}</code></a>
+                          {{else if youtube_video_url}}
+                            <a href="{{youtube_video_url}}" target="_blank" rel="noopener"><code class="small">{{youtube_video_url}}</code></a>
                           {{else if (eq video_type "youtube")}}
                             <a href="{{#if video_watch_url}}{{video_watch_url}}{{else}}{{video_url}}{{/if}}" target="_blank" rel="noopener"><code class="small">{{#if video_watch_url}}{{video_watch_url}}{{else}}{{video_url}}{{/if}}</code></a>
                           {{/if}}
@@ -979,12 +981,12 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
       }
 
-      // Collect values from all edit inputs
-      const formData = {};
-      row.querySelectorAll('[data-field]').forEach(input => {
-        const fieldName = input.dataset.field;
-        formData[fieldName] = input.value;
-      });
+     // Collect values from all edit inputs
+     const formData = {};
+     row.querySelectorAll('[data-field]').forEach(input => {
+       const fieldName = input.dataset.field;
+       formData[fieldName] = input.value;
+     });
 
       // Show loading state
       const originalHtml = this.innerHTML;
