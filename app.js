@@ -4021,12 +4021,14 @@ app.post('/projects/:projectId/auditions/:auditionId/update', requireAdmin, asyn
     // Extract fields from request body (no strict validation for admin edits)
     const updates = {};
     const editableFields = ['first_name_en', 'last_name_en', 'first_name_he', 'last_name_he', 'email', 'phone', 'agency', 'age', 'height', 'current_location', 'about_me', 'video_url', 'video_type', 'youtube_video_url'];
-    
+     
     for (const field of editableFields) {
       if (req.body && field in req.body) {
         updates[field] = req.body[field] || null;
       }
     }
+     
+    console.log('[UPDATE_AUDITION_DEBUG] Updates received:', JSON.stringify(updates));
 
     // Convert age and height to numbers if provided
     if (updates.age) {
