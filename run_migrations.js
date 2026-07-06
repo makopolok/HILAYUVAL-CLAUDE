@@ -3,16 +3,45 @@ const fs = require('fs');
 const path = require('path');
 const { getPool, closePool, registerPoolShutdown } = require('./utils/database');
 
-// Step 1: Enable SSL for migrations to avoid non-SSL connection timeouts during Heroku release
-const pool = getPool({ ssl: { rejectUnauthorized: false }, max: 2, connectionTimeoutMillis: 10000 });
+// Step 1: Give Heroku release a little more breathing room.
+// A cold Postgres add-on can take a moment to accept the first SSL connection.
+const pool = getPool({
+  ssl: { rejectUnauthorized: false },
+  max: 1,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 30000
+});
 registerPoolShutdown({ exitOnFinish: true });
+
+async function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function connectWithRetry(retries = 4) {
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= retries; attempt += 1) {
+    try {
+      await pool.query('SELECT NOW()');
+      return;
+    } catch (error) {
+      lastError = error;
+      console.warn(`⚠️  Database connection attempt ${attempt} failed: ${error.message}`);
+      if (attempt < retries) {
+        await wait(1000 * attempt);
+      }
+    }
+  }
+
+  throw lastError;
+}
 
 async function runMigrations() {
   console.log('=== RUNNING DATABASE MIGRATIONS ===');
   
   try {
     // Test connection
-    await pool.query('SELECT NOW()');
+    await connectWithRetry();
     console.log('✅ Database connected successfully');
 
     // Get all migration files
