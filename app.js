@@ -4058,32 +4058,44 @@ app.post('/projects/:projectId/auditions/:auditionId/update', requireAdmin, asyn
       }
     }
 
-    // Validate youtube_video_url if provided and non-empty
-    if (updates.youtube_video_url && typeof updates.youtube_video_url === 'string') {
-      updates.youtube_video_url = updates.youtube_video_url.trim();
-      if (updates.youtube_video_url && !isValidHttpUrl(updates.youtube_video_url)) {
-        return res.status(400).json({ ok: false, error: 'Invalid YouTube URL format.' });
-      }
-      // If empty after trim, set to null
-      if (!updates.youtube_video_url) {
-        updates.youtube_video_url = null;
+    // Validate youtube_video_url if provided
+    if ('youtube_video_url' in updates) {
+      if (updates.youtube_video_url && typeof updates.youtube_video_url === 'string') {
+        updates.youtube_video_url = updates.youtube_video_url.trim();
+        // If empty after trim, set to null
+        if (!updates.youtube_video_url) {
+          updates.youtube_video_url = null;
+        } else if (!isValidHttpUrl(updates.youtube_video_url)) {
+          // Only validate if it looks like a URL
+          console.log('[YOUTUBE_URL_VALIDATION]', 'Invalid URL:', updates.youtube_video_url);
+          return res.status(400).json({ ok: false, error: 'Invalid YouTube URL format. Must be a valid HTTPS URL.' });
+        } else {
+          // Valid URL - update watch_url to match
+          updates.youtube_watch_url = updates.youtube_video_url;
+          console.log('[YOUTUBE_URL_VALIDATION]', 'Valid URL set for youtube_watch_url:', updates.youtube_watch_url);
+        }
       } else {
-        // When youtube_video_url is updated, also update youtube_watch_url to match
-        // This keeps the display URL consistent with the stored URL
-        updates.youtube_watch_url = updates.youtube_video_url;
+        updates.youtube_video_url = null;
       }
     }
 
     // Update the audition
     const result = await auditionService.updateAudition(auditionId, updates);
     if (!result.ok) {
+      console.error('[UPDATE_AUDITION] Service returned error:', result.error);
       return res.status(400).json({ ok: false, error: result.error || 'Failed to update audition.' });
     }
 
+    console.log('[UPDATE_AUDITION] Success for auditionId:', auditionId);
     return res.json({ ok: true, audition: result.row });
   } catch (error) {
-    console.error('[App.js POST /projects/:projectId/auditions/:auditionId/update]', error);
-    return res.status(500).json({ ok: false, error: 'Failed to update audition.' });
+    console.error('[App.js POST /projects/:projectId/auditions/:auditionId/update] Exception:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+      code: error.code
+    });
+    return res.status(500).json({ ok: false, error: 'Failed to update audition: ' + (error.message || 'unknown error') });
   }
 });
 
