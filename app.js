@@ -4065,6 +4065,7 @@ app.post('/projects/:projectId/auditions/:auditionId/update', requireAdmin, asyn
         // If empty after trim, set to null
         if (!updates.youtube_video_url) {
           updates.youtube_video_url = null;
+          updates.youtube_video_id = null;
         } else if (!isValidHttpUrl(updates.youtube_video_url)) {
           // Only validate if it looks like a URL
           console.log('[YOUTUBE_URL_VALIDATION]', 'Invalid URL:', updates.youtube_video_url);
@@ -4072,9 +4073,12 @@ app.post('/projects/:projectId/auditions/:auditionId/update', requireAdmin, asyn
         } else {
           // Valid URL
           console.log('[YOUTUBE_URL_VALIDATION]', 'Valid YouTube URL:', updates.youtube_video_url);
+          // Clear the old youtube_video_id so the system recalculates it from the new URL
+          updates.youtube_video_id = null;
         }
       } else {
         updates.youtube_video_url = null;
+        updates.youtube_video_id = null;
       }
     }
 

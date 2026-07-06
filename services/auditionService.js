@@ -387,6 +387,7 @@ async function updateAudition(auditionId, updates) {
     video_url: { table: 'auditions', column: 'video_url' },
     video_type: { table: 'auditions', column: 'video_type' },
     youtube_video_url: { table: 'auditions', column: 'youtube_video_url' },
+    youtube_video_id: { table: 'auditions', column: 'youtube_video_id' },
     email: { table: 'audition_contacts', column: 'email' },
     phone: { table: 'audition_contacts', column: 'phone' },
     agency: { table: 'audition_contacts', column: 'agency' }
