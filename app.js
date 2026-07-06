@@ -4020,7 +4020,7 @@ app.post('/projects/:projectId/auditions/:auditionId/update', requireAdmin, asyn
 
     // Extract fields from request body (no strict validation for admin edits)
     const updates = {};
-    const editableFields = ['first_name_en', 'last_name_en', 'first_name_he', 'last_name_he', 'email', 'phone', 'agency', 'age', 'height', 'current_location', 'about_me', 'video_url', 'video_type'];
+    const editableFields = ['first_name_en', 'last_name_en', 'first_name_he', 'last_name_he', 'email', 'phone', 'agency', 'age', 'height', 'current_location', 'about_me', 'video_url', 'video_type', 'youtube_video_url'];
     
     for (const field of editableFields) {
       if (req.body && field in req.body) {
@@ -4050,6 +4050,14 @@ app.post('/projects/:projectId/auditions/:auditionId/update', requireAdmin, asyn
       }
       // Clear youtube_video_url to force recalculation from new video_url
       updates.youtube_video_url = null;
+    }
+
+    // Validate youtube_video_url if provided
+    if (updates.youtube_video_url && typeof updates.youtube_video_url === 'string') {
+      updates.youtube_video_url = updates.youtube_video_url.trim();
+      if (updates.youtube_video_url && !isValidHttpUrl(updates.youtube_video_url)) {
+        return res.status(400).json({ ok: false, error: 'Invalid YouTube URL format.' });
+      }
     }
 
     // Update the audition
