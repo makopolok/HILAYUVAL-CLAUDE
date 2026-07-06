@@ -369,10 +369,26 @@
 
   function loadAgencySuggestions() {
     const node = document.getElementById('agency-suggestions-data');
-    if (!node) return [];
+    if (!node) {
+      console.debug('[AC_AUTOCOMPLETE] agency-suggestions-data element not found');
+      return [];
+    }
     try {
-      const parsed = JSON.parse(node.textContent || '[]');
-      if (!Array.isArray(parsed)) return [];
+      const raw = node.textContent || '';
+      if (!raw) {
+        console.debug('[AC_AUTOCOMPLETE] agency-suggestions-data is present but empty');
+        return [];
+      }
+      const parsed = JSON.parse(raw || '[]');
+      if (!Array.isArray(parsed)) {
+        console.warn('[AC_AUTOCOMPLETE] parsed agency-suggestions-data is not an array', parsed);
+        return [];
+      }
+      if (parsed.length === 0) {
+        console.debug('[AC_AUTOCOMPLETE] parsed agents array is empty');
+      } else {
+        console.debug(`[AC_AUTOCOMPLETE] loaded ${parsed.length} agents from inline catalog`);
+      }
       return parsed.map((item) => ({
         id: item.id,
         label: item.label || item.english_name || item.hebrew_name || item.value || '',
@@ -383,7 +399,8 @@
         phone: item.phone || '',
         email: item.email || ''
       }));
-    } catch (_) {
+    } catch (error) {
+      console.error('[AC_AUTOCOMPLETE] failed to parse agency-suggestions-data JSON:', error && error.message);
       return [];
     }
   }
