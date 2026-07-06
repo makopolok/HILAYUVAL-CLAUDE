@@ -4042,21 +4042,28 @@ app.post('/projects/:projectId/auditions/:auditionId/update', requireAdmin, asyn
       }
     }
 
-    // Validate video_url if provided
+    // Validate video_url if provided and non-empty
     if (updates.video_url && typeof updates.video_url === 'string') {
       updates.video_url = updates.video_url.trim();
-      if (!isValidHttpUrl(updates.video_url)) {
+      if (updates.video_url && !isValidHttpUrl(updates.video_url)) {
         return res.status(400).json({ ok: false, error: 'Invalid video URL format.' });
       }
-      // Clear youtube_video_url to force recalculation from new video_url
-      updates.youtube_video_url = null;
+      // If empty after trim, set to null
+      if (!updates.video_url) {
+        updates.video_url = null;
+      }
+      // Don't clear youtube_video_url anymore - allow independent edits
     }
 
-    // Validate youtube_video_url if provided
+    // Validate youtube_video_url if provided and non-empty
     if (updates.youtube_video_url && typeof updates.youtube_video_url === 'string') {
       updates.youtube_video_url = updates.youtube_video_url.trim();
       if (updates.youtube_video_url && !isValidHttpUrl(updates.youtube_video_url)) {
         return res.status(400).json({ ok: false, error: 'Invalid YouTube URL format.' });
+      }
+      // If empty after trim, set to null
+      if (!updates.youtube_video_url) {
+        updates.youtube_video_url = null;
       }
     }
 
