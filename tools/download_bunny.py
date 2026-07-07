@@ -37,12 +37,53 @@ BUNNY_API_BASE = "https://storage.bunnycdn.com"
 
 
 def list_files(zone, access_key):
-    url = f"{BUNNY_API_BASE}/{zone}/"
+    """List all files in a zone, following pagination if present.
+
+    Bunny may return a paginated XML listing. This function follows common
+    pagination markers (NextMarker, ContinuationToken, Marker) until all keys
+    are collected.
+    """
+    keys = []
     headers = {"AccessKey": access_key}
-    resp = requests.get(url, headers=headers, timeout=30)
-    resp.raise_for_status()
-    root = ET.fromstring(resp.content)
-    keys = [elem.text for elem in root.findall('.//File/Key') if elem is not None and elem.text]
+    marker = None
+    while True:
+        url = f"{BUNNY_API_BASE}/{zone}/"
+        params = {}
+        if marker:
+            # Bunny may accept a marker query param; include it if present
+            params['marker'] = marker
+        resp = requests.get(url, headers=headers, params=params, timeout=30)
+        resp.raise_for_status()
+        root = ET.fromstring(resp.content)
+        page_keys = [elem.text for elem in root.findall('.//File/Key') if elem is not None and elem.text]
+        keys.extend(page_keys)
+
+        # Try several common pagination tokens returned by XML
+        next_marker = None
+        # Common tags to check: NextMarker, ContinuationToken, NextContinuationToken, Marker, IsTruncated
+        nm = root.find('.//NextMarker')
+        if nm is not None and nm.text:
+            next_marker = nm.text
+        if not next_marker:
+            ct = root.find('.//ContinuationToken') or root.find('.//NextContinuationToken')
+            if ct is not None and ct.text:
+                next_marker = ct.text
+        if not next_marker:
+            m = root.find('.//Marker')
+            if m is not None and m.text:
+                next_marker = m.text
+
+        # If IsTruncated exists and is true but no marker provided, stop to avoid infinite loop
+        is_truncated = False
+        it = root.find('.//IsTruncated')
+        if it is not None and (it.text or '').lower() in ('true', '1'):
+            is_truncated = True
+
+        if next_marker:
+            marker = next_marker
+            continue
+        # No next marker found; stop
+        break
     return keys
 
 
