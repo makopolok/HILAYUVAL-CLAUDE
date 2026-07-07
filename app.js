@@ -4020,7 +4020,7 @@ app.post('/projects/:projectId/auditions/:auditionId/update', requireAdmin, asyn
 
     // Extract fields from request body (no strict validation for admin edits)
     const updates = {};
-    const editableFields = ['first_name_en', 'last_name_en', 'first_name_he', 'last_name_he', 'email', 'phone', 'agency', 'age', 'height', 'current_location', 'about_me', 'video_url', 'video_type', 'youtube_video_url'];
+    const editableFields = ['first_name_en', 'last_name_en', 'first_name_he', 'last_name_he', 'email', 'phone', 'agency', 'age', 'height', 'current_location', 'about_me', 'video_url', 'video_type', 'youtube_video_url', 'duration_seconds'];
      
     for (const field of editableFields) {
       if (req.body && field in req.body) {
@@ -4079,6 +4079,33 @@ app.post('/projects/:projectId/auditions/:auditionId/update', requireAdmin, asyn
       } else {
         updates.youtube_video_url = null;
         updates.youtube_video_id = null;
+      }
+    }
+
+    // Validate duration_seconds if provided (accept mm:ss or seconds)
+    if ('duration_seconds' in updates) {
+      const raw = (updates.duration_seconds || '').toString().trim();
+      if (!raw) {
+        updates.duration_seconds = null;
+      } else {
+        let seconds = null;
+        if (/^\d+:\d{2}$/.test(raw)) {
+          // mm:ss
+          const parts = raw.split(':');
+          seconds = Number(parts[0]) * 60 + Number(parts[1]);
+        } else if (/^\d+$/.test(raw)) {
+          seconds = Number(raw);
+        } else {
+          return res.status(400).json({ ok: false, error: 'Invalid duration format. Use mm:ss or seconds.' });
+        }
+        if (isNaN(seconds) || seconds < 0) {
+          return res.status(400).json({ ok: false, error: 'Invalid duration value.' });
+        }
+        const MAX_SECONDS = 40 * 60; // 40 minutes
+        if (seconds > MAX_SECONDS) {
+          return res.status(400).json({ ok: false, error: 'Duration exceeds the maximum allowed (40 minutes).' });
+        }
+        updates.duration_seconds = Math.floor(seconds);
       }
     }
 

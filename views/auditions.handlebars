@@ -590,7 +590,12 @@
                         <input type="url" class="form-control form-control-sm d-none edit-input" placeholder="YouTube URL" data-field="youtube_video_url" value="{{youtube_video_url}}" style="margin-top: 0.5rem;" />
                       </p>
                        
-                      <p class="card-text"><small class="text-muted">Submitted: {{created_at_formatted}}</small></p>
+                      <p class="card-text"><small class="text-muted">Submitted: {{created_at_formatted}} {{#if duration_seconds}}• Duration: {{formatDuration duration_seconds}}{{/if}}</small></p>
+                        <p class="card-text small mb-1 edit-field">
+                          <strong>Duration:</strong>
+                          <span class="edit-display">{{#if duration_seconds}}{{formatDuration duration_seconds}}{{else}}—{{/if}}</span>
+                          <input type="text" class="form-control form-control-sm d-none edit-input" placeholder="mm:ss or seconds" data-field="duration_seconds" value="{{#if duration_seconds}}{{formatDuration duration_seconds}}{{else}}{{/if}}" style="margin-top: 0.5rem;" />
+                        </p>
                       
                       <!-- Edit/Save/Cancel buttons -->
                       <div class="d-flex gap-2 mt-3 audition-card-edit-buttons">
