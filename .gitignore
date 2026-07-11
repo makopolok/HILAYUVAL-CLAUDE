@@ -9,3 +9,6 @@ client_secret_*.json
 credentials.json
 .env
 .env.test
+
+.DS_Store
+*.dump
