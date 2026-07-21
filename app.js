@@ -1,5 +1,6 @@
 require('dotenv').config(); // Load environment variables
 const { google } = require('googleapis');
+const { setHerokuConfigVar } = require('./lib/herokuConfigUpdater');
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
@@ -2025,16 +2026,20 @@ app.get('/oauth2callback', async (req, res) => {
 
       console.log('Access Token:', tokens.access_token);
       if (tokens.refresh_token) {
-        console.log('***************************************************************************');
-        console.log('IMPORTANT: Received Refresh Token. ADD THIS TO YOUR .env FILE as GOOGLE_REFRESH_TOKEN:');
-        console.log(tokens.refresh_token);
-        console.log('***************************************************************************');
-        REFRESH_TOKEN = tokens.refresh_token; // Store it for current session
-        // In a real app, you'd securely store this refresh_token (e.g., in .env or a secure database)
-        // For now, we will log it, and you should manually add it to your .env file.
-        res.send('Authentication successful! Refresh token obtained and logged to console. Please add it to your .env file as GOOGLE_REFRESH_TOKEN and restart the server.');
+        // Persist the refresh token to Heroku config vars so all dynos pick it up.
+        try {
+          await setHerokuConfigVar('hilayuval.com', 'GOOGLE_REFRESH_TOKEN', tokens.refresh_token);
+          console.info('GOOGLE_REFRESH_TOKEN updated on Heroku config vars');
+          REFRESH_TOKEN = tokens.refresh_token; // update in-memory copy as well
+          res.send('Authentication successful! Refresh token obtained and saved to Heroku config vars. Dynos will restart to pick up the new value.');
+        } catch (herokuErr) {
+          // If updating Heroku fails, fall back to logging instructions but do not print the token
+          REFRESH_TOKEN = tokens.refresh_token;
+          console.warn('Failed to update Heroku config var for GOOGLE_REFRESH_TOKEN:', herokuErr && herokuErr.message);
+          res.send('Authentication successful. Refresh token received but automatic update to Heroku failed; check server logs for details and set GOOGLE_REFRESH_TOKEN manually.');
+        }
       } else {
-        res.send('Authentication successful, but no new refresh token was provided (this is normal if you have authorized before). Ensure GOOGLE_REFRESH_TOKEN is in your .env file.');
+        res.send('Authentication successful, but no new refresh token was provided (this is normal if you have authorized before). Ensure GOOGLE_REFRESH_TOKEN is set in your environment.');
       }
     } catch (error) {
       console.error('Error authenticating with Google:', error);
