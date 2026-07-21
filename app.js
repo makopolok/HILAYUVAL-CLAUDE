@@ -1,6 +1,6 @@
 require('dotenv').config(); // Load environment variables
 const { google } = require('googleapis');
-const { setHerokuConfigVar } = require('./lib/herokuConfigUpdater');
+const { setHerokuConfigVar, verifyRefreshToken } = require('./lib/herokuConfigUpdater');
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
@@ -2031,7 +2031,21 @@ app.get('/oauth2callback', async (req, res) => {
           await setHerokuConfigVar('hilayuval.com', 'GOOGLE_REFRESH_TOKEN', tokens.refresh_token);
           console.info('GOOGLE_REFRESH_TOKEN updated on Heroku config vars');
           REFRESH_TOKEN = tokens.refresh_token; // update in-memory copy as well
-          res.send('Authentication successful! Refresh token obtained and saved to Heroku config vars. Dynos will restart to pick up the new value.');
+
+          // Verify the refresh token works by exchanging it for an access token
+          try {
+            const verifyResp = await verifyRefreshToken(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET, tokens.refresh_token);
+            if (verifyResp && verifyResp.access_token) {
+              console.info('Refresh token verified: access token obtained');
+              res.send('Authentication successful! Refresh token saved to Heroku config vars and verified (access token obtained). Dynos will restart to pick up the new value.');
+            } else {
+              console.warn('Refresh token persisted but verification response missing access_token');
+              res.send('Refresh token saved to Heroku config vars but verification did not return an access token. Check client credentials.');
+            }
+          } catch (verifyErr) {
+            console.warn('Saved refresh token but verification failed:', verifyErr && verifyErr.message);
+            res.send('Refresh token saved to Heroku config vars but verification against Google failed. Check client_id/client_secret and try again.');
+          }
         } catch (herokuErr) {
           // If updating Heroku fails, fall back to logging instructions but do not print the token
           REFRESH_TOKEN = tokens.refresh_token;
