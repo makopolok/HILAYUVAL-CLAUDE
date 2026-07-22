@@ -1,0 +1,96 @@
+[
+  {
+    "hebrew_name": "גולדן איי",
+    "english_name": "Golden Eye",
+    "email": null,
+    "phone": null,
+    "search_aliases": [
+      "golden eye",
+      "גולדן איי"
+    ]
+  },
+  {
+    "hebrew_name": "טייק 2",
+    "english_name": "Take 2",
+    "email": "info@take2.co.il",
+    "phone": "03-6915392",
+    "search_aliases": [
+      "take2",
+      "take 2"
+    ]
+  },
+  {
+    "hebrew_name": "מיכל גבריאלוב",
+    "english_name": "Michal Gavrielov",
+    "email": null,
+    "phone": null,
+    "search_aliases": [
+      "michal gavrielov"
+    ]
+  },
+  {
+    "hebrew_name": "יריב אלבכרי - טייפקאסט",
+    "english_name": "Yariv Albakari - Typecast",
+    "email": "agent@typecast.co.il",
+    "phone": null,
+    "search_aliases": [
+      "typecast"
+    ]
+  },
+  {
+    "hebrew_name": "אקשן - יהודה בלו ואילן גזית",
+    "english_name": "Action - Yehuda Belo and Ilan Gazit",
+    "email": "action1@bezeqint.net",
+    "phone": "03-5014543",
+    "search_aliases": [
+      "action lihuk",
+      "action"
+    ]
+  },
+  {
+    "hebrew_name": "מרים עציוני",
+    "english_name": "Miriam Etzioni",
+    "email": "etzionim1@gmail.com",
+    "phone": "03-5291533, 052-380777",
+    "search_aliases": [
+      "amarganim",
+      "etzioni"
+    ]
+  },
+  {
+    "hebrew_name": "יואב גרוס",
+    "english_name": "Yoav Gross",
+    "email": "iritm@yoavgross.com",
+    "phone": "03-7623400",
+    "search_aliases": [
+      "yoav gross"
+    ]
+  },
+  {
+    "hebrew_name": "אופיר רוזן",
+    "english_name": "Ofir Rosen",
+    "email": "studiobama@gmail.com",
+    "phone": "04-6339630, 050-8688878, 050-4488400",
+    "search_aliases": [
+      "studiobama"
+    ]
+  },
+  {
+    "hebrew_name": "קנלר",
+    "english_name": "Kneller",
+    "email": "office@kneller.co.il",
+    "phone": "03-5232242",
+    "search_aliases": [
+      "kneller"
+    ]
+  },
+  {
+    "hebrew_name": "שחקנים ערבים - חיפה",
+    "english_name": "Arab Actors - Haifa",
+    "email": "ananbarakat@gmail.com",
+    "phone": "052-6577200",
+    "search_aliases": [
+      "arab actors haifa"
+    ]
+  }
+]

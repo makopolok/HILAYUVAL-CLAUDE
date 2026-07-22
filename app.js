@@ -871,12 +871,11 @@ if (process.env.APP_PRIMARY_DOMAIN) {
   });
 }
 
-// Google OAuth2 setup
-const oauth2Client = new google.auth.OAuth2(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
-  process.env.GOOGLE_REDIRECT_URI
-);
+// Google OAuth2 setup - delegated to routes/googleAuth.js
+const googleAuth = require('./routes/googleAuth');
+// Ensure the oauth client is initialized and get references to use in this module
+googleAuth.initOauthClient();
+const oauth2Client = googleAuth.getOAuthClient();
 
 // Scopes define the level of access you are requesting.
 // For uploading videos and managing playlists, we need both scopes.
@@ -888,9 +887,9 @@ const YOUTUBE_SCOPES = [
 // Store authenticated client globally for simplicity in this example
 // In a production app, you'd manage tokens more robustly (e.g., store in session or database)
 let authenticatedClient = null;
-let REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN || null; // Load refresh token from .env
+let REFRESH_TOKEN = googleAuth.getRefreshToken(); // read from the googleAuth module (which reads process.env initially)
 
-// If we have a refresh token, set it on the OAuth2 client
+// If we have a refresh token, ensure it is set on the OAuth2 client
 if (REFRESH_TOKEN) {
   oauth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
 }
@@ -1951,8 +1950,9 @@ app.post('/audition', generalAuditionUpload.single('video'), async (req, res) =>
 
   try {
     // Set up OAuth2 client with refresh token
-    oauth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
-    const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
+    const _oauthClient = googleAuth.getOAuthClient();
+    _oauthClient.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
+    const youtube = google.youtube({ version: 'v3', auth: _oauthClient });
 
     // Upload video to YouTube with resumable upload support
     const videoMetadata = {
@@ -2000,69 +2000,10 @@ app.post('/audition', generalAuditionUpload.single('video'), async (req, res) =>
   }
 });
 
-// --- YouTube OAuth Routes ---
-// Route to initiate OAuth2 flow
-app.get('/auth/google', (req, res) => {
-  if (!REFRESH_TOKEN) { // Only redirect if we don't have a refresh token yet
-    const authUrl = oauth2Client.generateAuthUrl({
-      access_type: 'offline', // Important to get a refresh token
-      scope: YOUTUBE_SCOPES,
-      prompt: 'consent' // Ensures you are prompted for consent, good for the first time
-    });
-    res.redirect(authUrl);
-  } else {
-    res.send('Application is already authorized. Refresh token is present.');
-  }
-});
-
-// Callback route for OAuth2
-app.get('/oauth2callback', async (req, res) => {
-  const code = req.query.code;
-  if (code) {
-    try {
-      const { tokens } = await oauth2Client.getToken(code);
-      oauth2Client.setCredentials(tokens);
-      authenticatedClient = oauth2Client; // Store the authorized client
-
-      console.log('Access Token:', tokens.access_token);
-      if (tokens.refresh_token) {
-        // Persist the refresh token to Heroku config vars so all dynos pick it up.
-        try {
-          await setHerokuConfigVar('hilayuval.com', 'GOOGLE_REFRESH_TOKEN', tokens.refresh_token);
-          console.info('GOOGLE_REFRESH_TOKEN updated on Heroku config vars');
-          REFRESH_TOKEN = tokens.refresh_token; // update in-memory copy as well
-
-          // Verify the refresh token works by exchanging it for an access token
-          try {
-            const verifyResp = await verifyRefreshToken(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET, tokens.refresh_token);
-            if (verifyResp && verifyResp.access_token) {
-              console.info('Refresh token verified: access token obtained');
-              res.render('oauth_result', { title: 'Authentication successful', success: true, message: 'Refresh token saved to Heroku config vars and verified (access token obtained). Dynos will restart to pick up the new value.' });
-            } else {
-              console.warn('Refresh token persisted but verification response missing access_token');
-              res.render('oauth_result', { title: 'Verification incomplete', success: false, message: 'Refresh token saved to Heroku config vars but verification did not return an access token. Check client credentials.' });
-            }
-          } catch (verifyErr) {
-            console.warn('Saved refresh token but verification failed:', verifyErr && verifyErr.message);
-            res.render('oauth_result', { title: 'Verification failed', success: false, message: 'Refresh token saved to Heroku config vars but verification against Google failed. Check client_id/client_secret and try again.', details: (verifyErr && verifyErr.message) ? verifyErr.message : undefined });
-          }
-        } catch (herokuErr) {
-          // If updating Heroku fails, fall back to logging instructions but do not print the token
-          REFRESH_TOKEN = tokens.refresh_token;
-          console.warn('Failed to update Heroku config var for GOOGLE_REFRESH_TOKEN:', herokuErr && herokuErr.message);
-          res.render('oauth_result', { title: 'Saved locally only', success: false, message: 'Authentication succeeded but automatic update to Heroku failed. The refresh token was stored in-memory for this dyno. Set GOOGLE_REFRESH_TOKEN manually in Heroku config vars or check logs.' });
-        }
-      } else {
-        res.render('oauth_result', { title: 'Authenticated', success: true, message: 'Authentication successful, but no new refresh token was provided (this is normal if you have authorized before). Ensure GOOGLE_REFRESH_TOKEN is set in your environment.' });
-      }
-    } catch (error) {
-      console.error('Error authenticating with Google:', error);
-      res.status(500).render('oauth_result', { title: 'Authentication error', success: false, message: 'Error during authentication. Check server logs for details.' });
-    }
-  } else {
-    res.status(400).render('oauth_result', { title: 'Authentication failed', success: false, message: 'No authorization code was provided by Google. The OAuth flow did not complete.' });
-  }
-});
+// Google OAuth routes and token monitor moved to routes/googleAuth.js
+const googleAuth = require('./routes/googleAuth');
+if (googleAuth.initOauthClient) googleAuth.initOauthClient();
+if (googleAuth.mountRoutes) googleAuth.mountRoutes(app);
 // --- End YouTube OAuth Routes ---
 
 // Route to display all projects with version information
