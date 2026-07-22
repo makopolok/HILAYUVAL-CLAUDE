@@ -2001,8 +2001,6 @@ app.post('/audition', generalAuditionUpload.single('video'), async (req, res) =>
 });
 
 // Google OAuth routes and token monitor moved to routes/googleAuth.js
-const googleAuth = require('./routes/googleAuth');
-if (googleAuth.initOauthClient) googleAuth.initOauthClient();
 if (googleAuth.mountRoutes) googleAuth.mountRoutes(app);
 // --- End YouTube OAuth Routes ---
 
