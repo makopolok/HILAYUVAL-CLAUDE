@@ -2037,30 +2037,30 @@ app.get('/oauth2callback', async (req, res) => {
             const verifyResp = await verifyRefreshToken(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET, tokens.refresh_token);
             if (verifyResp && verifyResp.access_token) {
               console.info('Refresh token verified: access token obtained');
-              res.send('Authentication successful! Refresh token saved to Heroku config vars and verified (access token obtained). Dynos will restart to pick up the new value.');
+              res.render('oauth_result', { title: 'Authentication successful', success: true, message: 'Refresh token saved to Heroku config vars and verified (access token obtained). Dynos will restart to pick up the new value.' });
             } else {
               console.warn('Refresh token persisted but verification response missing access_token');
-              res.send('Refresh token saved to Heroku config vars but verification did not return an access token. Check client credentials.');
+              res.render('oauth_result', { title: 'Verification incomplete', success: false, message: 'Refresh token saved to Heroku config vars but verification did not return an access token. Check client credentials.' });
             }
           } catch (verifyErr) {
             console.warn('Saved refresh token but verification failed:', verifyErr && verifyErr.message);
-            res.send('Refresh token saved to Heroku config vars but verification against Google failed. Check client_id/client_secret and try again.');
+            res.render('oauth_result', { title: 'Verification failed', success: false, message: 'Refresh token saved to Heroku config vars but verification against Google failed. Check client_id/client_secret and try again.', details: (verifyErr && verifyErr.message) ? verifyErr.message : undefined });
           }
         } catch (herokuErr) {
           // If updating Heroku fails, fall back to logging instructions but do not print the token
           REFRESH_TOKEN = tokens.refresh_token;
           console.warn('Failed to update Heroku config var for GOOGLE_REFRESH_TOKEN:', herokuErr && herokuErr.message);
-          res.send('Authentication successful. Refresh token received but automatic update to Heroku failed; check server logs for details and set GOOGLE_REFRESH_TOKEN manually.');
+          res.render('oauth_result', { title: 'Saved locally only', success: false, message: 'Authentication succeeded but automatic update to Heroku failed. The refresh token was stored in-memory for this dyno. Set GOOGLE_REFRESH_TOKEN manually in Heroku config vars or check logs.' });
         }
       } else {
-        res.send('Authentication successful, but no new refresh token was provided (this is normal if you have authorized before). Ensure GOOGLE_REFRESH_TOKEN is set in your environment.');
+        res.render('oauth_result', { title: 'Authenticated', success: true, message: 'Authentication successful, but no new refresh token was provided (this is normal if you have authorized before). Ensure GOOGLE_REFRESH_TOKEN is set in your environment.' });
       }
     } catch (error) {
       console.error('Error authenticating with Google:', error);
-      res.status(500).send('Error during authentication.');
+      res.status(500).render('oauth_result', { title: 'Authentication error', success: false, message: 'Error during authentication. Check server logs for details.' });
     }
   } else {
-    res.status(400).send('Authentication failed: No code provided.');
+    res.status(400).render('oauth_result', { title: 'Authentication failed', success: false, message: 'No authorization code was provided by Google. The OAuth flow did not complete.' });
   }
 });
 // --- End YouTube OAuth Routes ---
